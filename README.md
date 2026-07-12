@@ -36,9 +36,11 @@ $env:CLOUDBASE_ENV_ID = 'ai-agenda-d1gxlfuz6843bbed0'
 $env:TENCENTCLOUD_SECRETID = '你的 SecretId'
 $env:TENCENTCLOUD_SECRETKEY = '你的 SecretKey'
 npm run import:membership -- 'E:\小程序\广州双语议程表.xlsx'
+npm run import:pathways -- 'E:\小程序\广州双语议程表.xlsx'
 ```
 
 脚本只导入 `Membership` 工作表的前 26 条记录，写入前会清理其余会员，并删除 `clubEn`、`clubZh`、`rawRow`、`sourceKey`、`agendaNameZh`、`aliases`、`titleOnAgenda` 字段。重复执行会按姓名更新记录，不会重复创建。
+`import:pathways` 会导入同一文件中 `Pathways(新)` 工作表的全部项目到 `pathways` 集合。
 
 ## 开发验证
 

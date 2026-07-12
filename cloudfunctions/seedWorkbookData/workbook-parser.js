@@ -453,6 +453,25 @@ function parseMembershipWorkbook(buffer) {
 }
 
 /**
+ * 方法是什么：解析只包含 Pathways 的工作簿。
+ * 方法作用：定位 Pathways 工作表并返回全部路径项目记录，不要求存在 Membership 工作表。
+ * 为什么添加：Pathways 需要独立导入数据库，不能因为会员表缺失而阻断路径数据入库。
+ */
+function parsePathwaysWorkbook(buffer) {
+  const workbook = readWorkbook(buffer);
+  const pathwaysSheetName = workbook.SheetNames.find(function findPathwaysSheet(sheetName) {
+    return isPathwaysSheet(workbook, sheetName);
+  });
+  if (!pathwaysSheetName) {
+    throw createParseError('MISSING_PATHWAYS_SHEET', 'Excel 中缺少 Pathways 工作表');
+  }
+  return {
+    pathways: parsePathwaysSheet(workbook.Sheets[pathwaysSheetName]),
+    sheet: pathwaysSheetName
+  };
+}
+
+/**
  * 方法是什么：解析上传的 Excel 工作簿。
  * 方法作用：定位 Membership 和 Pathways(新) 工作表并返回待写入数据库的两组记录。
  * 为什么添加：这是 Excel 直接入库的唯一数据入口，确保生产逻辑不再读取代码内置数据。
@@ -484,6 +503,7 @@ function parseWorkbook(buffer) {
 module.exports = {
   parseWorkbook,
   parseMembershipWorkbook,
+  parsePathwaysWorkbook,
   parseMembershipSheet,
   parsePathwaysSheet,
   toDateText
