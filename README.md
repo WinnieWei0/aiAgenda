@@ -26,7 +26,7 @@
 1. 在微信开发者工具中打开项目。
 2. 将 `project.config.json` 里的 `appid` 替换为真实小程序 AppID。
 3. 在 `miniprogram/app.js` 中替换 `CLOUDBASE_ENV_ID`。
-4. 执行 `npm run install:cloudfunctions` 安装所有云函数依赖。
+4. 执行 `npm run install:cloudfunctions` 安装所有云函数依赖。该脚本会使用 `--install-links`，避免本地公共包以 Windows 链接形式上传后导致云端运行时报 `Invalid or unexpected token`。
 5. 上传并部署云函数。
 6. 第一个登录用户在首页点击“领取管理员”。
 7. 管理员进入管理中心，点击“从 Excel 种子初始化”写入 Membership 和 Pathways。

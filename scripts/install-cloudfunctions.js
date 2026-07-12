@@ -27,12 +27,12 @@ function findCloudFunctionDirs() {
 
 /**
  * 方法是什么：在指定目录执行 npm install。
- * 方法作用：为单个云函数安装 package.json 中声明的依赖。
- * 为什么添加：CloudBase 部署前需要确保本地依赖完整，特别是本地 file 依赖 `agenda-common`。
+ * 方法作用：为单个云函数安装 package.json 中声明的依赖，并把本地 file 依赖复制为真实目录。
+ * 为什么添加：CloudBase 部署前需要确保本地依赖完整，`--install-links` 可以避免 Windows junction 在上传时被打包坏。
  */
 function installInDir(dir) {
   console.log(`安装依赖：${path.relative(ROOT, dir)}`);
-  const result = spawnSync('npm', ['install'], {
+  const result = spawnSync('npm', ['install', '--install-links'], {
     cwd: dir,
     stdio: 'inherit',
     shell: process.platform === 'win32'

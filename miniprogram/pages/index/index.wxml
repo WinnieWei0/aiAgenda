@@ -5,7 +5,7 @@
   </view>
 
   <view class="section panel">
-    <textarea value="{{rawText}}" placeholder="请粘贴接龙文本" bindinput="handleRawTextInput" />
+    <textarea value="{{rawText}}" maxlength="-1" placeholder="请粘贴接龙文本" bindinput="handleRawTextInput" />
     <view class="button-row" style="margin-top: 16rpx;">
       <button type="primary" loading="{{parsing}}" bindtap="parseAgenda">解析接龙</button>
       <button bindtap="useSampleText">填入示例</button>
