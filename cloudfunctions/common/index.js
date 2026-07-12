@@ -91,7 +91,7 @@ async function listCollection(collectionName, options) {
 /**
  * 方法是什么：按唯一键更新或新增一条记录。
  * 方法作用：存在相同唯一键时更新，不存在时新增。
- * 为什么添加：Excel 种子数据和管理页保存都需要避免重复创建同一条业务记录。
+ * 为什么添加：Excel 导入和管理页保存都需要避免重复创建同一条业务记录。
  */
 async function upsertByKey(collectionName, key, value, data) {
   const db = getDb();
@@ -159,7 +159,7 @@ async function hasAdmin() {
 /**
  * 方法是什么：判断指定 openid 是否是管理员。
  * 方法作用：检查用户是否绑定 `admin` 系统角色。
- * 为什么添加：Membership、Pathways、角色管理和种子导入都必须限制为管理员操作。
+ * 为什么添加：Membership、Pathways、角色管理和 Excel 导入都必须限制为管理员操作。
  */
 async function isAdmin(openid) {
   const roles = await getUserRoles(openid);

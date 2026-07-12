@@ -10,6 +10,6 @@
       <button class="nav-button" bindtap="openPathwaysList">路径列表</button>
       <button class="nav-button" bindtap="openRolesList">角色列表</button>
     </view>
-    <button class="wide-button" bindtap="seedWorkbookData">从 Excel 种子初始化</button>
+    <button class="wide-button" bindtap="importWorkbook">选择 Excel 导入</button>
   </view>
 </view>

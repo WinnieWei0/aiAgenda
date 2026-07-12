@@ -9,9 +9,9 @@
 - `cloudfunctions/common/`：云函数复用的权限、解析、DeepSeek、PDF、数据库工具。
 - `cloudfunctions/agendaQuery/`：历史议程和单条议程的服务端权限查询。
 - `cloudfunctions/lookupOptions/`：编辑页会员和 Pathways 的服务端候选搜索。
-- `cloudfunctions/seedWorkbookData/data/`：从 `广州双语议程表.xlsx` 解析出的初始 Membership / Pathways 数据。
+- `cloudfunctions/seedWorkbookData/workbook-parser.js`：解析上传 Excel 中的 Membership / Pathways 工作表。
 - `scripts/check-comments.js`：中文三段式方法注释检查。
-- `tests/run-tests.js`：核心解析与种子数据测试。
+- `tests/run-tests.js`：核心解析与 Excel 导入测试。
 
 ## 环境变量
 
@@ -29,7 +29,9 @@
 4. 执行 `npm run install:cloudfunctions` 安装所有云函数依赖。该脚本会使用 `--install-links`，避免本地公共包以 Windows 链接形式上传后导致云端运行时报 `Invalid or unexpected token`。
 5. 上传并部署云函数。
 6. 第一个登录用户在首页点击“领取管理员”。
-7. 管理员进入管理中心，点击“从 Excel 种子初始化”写入 Membership 和 Pathways。
+7. 管理员进入首页或管理中心，点击“选择 Excel 导入”，选择包含 `Membership` 和 `Pathways(新)` 工作表的 Excel 文件，上传后写入 Membership 和 Pathways。
+
+每次导入都会按 Excel 行号生成稳定的 `sourceKey` 并执行 upsert；重复导入会更新记录，不会重复创建。云函数不会再读取仓库内置数据文件。
 
 ## 开发验证
 

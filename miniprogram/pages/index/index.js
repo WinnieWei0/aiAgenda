@@ -1,5 +1,6 @@
 const app = getApp();
 const cloud = require('../../utils/cloud');
+const workbook = require('../../utils/workbook');
 
 Page({
   data: {
@@ -71,15 +72,18 @@ Page({
   },
 
   /**
-   * 方法是什么：初始化 Excel 种子数据。
-   * 方法作用：调用 `seedWorkbookData` 写入 Membership 和 Pathways 初始数据。
-   * 为什么添加：首次部署时需要一个不受角色限制的基础数据初始化入口。
+   * 方法是什么：导入 Excel 基础数据。
+   * 方法作用：选择工作簿并调用云函数写入 Membership 和 Pathways 数据。
+   * 为什么添加：基础数据应直接来自用户选择的 Excel，而不是云函数内置文件。
    */
-  async seedWorkbookData() {
+  async importWorkbook() {
     try {
-      const data = await cloud.callCloud('seedWorkbookData', {});
+      const data = await workbook.importWorkbook();
       cloud.showSuccess(`会员${data.memberships.total} 项目${data.pathways.total}`);
     } catch (error) {
+      if (error && error.code === 'CANCELLED') {
+        return;
+      }
       cloud.showError(error);
     }
   }

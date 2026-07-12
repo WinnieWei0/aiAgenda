@@ -1,8 +1,11 @@
 const assert = require('assert');
 const parser = require('../cloudfunctions/common/parser');
 const pdfRenderer = require('../cloudfunctions/common/pdf-renderer');
-const memberships = require('../cloudfunctions/seedWorkbookData/data/memberships.json');
-const pathways = require('../cloudfunctions/seedWorkbookData/data/pathways.json');
+const workbookParser = require('../cloudfunctions/seedWorkbookData/workbook-parser');
+const XLSX = require('../cloudfunctions/seedWorkbookData/node_modules/xlsx');
+
+let memberships = [];
+let pathways = [];
 
 const SAMPLE_TEXT = `#接龙
 广州双语国际演讲俱乐部第760期中文会议，欢迎大家报名角色
@@ -45,13 +48,50 @@ function assertMember(rawName, expectedNameZh) {
 }
 
 /**
- * 方法是什么：测试 Excel 种子数据。
- * 方法作用：确认 Membership 和 Pathways JSON 已从样例 Excel 正确生成。
- * 为什么添加：基础数据缺失会导致接龙解析和 PDF 项目描述无法正常工作。
+ * 方法是什么：构造最小 Excel 导入样例。
+ * 方法作用：在不读取代码内置数据的情况下，生成包含会员和路径工作表的测试工作簿。
+ * 为什么添加：本地测试应验证真实 Excel 解析链路，而不是继续依赖静态 JSON fixture。
  */
-function testSeedData() {
-  assert.ok(memberships.length >= 60, 'Membership 种子数据数量不足');
-  assert.ok(pathways.length >= 30, 'Pathways 种子数据数量不足');
+function createWorkbookFixture() {
+  const workbook = XLSX.utils.book_new();
+  const membershipRows = [
+    ['昵称', '姓名', '英文名', '加入头马时间', 'Title on Agenda', '议程表填写', '路径', '路径(中文)'],
+    ['', '马威', 'Will Ma', '2010-11-01', 'Will Ma(PM)', '马威(PM)', 'Presentation Mastery', '精通演讲'],
+    ['', '韦文耐', 'Wen Nai', '', 'Wen Nai(PM)', '韦文耐(PM)', '', ''],
+    ['', '不懂先生', 'Franco Huang', '', 'Franco Huang(MS)', '不懂先生(MS)', '', ''],
+    ['', '陈佩欣', 'Penny Chen', '', 'Penny Chen(IP1)', '陈佩欣(IP1)', '', ''],
+    ['', '蔡艳灵', 'Brittany Cai', '', 'Brittany Cai(IP1)', '蔡艳灵(IP1)', '', ''],
+    ['', '周沫', 'Mo Zhou', '', 'Mo Zhou(PM)', '周沫(PM)', '', ''],
+    ['', '历史会员', '', '', '', '', '', ''],
+    ['', '历史姓名', 'History Name', '', 'History Name(PM)', '历史姓名(PM)', '', '']
+  ];
+  const pathwayRows = [
+    ['', 'Project', 'Objective', '', '项目名称', '项目目标', ''],
+    ['Level 2', '', '', '', '', '', ''],
+    ['L2P2', 'Effective Body Language', 'Objective', 'L2P2 Effective Body Language', '有效的肢体语言', '目标', 'L2P2 有效的肢体语言'],
+    ['Level 4', '', '', '', '', '', ''],
+    ['L4P3', 'Project Four', 'Objective Four', 'L4P3 Project Four', '项目四', '目标四', 'L4P3 项目四']
+  ];
+  XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet(membershipRows), 'Membership');
+  XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet(pathwayRows), 'Pathways(新)');
+  return XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
+}
+
+/**
+ * 方法是什么：测试 Excel 工作簿解析。
+ * 方法作用：确认 Membership 和 Pathways 数据直接从工作簿转换为数据库记录。
+ * 为什么添加：基础数据缺失或误读工作表会导致接龙解析和 PDF 项目描述无法正常工作。
+ */
+function testWorkbookData() {
+  const result = workbookParser.parseWorkbook(createWorkbookFixture());
+  memberships = result.memberships;
+  pathways = result.pathways;
+  assert.strictEqual(result.sheets.memberships, 'Membership');
+  assert.strictEqual(result.sheets.pathways, 'Pathways(新)');
+  assert.strictEqual(memberships.length, 7, 'Membership Excel 数据数量异常');
+  assert.strictEqual(pathways.length, 2, 'Pathways Excel 数据数量异常');
+  assert.strictEqual(memberships[0].joinedAt, '2010-11-01', 'Excel 日期转换异常');
+  assert.strictEqual(memberships[6].status, 'history', '历史会员区域识别异常');
   assert.ok(memberships.some(function findMo(member) {
     return member.nameZh === '周沫';
   }), '应包含周沫');
@@ -106,7 +146,7 @@ async function testPdfRenderer(agenda) {
  * 为什么添加：提供一个不依赖微信开发者工具的本地验证入口。
  */
 async function main() {
-  testSeedData();
+  testWorkbookData();
   testNameMatching();
   const agenda = testRuleParser();
   await testPdfRenderer(agenda);
