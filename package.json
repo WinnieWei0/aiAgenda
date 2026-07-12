@@ -6,6 +6,7 @@
   "scripts": {
     "check:comments": "node scripts/check-comments.js",
     "install:cloudfunctions": "node scripts/install-cloudfunctions.js",
+    "import:membership": "node scripts/import-membership.js",
     "test": "node tests/run-tests.js",
     "verify": "npm run check:comments && npm test"
   },

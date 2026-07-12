@@ -9,7 +9,7 @@
 - `cloudfunctions/common/`：云函数复用的权限、解析、DeepSeek、PDF、数据库工具。
 - `cloudfunctions/agendaQuery/`：历史议程和单条议程的服务端权限查询。
 - `cloudfunctions/lookupOptions/`：编辑页会员和 Pathways 的服务端候选搜索。
-- `cloudfunctions/seedWorkbookData/workbook-parser.js`：解析上传 Excel 中的 Membership / Pathways 工作表。
+- `cloudfunctions/seedWorkbookData/workbook-parser.js`：解析 Excel 中的 Membership / Pathways 工作表。
 - `scripts/check-comments.js`：中文三段式方法注释检查。
 - `tests/run-tests.js`：核心解析与 Excel 导入测试。
 
@@ -29,9 +29,16 @@
 4. 执行 `npm run install:cloudfunctions` 安装所有云函数依赖。该脚本会使用 `--install-links`，避免本地公共包以 Windows 链接形式上传后导致云端运行时报 `Invalid or unexpected token`。
 5. 上传并部署云函数。
 6. 第一个登录用户在首页点击“领取管理员”。
-7. 管理员进入首页或管理中心，点击“选择 Excel 导入”，选择包含 `Membership` 和 `Pathways(新)` 工作表的 Excel 文件，上传后写入 Membership 和 Pathways。
+7. 执行一次性 Membership 导入脚本。脚本默认读取 `E:\小程序\广州双语议程表.xlsx`，也可以通过命令行参数传入其他文件路径。
 
-每次导入都会按 Excel 行号生成稳定的 `sourceKey` 并执行 upsert；重复导入会更新记录，不会重复创建。云函数不会再读取仓库内置数据文件。
+```powershell
+$env:CLOUDBASE_ENV_ID = 'ai-agenda-d1gxlfuz6843bbed0'
+$env:TENCENTCLOUD_SECRETID = '你的 SecretId'
+$env:TENCENTCLOUD_SECRETKEY = '你的 SecretKey'
+npm run import:membership -- 'E:\小程序\广州双语议程表.xlsx'
+```
+
+脚本只导入 `Membership` 工作表，按 Excel 行号生成稳定的 `sourceKey` 并执行 upsert；重复执行会更新记录，不会重复创建。云函数不会再读取仓库内置数据文件。
 
 ## 开发验证
 

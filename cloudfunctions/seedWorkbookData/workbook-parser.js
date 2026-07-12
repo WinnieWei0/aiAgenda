@@ -418,20 +418,47 @@ function createParseError(code, message) {
 }
 
 /**
+ * 方法是什么：读取 Excel 工作簿二进制内容。
+ * 方法作用：统一处理空文件和损坏文件，并返回 SheetJS 工作簿对象。
+ * 为什么添加：Membership 单表导入和完整基础数据解析都需要一致的文件校验行为。
+ */
+function readWorkbook(buffer) {
+  if (!buffer || !buffer.length) {
+    throw createParseError('EMPTY_WORKBOOK', '上传的 Excel 文件为空');
+  }
+  try {
+    return XLSX.read(buffer, { type: 'buffer', raw: true, cellDates: false });
+  } catch (error) {
+    throw createParseError('INVALID_WORKBOOK', '无法读取 Excel 文件，请确认文件未损坏');
+  }
+}
+
+/**
+ * 方法是什么：解析只包含 Membership 的工作簿。
+ * 方法作用：定位 Membership 工作表并返回会员记录，不要求存在 Pathways 工作表。
+ * 为什么添加：本次一次性入库只需要把会员数据写入 memberships 集合，避免导入无关数据。
+ */
+function parseMembershipWorkbook(buffer) {
+  const workbook = readWorkbook(buffer);
+  const membershipSheetName = workbook.SheetNames.find(function findMembershipSheet(sheetName) {
+    return isMembershipSheet(workbook, sheetName);
+  });
+  if (!membershipSheetName) {
+    throw createParseError('MISSING_MEMBERSHIP_SHEET', 'Excel 中缺少 Membership 工作表');
+  }
+  return {
+    memberships: parseMembershipSheet(workbook.Sheets[membershipSheetName]),
+    sheet: membershipSheetName
+  };
+}
+
+/**
  * 方法是什么：解析上传的 Excel 工作簿。
  * 方法作用：定位 Membership 和 Pathways(新) 工作表并返回待写入数据库的两组记录。
  * 为什么添加：这是 Excel 直接入库的唯一数据入口，确保生产逻辑不再读取代码内置数据。
  */
 function parseWorkbook(buffer) {
-  if (!buffer || !buffer.length) {
-    throw createParseError('EMPTY_WORKBOOK', '上传的 Excel 文件为空');
-  }
-  let workbook;
-  try {
-    workbook = XLSX.read(buffer, { type: 'buffer', raw: true, cellDates: false });
-  } catch (error) {
-    throw createParseError('INVALID_WORKBOOK', '无法读取 Excel 文件，请确认文件未损坏');
-  }
+  const workbook = readWorkbook(buffer);
   const membershipSheetName = workbook.SheetNames.find(function findMembershipSheet(sheetName) {
     return isMembershipSheet(workbook, sheetName);
   });
@@ -456,6 +483,7 @@ function parseWorkbook(buffer) {
 
 module.exports = {
   parseWorkbook,
+  parseMembershipWorkbook,
   parseMembershipSheet,
   parsePathwaysSheet,
   toDateText

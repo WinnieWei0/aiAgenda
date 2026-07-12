@@ -1,6 +1,4 @@
 const app = getApp();
-const cloud = require('../../utils/cloud');
-const workbook = require('../../utils/workbook');
 
 Page({
   data: {
@@ -71,20 +69,4 @@ Page({
     wx.switchTab({ url: '/pages/parse/parse' });
   },
 
-  /**
-   * 方法是什么：导入 Excel 基础数据。
-   * 方法作用：选择工作簿并调用云函数写入 Membership 和 Pathways 数据。
-   * 为什么添加：基础数据应直接来自用户选择的 Excel，而不是云函数内置文件。
-   */
-  async importWorkbook() {
-    try {
-      const data = await workbook.importWorkbook();
-      cloud.showSuccess(`会员${data.memberships.total} 项目${data.pathways.total}`);
-    } catch (error) {
-      if (error && error.code === 'CANCELLED') {
-        return;
-      }
-      cloud.showError(error);
-    }
-  }
 });
