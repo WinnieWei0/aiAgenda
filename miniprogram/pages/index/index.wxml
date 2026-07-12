@@ -1,39 +1,48 @@
 <view class="page">
   <view class="section panel">
     <view class="title">AI 议程表</view>
-    <view class="muted">粘贴微信群接龙，解析成可编辑议程。</view>
+    <view class="muted">首页用于领取首个管理员、进入管理中心和查看历史议程。</view>
   </view>
 
   <view class="section panel">
-    <textarea value="{{rawText}}" maxlength="-1" placeholder="请粘贴接龙文本" bindinput="handleRawTextInput" />
-    <view class="button-row" style="margin-top: 16rpx;">
-      <button type="primary" loading="{{parsing}}" bindtap="parseAgenda">解析接龙</button>
-      <button bindtap="useSampleText">填入示例</button>
-      <button bindtap="openHistory">历史议程</button>
+    <view class="status-row">
+      <view class="status-label">云环境</view>
+      <view class="status-value">{{envId}}</view>
+    </view>
+    <view class="status-row">
+      <view class="status-label">当前身份</view>
+      <view class="status-value">{{isAdmin ? '管理员' : roleText}}</view>
+    </view>
+    <view class="status-row">
+      <view class="status-label">OpenID</view>
+      <view class="status-value">{{userOpenid || '登录中'}}</view>
     </view>
   </view>
 
   <view class="section panel" wx:if="{{canClaimAdmin}}">
-    <view class="muted">系统还没有管理员。</view>
+    <view class="title">领取管理员</view>
+    <view class="muted">当前系统还没有管理员，点击后当前微信用户会成为首个管理员。</view>
     <button type="warn" bindtap="claimAdmin">领取管理员</button>
   </view>
 
-  <view class="section panel" wx:if="{{isAdmin}}">
-    <button bindtap="openAdmin">管理中心</button>
+  <view class="section panel" wx:elif="{{isAdmin}}">
+    <view class="title">管理入口</view>
+    <view class="muted">Membership、Pathways 和系统角色都在管理中心维护。</view>
+    <view class="button-row">
+      <button type="primary" bindtap="openAdmin">管理中心</button>
+      <button bindtap="openHistory">历史议程</button>
+    </view>
   </view>
 
-  <view class="section panel" wx:if="{{agenda}}">
-    <view class="title">解析结果</view>
-    <view class="muted">来源：{{aiUsed ? 'DeepSeek + 规则校验' : '规则解析降级'}}</view>
-    <view>会议编号：{{agenda.meetingInfo.meetingNo}}</view>
-    <view>日期：{{agenda.meetingInfo.date}} {{agenda.meetingInfo.startTime}}-{{agenda.meetingInfo.endTime}}</view>
-    <view>地址：{{agenda.meetingInfo.address}}</view>
-    <view wx:if="{{unresolvedText}}" class="muted">待确认姓名：{{unresolvedText}}</view>
-    <view class="preview-list">
-      <view wx:for="{{agenda.items}}" wx:key="id" class="preview-item">
-        {{item.order}}. {{item.titleZh}} - {{item.previewPerson}}
-      </view>
-    </view>
-    <button type="primary" bindtap="goEditor">编辑议程</button>
+  <view class="section panel" wx:else>
+    <view class="title">普通用户</view>
+    <view class="muted">如需维护 Membership、Pathways 或角色，请让管理员分配权限。</view>
+    <button bindtap="openHistory">历史议程</button>
+  </view>
+
+  <view class="section panel">
+    <view class="title">解析议程表</view>
+    <view class="muted">解析微信群接龙请进入底部“解析议程表”菜单。</view>
+    <button type="primary" bindtap="openParseTab">去解析议程表</button>
   </view>
 </view>

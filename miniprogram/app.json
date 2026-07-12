@@ -1,6 +1,7 @@
 {
   "pages": [
     "pages/index/index",
+    "pages/parse/parse",
     "pages/editor/editor",
     "pages/history/history",
     "pages/admin/admin"
@@ -10,6 +11,22 @@
     "navigationBarBackgroundColor": "#0f766e",
     "navigationBarTextStyle": "white",
     "backgroundColor": "#f6f7f8"
+  },
+  "tabBar": {
+    "color": "#64748b",
+    "selectedColor": "#0f766e",
+    "backgroundColor": "#ffffff",
+    "borderStyle": "black",
+    "list": [
+      {
+        "pagePath": "pages/index/index",
+        "text": "首页"
+      },
+      {
+        "pagePath": "pages/parse/parse",
+        "text": "解析议程表"
+      }
+    ]
   },
   "style": "v2",
   "sitemapLocation": "sitemap.json"
