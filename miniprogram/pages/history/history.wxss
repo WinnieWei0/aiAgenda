@@ -1,0 +1,12 @@
+.history-card {
+  background: #ffffff;
+  border: 1rpx solid #dde3ea;
+  border-radius: 8rpx;
+  padding: 20rpx;
+  margin-bottom: 16rpx;
+}
+
+.history-title {
+  font-weight: 700;
+  margin-bottom: 8rpx;
+}

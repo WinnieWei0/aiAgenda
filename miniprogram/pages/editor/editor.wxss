@@ -1,0 +1,62 @@
+.form-row {
+  margin-bottom: 16rpx;
+}
+
+.form-row text {
+  display: block;
+  color: #4b5565;
+  font-size: 24rpx;
+  margin-bottom: 6rpx;
+}
+
+.language-switch {
+  margin-top: 14rpx;
+  display: flex;
+  gap: 12rpx;
+}
+
+.item-card {
+  background: #ffffff;
+  border: 1rpx solid #d9e2ec;
+  border-radius: 8rpx;
+  margin-bottom: 18rpx;
+  padding: 18rpx;
+}
+
+.item-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12rpx;
+  margin-bottom: 12rpx;
+  font-weight: 700;
+}
+
+.speech-box {
+  background: #f8fafc;
+  border-radius: 8rpx;
+  padding: 12rpx;
+}
+
+.floating-results {
+  position: fixed;
+  left: 24rpx;
+  right: 24rpx;
+  bottom: 24rpx;
+  background: #ffffff;
+  border: 1rpx solid #cbd5e1;
+  border-radius: 8rpx;
+  padding: 16rpx;
+  box-shadow: 0 8rpx 24rpx rgba(15, 23, 42, 0.16);
+  z-index: 20;
+}
+
+.result-title {
+  font-weight: 700;
+  margin-bottom: 10rpx;
+}
+
+.result-item {
+  padding: 12rpx 0;
+  border-bottom: 1rpx solid #edf1f5;
+}

@@ -1,0 +1,16 @@
+{
+  "appid": "wxd370d8124508b612",
+  "projectname": "aiAgenda",
+  "description": "AI 接龙解析议程生成小程序",
+  "setting": {
+    "urlCheck": true,
+    "es6": true,
+    "enhance": true,
+    "postcss": true,
+    "minified": true
+  },
+  "compileType": "miniprogram",
+  "miniprogramRoot": "miniprogram/",
+  "cloudfunctionRoot": "cloudfunctions/",
+  "condition": {}
+}

@@ -1,0 +1,62 @@
+page {
+  background: #f6f7f8;
+  color: #1f2933;
+  font-size: 28rpx;
+}
+
+.page {
+  padding: 24rpx;
+}
+
+.section {
+  margin-bottom: 24rpx;
+}
+
+.panel {
+  background: #ffffff;
+  border: 1rpx solid #dde3ea;
+  border-radius: 8rpx;
+  padding: 20rpx;
+}
+
+.title {
+  font-size: 34rpx;
+  font-weight: 700;
+  margin-bottom: 12rpx;
+}
+
+.muted {
+  color: #697586;
+  font-size: 24rpx;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+}
+
+.button-row {
+  display: flex;
+  gap: 12rpx;
+  flex-wrap: wrap;
+}
+
+button {
+  border-radius: 8rpx;
+}
+
+input,
+textarea {
+  width: 100%;
+  box-sizing: border-box;
+  background: #ffffff;
+  border: 1rpx solid #cbd5e1;
+  border-radius: 8rpx;
+  padding: 14rpx;
+  min-height: 72rpx;
+}
+
+textarea {
+  min-height: 280rpx;
+}

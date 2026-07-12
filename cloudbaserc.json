@@ -1,0 +1,14 @@
+{
+  "envId": "{{CLOUDBASE_ENV_ID}}",
+  "framework": {
+    "name": "ai-agenda-miniprogram",
+    "plugins": {
+      "client": {
+        "use": "@cloudbase/framework-plugin-website",
+        "inputs": {
+          "outputPath": "miniprogram"
+        }
+      }
+    }
+  }
+}

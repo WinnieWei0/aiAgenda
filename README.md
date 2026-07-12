@@ -1,0 +1,44 @@
+# AI 议程生成小程序
+
+这是一个原生微信小程序 + CloudBase + DeepSeek 的议程生成系统骨架。用户粘贴微信群接龙文本后，云函数会解析出结构化议程，前端提供可编辑表单、拖拽排序、保存、历史列表和中英文 PDF 导出。
+
+## 目录
+
+- `miniprogram/`：原生微信小程序页面和工具。
+- `cloudfunctions/`：CloudBase 云函数。
+- `cloudfunctions/common/`：云函数复用的权限、解析、DeepSeek、PDF、数据库工具。
+- `cloudfunctions/agendaQuery/`：历史议程和单条议程的服务端权限查询。
+- `cloudfunctions/lookupOptions/`：编辑页会员和 Pathways 的服务端候选搜索。
+- `cloudfunctions/seedWorkbookData/data/`：从 `广州双语议程表.xlsx` 解析出的初始 Membership / Pathways 数据。
+- `scripts/check-comments.js`：中文三段式方法注释检查。
+- `tests/run-tests.js`：核心解析与种子数据测试。
+
+## 环境变量
+
+在 CloudBase 云函数环境中配置：
+
+- `DEEPSEEK_API_KEY`：DeepSeek API Key。
+- `DEEPSEEK_MODEL`：可选，默认 `deepseek-v4-flash`。
+- `PDF_FONT_PATH`：可选，中文字体路径。项目已在 `cloudfunctions/common/fonts/` 内置一份中文字体，默认可直接生成中文 PDF。
+
+## 初始化顺序
+
+1. 在微信开发者工具中打开项目。
+2. 将 `project.config.json` 里的 `appid` 替换为真实小程序 AppID。
+3. 在 `miniprogram/app.js` 中替换 `CLOUDBASE_ENV_ID`。
+4. 执行 `npm run install:cloudfunctions` 安装所有云函数依赖。
+5. 上传并部署云函数。
+6. 第一个登录用户在首页点击“领取管理员”。
+7. 管理员进入管理中心，点击“从 Excel 种子初始化”写入 Membership 和 Pathways。
+
+## 开发验证
+
+```bash
+npm run verify
+```
+
+该命令会检查所有 JS 方法是否有中文三段式注释，并运行核心解析测试。
+
+## 数据权限建议
+
+上线时建议把云数据库集合默认设置为仅云函数可读写。`agendas` 的列表和详情读取已经通过 `agendaQuery` 云函数做 owner/admin 校验；Membership、Pathways 的候选搜索通过 `lookupOptions` 云函数处理；Membership、Pathways、roles 的维护也都在管理员云函数中校验。

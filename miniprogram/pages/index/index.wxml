@@ -1,0 +1,39 @@
+<view class="page">
+  <view class="section panel">
+    <view class="title">AI 议程表</view>
+    <view class="muted">粘贴微信群接龙，解析成可编辑议程。</view>
+  </view>
+
+  <view class="section panel">
+    <textarea value="{{rawText}}" placeholder="请粘贴接龙文本" bindinput="handleRawTextInput" />
+    <view class="button-row" style="margin-top: 16rpx;">
+      <button type="primary" loading="{{parsing}}" bindtap="parseAgenda">解析接龙</button>
+      <button bindtap="useSampleText">填入示例</button>
+      <button bindtap="openHistory">历史议程</button>
+    </view>
+  </view>
+
+  <view class="section panel" wx:if="{{canClaimAdmin}}">
+    <view class="muted">系统还没有管理员。</view>
+    <button type="warn" bindtap="claimAdmin">领取管理员</button>
+  </view>
+
+  <view class="section panel" wx:if="{{isAdmin}}">
+    <button bindtap="openAdmin">管理中心</button>
+  </view>
+
+  <view class="section panel" wx:if="{{agenda}}">
+    <view class="title">解析结果</view>
+    <view class="muted">来源：{{aiUsed ? 'DeepSeek + 规则校验' : '规则解析降级'}}</view>
+    <view>会议编号：{{agenda.meetingInfo.meetingNo}}</view>
+    <view>日期：{{agenda.meetingInfo.date}} {{agenda.meetingInfo.startTime}}-{{agenda.meetingInfo.endTime}}</view>
+    <view>地址：{{agenda.meetingInfo.address}}</view>
+    <view wx:if="{{unresolvedText}}" class="muted">待确认姓名：{{unresolvedText}}</view>
+    <view class="preview-list">
+      <view wx:for="{{agenda.items}}" wx:key="id" class="preview-item">
+        {{item.order}}. {{item.titleZh}} - {{item.previewPerson}}
+      </view>
+    </view>
+    <button type="primary" bindtap="goEditor">编辑议程</button>
+  </view>
+</view>

@@ -1,0 +1,15 @@
+{
+  "name": "ai-agenda-miniprogram",
+  "version": "0.1.0",
+  "private": true,
+  "description": "微信小程序 + CloudBase + DeepSeek 议程生成系统",
+  "scripts": {
+    "check:comments": "node scripts/check-comments.js",
+    "install:cloudfunctions": "node scripts/install-cloudfunctions.js",
+    "test": "node tests/run-tests.js",
+    "verify": "npm run check:comments && npm test"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

@@ -1,0 +1,47 @@
+/**
+ * 方法是什么：调用 CloudBase 云函数并解析标准响应。
+ * 方法作用：统一处理 `{ ok, data, error }` 返回结构，失败时抛出错误。
+ * 为什么添加：所有页面都会调用云函数，封装后可以保持错误处理一致。
+ */
+async function callCloud(name, data) {
+  const res = await wx.cloud.callFunction({
+    name,
+    data: data || {}
+  });
+  if (!res.result || !res.result.ok) {
+    const message = res.result && res.result.error ? res.result.error.message : '云函数调用失败';
+    throw new Error(message);
+  }
+  return res.result.data;
+}
+
+/**
+ * 方法是什么：展示页面错误提示。
+ * 方法作用：把异常对象转换成微信 Toast。
+ * 为什么添加：用户操作失败时需要得到明确反馈，而不是只在控制台报错。
+ */
+function showError(error) {
+  wx.showToast({
+    title: error && error.message ? error.message : '操作失败',
+    icon: 'none',
+    duration: 2600
+  });
+}
+
+/**
+ * 方法是什么：展示普通成功提示。
+ * 方法作用：用统一样式提示保存、导出、初始化等操作完成。
+ * 为什么添加：不同页面的成功反馈保持一致，会让小程序体验更稳定。
+ */
+function showSuccess(title) {
+  wx.showToast({
+    title: title || '操作成功',
+    icon: 'success'
+  });
+}
+
+module.exports = {
+  callCloud,
+  showError,
+  showSuccess
+};

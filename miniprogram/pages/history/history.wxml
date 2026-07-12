@@ -1,0 +1,15 @@
+<view class="page">
+  <view class="section panel">
+    <view class="title">历史议程</view>
+    <view class="muted">查看已保存议程，点击继续编辑。</view>
+  </view>
+
+  <view wx:if="{{loading}}" class="panel">加载中...</view>
+  <view wx:if="{{!loading && !agendas.length}}" class="panel muted">暂无历史议程</view>
+
+  <view wx:for="{{agendas}}" wx:key="_id" class="history-card" data-id="{{item._id}}" bindtap="editAgenda">
+    <view class="history-title">第 {{item.meetingInfo.meetingNo}} 期 {{item.meetingInfo.theme}}</view>
+    <view class="muted">{{item.meetingInfo.date}} {{item.meetingInfo.startTime}}-{{item.meetingInfo.endTime}}</view>
+    <view class="muted">流程数：{{item.items.length}}</view>
+  </view>
+</view>

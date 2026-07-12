@@ -1,0 +1,11 @@
+node_modules/
+miniprogram/miniprogram_npm/
+.DS_Store
+*.log
+coverage/
+dist/
+tmp/
+assets/fonts/*.ttf
+assets/fonts/*.otf
+assets/fonts/*.ttc
+cloudfunctions/**/node_modules/
