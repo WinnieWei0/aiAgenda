@@ -41,19 +41,31 @@ async function saveMember(member) {
 }
 
 /**
+ * 方法是什么：读取单个会员记录。
+ * 方法作用：根据会员 `_id` 从 memberships 集合取回完整记录。
+ * 为什么添加：独立编辑会员页需要在打开时加载当前记录，而不是依赖列表页传递完整对象。
+ */
+async function getMember(id) {
+  const db = common.getDb();
+  const res = await db.collection('memberships').doc(id).get();
+  return res.data || null;
+}
+
+/**
  * 方法是什么：处理 Membership 管理云函数请求。
- * 方法作用：提供列表、新增、更新和删除会员数据的管理员接口。
- * 为什么添加：Membership 必须在当前系统中以数据库表形式维护，并支持管理员 CRUD。
+ * 方法作用：提供列表、详情、新增、更新和删除会员数据的开放管理接口。
+ * 为什么添加：Membership 必须在当前系统中以数据库表形式维护，并支持当前版本所有用户 CRUD。
  */
 async function main(event) {
   try {
     common.initCloud();
-    const openid = common.getOpenid();
-    await common.requireAdmin(openid);
     const action = event && event.action ? event.action : 'list';
     const db = common.getDb();
     if (action === 'list') {
       return common.ok(await common.listCollection('memberships', event || {}));
+    }
+    if (action === 'get') {
+      return common.ok({ record: await getMember(event.id) });
     }
     if (action === 'save') {
       return common.ok(await saveMember(event.member || {}));

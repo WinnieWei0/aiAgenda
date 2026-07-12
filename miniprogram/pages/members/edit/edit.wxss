@@ -1,0 +1,3 @@
+.form-panel input {
+  margin-bottom: 14rpx;
+}

@@ -1,0 +1,25 @@
+<view class="page">
+  <view class="section panel">
+    <view class="title">会员列表</view>
+    <view class="muted">维护 Membership 表，用于接龙姓名匹配和议程显示。</view>
+    <input placeholder="搜索中文名、英文名、昵称" value="{{keyword}}" bindinput="handleKeywordInput" />
+    <view class="button-row actions">
+      <button type="primary" bindtap="openCreate">新增会员</button>
+      <button loading="{{loading}}" bindtap="refreshRecords">刷新</button>
+    </view>
+  </view>
+
+  <view class="section">
+    <view wx:if="{{loading}}" class="panel">加载中...</view>
+    <view wx:elif="{{!filteredRecords.length}}" class="panel muted">暂无会员数据</view>
+    <view wx:for="{{filteredRecords}}" wx:key="_id" class="record-card">
+      <view class="record-title">{{item.nameZh || '未命名会员'}} / {{item.nameEn}}</view>
+      <view class="muted">{{item.nickName}} {{item.agendaNameZh}} {{item.titleOnAgenda}}</view>
+      <view class="muted">{{item.phone}} {{item.email}}</view>
+      <view class="button-row card-actions">
+        <button size="mini" data-id="{{item._id}}" bindtap="editRecord">编辑会员</button>
+        <button size="mini" type="warn" data-id="{{item._id}}" data-name="{{item.nameZh || item.nameEn || item.nickName}}" bindtap="confirmDelete">删除</button>
+      </view>
+    </view>
+  </view>
+</view>

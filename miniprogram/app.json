@@ -2,6 +2,12 @@
   "pages": [
     "pages/index/index",
     "pages/parse/parse",
+    "pages/members/list/list",
+    "pages/members/edit/edit",
+    "pages/pathways/list/list",
+    "pages/pathways/edit/edit",
+    "pages/roles/list/list",
+    "pages/roles/edit/edit",
     "pages/editor/editor",
     "pages/history/history",
     "pages/admin/admin"

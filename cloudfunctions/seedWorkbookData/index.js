@@ -25,13 +25,11 @@ async function seedCollection(collectionName, uniqueKey, rows) {
 /**
  * 方法是什么：处理 Excel 初始数据入库请求。
  * 方法作用：把从 `广州双语议程表.xlsx` 解析出的 Membership 和 Pathways JSON 写入数据库。
- * 为什么添加：系统首次上线需要基础会员表和 Pathways 表，否则接龙解析无法匹配正式姓名和项目描述。
+ * 为什么添加：系统首次上线需要基础会员表和 Pathways 表，当前版本允许所有用户执行初始化以降低部署门槛。
  */
 async function main() {
   try {
     common.initCloud();
-    const openid = common.getOpenid();
-    await common.requireAdmin(openid);
     const membershipStats = await seedCollection('memberships', 'sourceKey', memberships);
     const pathwayStats = await seedCollection('pathways', 'sourceKey', pathways);
     return common.ok({ memberships: membershipStats, pathways: pathwayStats });

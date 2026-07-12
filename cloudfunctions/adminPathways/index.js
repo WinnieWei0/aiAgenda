@@ -41,19 +41,31 @@ async function savePathway(pathway) {
 }
 
 /**
+ * 方法是什么：读取单个 Pathways 项目记录。
+ * 方法作用：根据 Pathways `_id` 从 pathways 集合取回完整记录。
+ * 为什么添加：独立编辑路径页需要按 id 加载已有项目，避免列表页传递大对象。
+ */
+async function getPathway(id) {
+  const db = common.getDb();
+  const res = await db.collection('pathways').doc(id).get();
+  return res.data || null;
+}
+
+/**
  * 方法是什么：处理 Pathways 管理云函数请求。
- * 方法作用：提供列表、新增、更新和删除 Pathways 数据的管理员接口。
- * 为什么添加：Pathways 表必须在当前系统中维护，备稿项目选择和 PDF 描述都依赖它。
+ * 方法作用：提供列表、详情、新增、更新和删除 Pathways 数据的开放管理接口。
+ * 为什么添加：Pathways 表必须在当前系统中维护，当前版本要求所有用户都能访问管理能力。
  */
 async function main(event) {
   try {
     common.initCloud();
-    const openid = common.getOpenid();
-    await common.requireAdmin(openid);
     const action = event && event.action ? event.action : 'list';
     const db = common.getDb();
     if (action === 'list') {
       return common.ok(await common.listCollection('pathways', event || {}));
+    }
+    if (action === 'get') {
+      return common.ok({ record: await getPathway(event.id) });
     }
     if (action === 'save') {
       return common.ok(await savePathway(event.pathway || {}));

@@ -1,0 +1,31 @@
+<view class="page">
+  <view class="section panel">
+    <view class="title">角色列表</view>
+    <view class="muted">维护角色定义，并可为用户分配角色。当前角色不限制管理功能。</view>
+    <input placeholder="搜索角色编码、名称、描述" value="{{keyword}}" bindinput="handleKeywordInput" />
+    <view class="button-row actions">
+      <button type="primary" bindtap="openCreate">新增角色</button>
+      <button loading="{{loading}}" bindtap="refreshRecords">刷新</button>
+    </view>
+  </view>
+
+  <view class="section panel">
+    <view class="title">分配角色</view>
+    <input placeholder="用户 openid" value="{{assignOpenid}}" data-field="openid" bindinput="handleAssignInput" />
+    <input placeholder="角色编码，如 viewer" value="{{assignRoleCode}}" data-field="roleCode" bindinput="handleAssignInput" />
+    <button type="primary" bindtap="assignRole">绑定角色</button>
+  </view>
+
+  <view class="section">
+    <view wx:if="{{loading}}" class="panel">加载中...</view>
+    <view wx:elif="{{!filteredRecords.length}}" class="panel muted">暂无角色数据</view>
+    <view wx:for="{{filteredRecords}}" wx:key="code" class="record-card">
+      <view class="record-title">{{item.code}} {{item.name}}</view>
+      <view class="muted">{{item.description}}</view>
+      <view class="button-row card-actions">
+        <button size="mini" data-code="{{item.code}}" bindtap="editRecord">编辑角色</button>
+        <button size="mini" type="warn" data-code="{{item.code}}" bindtap="confirmDelete">删除</button>
+      </view>
+    </view>
+  </view>
+</view>

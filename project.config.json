@@ -5,9 +5,9 @@
   "setting": {
     "urlCheck": true,
     "es6": true,
-    "enhance": true,
+    "enhance": false,
     "postcss": true,
-    "minified": true,
+    "minified": false,
     "babelSetting": {
       "ignore": [],
       "disablePlugins": [],

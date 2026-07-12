@@ -1,0 +1,4 @@
+.form-panel input,
+.form-panel textarea {
+  margin-bottom: 14rpx;
+}

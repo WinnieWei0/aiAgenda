@@ -1,0 +1,16 @@
+<view class="page">
+  <view class="section panel">
+    <view class="title">{{isEdit ? '编辑角色' : '新增角色'}}</view>
+    <view class="muted">角色当前只用于记录和分配，不限制管理功能。</view>
+  </view>
+
+  <view class="section panel form-panel">
+    <input placeholder="角色编码，如 editor" disabled="{{isEdit}}" value="{{role.code}}" data-field="code" bindinput="handleInput" />
+    <input placeholder="角色名称" value="{{role.name}}" data-field="name" bindinput="handleInput" />
+    <textarea placeholder="角色描述" value="{{role.description}}" data-field="description" bindinput="handleInput" />
+    <view class="button-row">
+      <button type="primary" loading="{{saving}}" bindtap="saveRole">保存</button>
+      <button bindtap="cancelEdit">取消</button>
+    </view>
+  </view>
+</view>

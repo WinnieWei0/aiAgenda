@@ -1,25 +1,14 @@
-.admin-card {
-  background: #ffffff;
-  border: 1rpx solid #dde3ea;
-  border-radius: 8rpx;
-  padding: 18rpx;
-  margin-bottom: 16rpx;
+.nav-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12rpx;
 }
 
-.record-title {
-  font-weight: 700;
-  margin-bottom: 8rpx;
+.nav-button {
+  min-height: 84rpx;
+  font-size: 26rpx;
 }
 
-.assign-box {
+.wide-button {
   margin-top: 16rpx;
-  padding: 14rpx;
-  background: #f8fafc;
-  border-radius: 8rpx;
-}
-
-.assign-box input,
-.panel input,
-.panel textarea {
-  margin-bottom: 12rpx;
 }

@@ -1,0 +1,20 @@
+<view class="page">
+  <view class="section panel">
+    <view class="title">{{isEdit ? '编辑会员' : '新增会员'}}</view>
+    <view class="muted">保存后将写入 Membership 数据表。</view>
+  </view>
+
+  <view class="section panel form-panel">
+    <input placeholder="中文名" value="{{member.nameZh}}" data-field="nameZh" bindinput="handleInput" />
+    <input placeholder="英文名" value="{{member.nameEn}}" data-field="nameEn" bindinput="handleInput" />
+    <input placeholder="昵称" value="{{member.nickName}}" data-field="nickName" bindinput="handleInput" />
+    <input placeholder="中文议程显示名" value="{{member.agendaNameZh}}" data-field="agendaNameZh" bindinput="handleInput" />
+    <input placeholder="英文议程显示名" value="{{member.titleOnAgenda}}" data-field="titleOnAgenda" bindinput="handleInput" />
+    <input placeholder="电话" value="{{member.phone}}" data-field="phone" bindinput="handleInput" />
+    <input placeholder="邮箱" value="{{member.email}}" data-field="email" bindinput="handleInput" />
+    <view class="button-row">
+      <button type="primary" loading="{{saving}}" bindtap="saveMember">保存</button>
+      <button bindtap="cancelEdit">取消</button>
+    </view>
+  </view>
+</view>
