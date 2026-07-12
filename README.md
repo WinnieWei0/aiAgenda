@@ -38,7 +38,7 @@ $env:TENCENTCLOUD_SECRETKEY = '你的 SecretKey'
 npm run import:membership -- 'E:\小程序\广州双语议程表.xlsx'
 ```
 
-脚本只导入 `Membership` 工作表，按 Excel 行号生成稳定的 `sourceKey` 并执行 upsert；重复执行会更新记录，不会重复创建。云函数不会再读取仓库内置数据文件。
+脚本只导入 `Membership` 工作表的前 26 条记录，写入前会清理其余会员，并删除 `clubEn`、`clubZh`、`rawRow`、`sourceKey`、`agendaNameZh`、`aliases`、`titleOnAgenda` 字段。重复执行会按姓名更新记录，不会重复创建。
 
 ## 开发验证
 

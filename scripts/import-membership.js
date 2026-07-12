@@ -5,6 +5,8 @@ const cloud = require('../cloudfunctions/seedWorkbookData/node_modules/wx-server
 
 const DEFAULT_WORKBOOK_PATH = 'E:\\小程序\\广州双语议程表.xlsx';
 const DEFAULT_ENV_ID = 'ai-agenda-d1gxlfuz6843bbed0';
+const MAX_MEMBERS = 26;
+const REMOVED_FIELDS = ['clubEn', 'clubZh', 'rawRow', 'sourceKey', 'agendaNameZh', 'aliases', 'titleOnAgenda'];
 
 /**
  * 方法是什么：读取本地导入配置。
@@ -25,16 +27,61 @@ function getConfig() {
 }
 
 /**
+ * 方法是什么：截取并精简会员记录。
+ * 方法作用：只保留前 26 条记录，并删除数据库不需要的字段。
+ * 为什么添加：Membership 集合只需要业务字段，避免把导入辅助信息和重复显示字段保存进去。
+ */
+function prepareMembers(members) {
+  return (members || []).slice(0, MAX_MEMBERS).map(function prepareMember(member) {
+    const payload = Object.assign({}, member);
+    for (const field of REMOVED_FIELDS) {
+      delete payload[field];
+    }
+    return payload;
+  });
+}
+
+/**
+ * 方法是什么：查找已有会员记录。
+ * 方法作用：优先按导入行号查找，字段已精简后再按中文名或英文名兜底匹配。
+ * 为什么添加：`sourceKey` 不写入数据库后，重复执行仍需更新原会员而不是创建重复记录。
+ */
+async function findExistingMember(collection, member) {
+  const bySourceKey = await collection.where({ sourceKey: member.sourceKey }).limit(1).get();
+  if (bySourceKey.data && bySourceKey.data.length) {
+    return bySourceKey.data[0];
+  }
+  if (member.nameZh) {
+    const byNameZh = await collection.where({ nameZh: member.nameZh }).limit(1).get();
+    if (byNameZh.data && byNameZh.data.length) {
+      return byNameZh.data[0];
+    }
+  }
+  if (member.nameEn) {
+    const byNameEn = await collection.where({ nameEn: member.nameEn }).limit(1).get();
+    if (byNameEn.data && byNameEn.data.length) {
+      return byNameEn.data[0];
+    }
+  }
+  return null;
+}
+
+/**
  * 方法是什么：按 sourceKey 写入一条会员记录。
  * 方法作用：已有记录执行更新，新记录执行新增，并维护创建和更新时间。
- * 为什么添加：同一张 Excel 可以重复执行导入而不会产生重复会员。
+ * 为什么添加：同一张 Excel 可以重复执行导入而不会产生重复会员，同时不保存 sourceKey。
  */
-async function upsertMember(collection, member) {
-  const existing = await collection.where({ sourceKey: member.sourceKey }).limit(1).get();
+async function upsertMember(collection, member, removeCommand) {
+  const existing = await findExistingMember(collection, member);
+  const payload = prepareMembers([member])[0];
   const now = new Date().toISOString();
-  const payload = Object.assign({}, member, { updatedAt: now });
-  if (existing.data && existing.data.length) {
-    await collection.doc(existing.data[0]._id).update({ data: payload });
+  payload.updatedAt = now;
+  if (existing) {
+    const updateData = Object.assign({}, payload);
+    for (const field of REMOVED_FIELDS) {
+      updateData[field] = removeCommand.remove();
+    }
+    await collection.doc(existing._id).update({ data: updateData });
     return 'updated';
   }
   await collection.add({ data: Object.assign({}, payload, { createdAt: now }) });
@@ -42,9 +89,40 @@ async function upsertMember(collection, member) {
 }
 
 /**
+ * 方法是什么：删除前 26 条之外的会员记录。
+ * 方法作用：清理数据库中之前导入的后续会员，确保集合最终只保留本次指定范围。
+ * 为什么添加：用户明确要求后面的 Membership 数据不要保留，单纯停止导入无法清除旧记录。
+ */
+async function removeExtraMembers(collection, members) {
+  const sourceKeys = new Set(members.map(function getSourceKey(member) {
+    return member.sourceKey;
+  }));
+  const names = new Set();
+  for (const member of members) {
+    if (member.nameZh) {
+      names.add(member.nameZh);
+    }
+    if (member.nameEn) {
+      names.add(member.nameEn);
+    }
+  }
+  const result = await collection.limit(1000).get();
+  let removed = 0;
+  for (const record of result.data || []) {
+    const keepBySourceKey = record.sourceKey && sourceKeys.has(record.sourceKey);
+    const keepByName = !record.sourceKey && (names.has(record.nameZh) || names.has(record.nameEn));
+    if (!keepBySourceKey && !keepByName) {
+      await collection.doc(record._id).remove();
+      removed += 1;
+    }
+  }
+  return removed;
+}
+
+/**
  * 方法是什么：执行 Membership Excel 导入。
- * 方法作用：读取指定工作簿的 Membership 工作表并直接写入 CloudBase memberships 集合。
- * 为什么添加：当前需求是开发机一次性入库，不需要把 Excel 选择和上传暴露为小程序功能。
+ * 方法作用：读取指定工作簿的 Membership 工作表，只写入前 26 条精简记录。
+ * 为什么添加：当前需求只保留 Membership 前 26 条数据，不需要导入后续会员或无关字段。
  */
 async function run() {
   const config = getConfig();
@@ -58,15 +136,18 @@ async function run() {
   });
   const buffer = fs.readFileSync(config.workbookPath);
   const workbook = workbookParser.parseMembershipWorkbook(buffer);
-  const collection = cloud.database().collection('memberships');
-  const stats = { created: 0, updated: 0, total: 0 };
-  for (const member of workbook.memberships) {
-    const action = await upsertMember(collection, member);
+  const db = cloud.database();
+  const collection = db.collection('memberships');
+  const members = workbook.memberships.slice(0, MAX_MEMBERS);
+  const removed = await removeExtraMembers(collection, members);
+  const stats = { created: 0, updated: 0, removed, total: 0 };
+  for (const member of members) {
+    const action = await upsertMember(collection, member, db.command);
     stats[action] += 1;
     stats.total += 1;
     console.log(`${action}: ${member.sourceKey} ${member.nameZh || member.nameEn}`);
   }
-  console.log(`Membership 导入完成：新增 ${stats.created}，更新 ${stats.updated}，共 ${stats.total} 条。`);
+  console.log(`Membership 导入完成：新增 ${stats.created}，更新 ${stats.updated}，删除 ${stats.removed}，保留 ${stats.total} 条。`);
   return stats;
 }
 
@@ -84,4 +165,4 @@ if (require.main === module) {
   run().catch(handleError);
 }
 
-module.exports = { getConfig, upsertMember, run };
+module.exports = { getConfig, prepareMembers, findExistingMember, upsertMember, removeExtraMembers, run };

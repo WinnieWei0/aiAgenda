@@ -3,6 +3,7 @@ const parser = require('../cloudfunctions/common/parser');
 const pdfRenderer = require('../cloudfunctions/common/pdf-renderer');
 const workbookParser = require('../cloudfunctions/seedWorkbookData/workbook-parser');
 const XLSX = require('../cloudfunctions/seedWorkbookData/node_modules/xlsx');
+const membershipImporter = require('../scripts/import-membership');
 
 let memberships = [];
 let pathways = [];
@@ -98,6 +99,13 @@ function testWorkbookData() {
   assert.ok(pathways.some(function findL2P2(item) {
     return item.code === 'L2P2';
   }), '应包含 L2P2 项目');
+  const prepared = membershipImporter.prepareMembers(Array.from({ length: 30 }, function createMember(_, index) {
+    return result.memberships[index % result.memberships.length];
+  }));
+  assert.strictEqual(prepared.length, 26, 'Membership 精简数量异常');
+  assert.ok(!Object.prototype.hasOwnProperty.call(prepared[0], 'sourceKey'), '不应保存 sourceKey');
+  assert.ok(!Object.prototype.hasOwnProperty.call(prepared[0], 'rawRow'), '不应保存 rawRow');
+  assert.ok(!Object.prototype.hasOwnProperty.call(prepared[0], 'titleOnAgenda'), '不应保存 titleOnAgenda');
 }
 
 /**
