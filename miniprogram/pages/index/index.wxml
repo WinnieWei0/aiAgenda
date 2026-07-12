@@ -11,7 +11,7 @@
     </view>
     <view class="status-row">
       <view class="status-label">当前身份</view>
-      <view class="status-value">{{isAdmin ? '管理员' : roleText}}</view>
+      <view class="status-value">{{identityText}}</view>
     </view>
     <view class="status-row">
       <view class="status-label">OpenID</view>
@@ -25,19 +25,13 @@
     <button type="warn" bindtap="claimAdmin">领取管理员</button>
   </view>
 
-  <view class="section panel" wx:elif="{{isAdmin}}">
-    <view class="title">管理入口</view>
-    <view class="muted">Membership、Pathways 和系统角色都在管理中心维护。</view>
+  <view class="section panel">
+    <view class="title">管理中心</view>
+    <view class="muted">{{adminTip}}</view>
     <view class="button-row">
       <button type="primary" bindtap="openAdmin">管理中心</button>
       <button bindtap="openHistory">历史议程</button>
     </view>
-  </view>
-
-  <view class="section panel" wx:else>
-    <view class="title">普通用户</view>
-    <view class="muted">如需维护 Membership、Pathways 或角色，请让管理员分配权限。</view>
-    <button bindtap="openHistory">历史议程</button>
   </view>
 
   <view class="section panel">

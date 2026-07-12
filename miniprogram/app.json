@@ -20,11 +20,15 @@
     "list": [
       {
         "pagePath": "pages/index/index",
-        "text": "首页"
+        "text": "首页",
+        "iconPath": "images/tabbar/home.png",
+        "selectedIconPath": "images/tabbar/home-active.png"
       },
       {
         "pagePath": "pages/parse/parse",
-        "text": "解析议程表"
+        "text": "解析议程表",
+        "iconPath": "images/tabbar/parse.png",
+        "selectedIconPath": "images/tabbar/parse-active.png"
       }
     ]
   },

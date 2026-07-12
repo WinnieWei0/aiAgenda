@@ -7,7 +7,8 @@ Page({
     isAdmin: false,
     canClaimAdmin: false,
     userOpenid: '',
-    roleText: '加载中'
+    identityText: '加载中',
+    adminTip: '正在读取管理员状态'
   },
 
   /**
@@ -46,12 +47,45 @@ Page({
    */
   syncAuthState() {
     const roles = app.globalData.roles || [];
+    const isAdmin = app.isAdmin();
+    const canClaimAdmin = app.globalData.canClaimAdmin;
     this.setData({
-      isAdmin: app.isAdmin(),
-      canClaimAdmin: app.globalData.canClaimAdmin,
+      isAdmin,
+      canClaimAdmin,
       userOpenid: app.globalData.user ? app.globalData.user.openid : '',
-      roleText: roles.length ? roles.join('、') : '普通用户'
+      identityText: this.buildIdentityText(isAdmin, canClaimAdmin, roles),
+      adminTip: this.buildAdminTip(isAdmin, canClaimAdmin)
     });
+  },
+
+  /**
+   * 方法是什么：生成首页身份展示文本。
+   * 方法作用：根据管理员状态、领取状态和角色列表返回用户可读的身份文案。
+   * 为什么添加：WXML 中不适合放复杂判断，提前生成文案可以让首页渲染更稳定。
+   */
+  buildIdentityText(isAdmin, canClaimAdmin, roles) {
+    if (isAdmin) {
+      return '管理员';
+    }
+    if (canClaimAdmin) {
+      return '可领取管理员';
+    }
+    return roles.length ? roles.join('、') : '普通用户';
+  },
+
+  /**
+   * 方法是什么：生成管理中心入口提示。
+   * 方法作用：根据当前权限说明管理中心能否直接进入，以及下一步该做什么。
+   * 为什么添加：用户需要明确知道管理中心入口在哪里，以及为什么可能暂时无法进入。
+   */
+  buildAdminTip(isAdmin, canClaimAdmin) {
+    if (isAdmin) {
+      return 'Membership、Pathways 和系统角色都在管理中心维护。';
+    }
+    if (canClaimAdmin) {
+      return '当前系统还没有管理员，请先点击上方“领取管理员”，再进入管理中心。';
+    }
+    return '当前账号还不是管理员，如需维护 Membership、Pathways 或角色，请联系管理员分配权限。';
   },
 
   /**
@@ -75,6 +109,10 @@ Page({
    * 为什么添加：管理员需要在小程序内维护基础表，保证解析议程时可以匹配成员和项目。
    */
   openAdmin() {
+    if (!this.data.isAdmin) {
+      wx.showToast({ title: '请先领取管理员或联系管理员分配权限', icon: 'none' });
+      return;
+    }
     wx.navigateTo({ url: '/pages/admin/admin' });
   },
 
