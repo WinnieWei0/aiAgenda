@@ -19,7 +19,10 @@
 
 - `DEEPSEEK_API_KEY`：DeepSeek API Key。
 - `DEEPSEEK_MODEL`：可选，默认 `deepseek-v4-flash`。
+- `DEEPSEEK_TIMEOUT_MS`：可选，AI 请求超时时间，限制在 1000-15000ms，默认 15000ms。
 - `PDF_FONT_PATH`：可选，中文字体路径。项目已在 `cloudfunctions/common/fonts/` 内置一份中文字体，默认可直接生成中文 PDF。
+
+`parseAgenda` 云函数的 CloudBase 执行超时时间需要设置为至少 20 秒，为 DeepSeek 15 秒请求和数据库读取留出运行余量。
 
 ## 初始化顺序
 

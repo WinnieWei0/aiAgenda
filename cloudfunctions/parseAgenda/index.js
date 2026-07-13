@@ -25,7 +25,7 @@ async function loadAll(collectionName) {
 
 /**
  * 方法是什么：处理接龙解析云函数请求。
- * 方法作用：先规则解析，再尝试 DeepSeek 解析并合并，最后补充校验信息。
+ * 方法作用：调用 DeepSeek 生成议程，再使用数据库字典补全人员和 Pathways，最后进行校验。
  * 为什么添加：用户粘贴的是非结构化文本，需要转换成可编辑、可保存、可导出的议程结构。
  */
 async function main(event) {
@@ -35,18 +35,17 @@ async function main(event) {
     if (!rawText) {
       return common.fail('EMPTY_TEXT', '请先粘贴接龙文本');
     }
-    const memberships = await loadAll('memberships');
-    const pathways = await loadAll('pathways');
-    const ruleResult = common.parser.parseAgendaByRules(rawText, memberships, pathways);
-    let aiResult = null;
-    try {
-      aiResult = await common.deepseek.parseAgendaWithDeepSeek(rawText);
-    } catch (aiError) {
-      aiResult = null;
-    }
-    const merged = common.parser.mergeAiResult(aiResult, ruleResult, memberships, pathways);
-    const validated = common.parser.validateAgenda(Object.assign({}, merged, { rawText }));
-    return common.ok({ agenda: validated, aiUsed: Boolean(aiResult) });
+    const loadedData = await Promise.all([
+      loadAll('memberships'),
+      loadAll('pathways')
+    ]);
+    const memberships = loadedData[0];
+    const pathways = loadedData[1];
+    const timeoutMs = Math.min(Math.max(Number(process.env.DEEPSEEK_TIMEOUT_MS || 15000), 1000), 15000);
+    const aiResult = await common.deepseek.parseAgendaWithDeepSeek(rawText, { timeoutMs });
+    const agenda = common.parser.buildAgendaFromAi(aiResult, memberships, pathways);
+    const validated = common.parser.validateAgenda(Object.assign({}, agenda, { rawText }));
+    return common.ok({ agenda: validated, aiUsed: true });
   } catch (error) {
     return common.handleError(error);
   }

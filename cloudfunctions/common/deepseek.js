@@ -2,10 +2,10 @@ const https = require('https');
 
 /**
  * 方法是什么：向 HTTPS 接口发送 JSON 请求。
- * 方法作用：使用 Node 原生模块调用 DeepSeek 的 OpenAI 兼容接口。
- * 为什么添加：云函数运行环境不一定有全局 fetch，原生 HTTPS 可以减少额外依赖。
+ * 方法作用：使用 Node 原生模块调用 DeepSeek 的 OpenAI 兼容接口，并支持主动超时。
+ * 为什么添加：外部 AI 请求需要明确的 15 秒上限，避免网络异常时无限等待。
  */
-function postJson(url, headers, body) {
+function postJson(url, headers, body, timeoutMs) {
   return new Promise(function createRequest(resolve, reject) {
     const payload = JSON.stringify(body);
     const target = new URL(url);
@@ -45,6 +45,11 @@ function postJson(url, headers, body) {
         });
       }
     );
+    if (timeoutMs > 0) {
+      req.setTimeout(timeoutMs, function handleTimeout() {
+        req.destroy(new Error(`DeepSeek 请求超过 ${timeoutMs}ms`));
+      });
+    }
     req.on('error', reject);
     req.write(payload);
     req.end();
@@ -73,11 +78,14 @@ function buildAgendaPrompt() {
  * 方法作用：把非结构化接龙交给大模型理解，并返回模型生成的 JSON 对象。
  * 为什么添加：接龙内容可能出现省略、昵称和自然语言变体，AI 能补足规则解析不擅长的语义理解。
  */
-async function parseAgendaWithDeepSeek(rawText) {
+async function parseAgendaWithDeepSeek(rawText, options) {
   const apiKey = process.env.DEEPSEEK_API_KEY;
   if (!apiKey) {
-    return null;
+    const error = new Error('未配置 DEEPSEEK_API_KEY，无法使用 DeepSeek 解析');
+    error.code = 'DEEPSEEK_NOT_CONFIGURED';
+    throw error;
   }
+  const requestOptions = options || {};
   const model = process.env.DEEPSEEK_MODEL || 'deepseek-v4-flash';
   const response = await postJson(
     'https://api.deepseek.com/chat/completions',
@@ -91,7 +99,8 @@ async function parseAgendaWithDeepSeek(rawText) {
       response_format: { type: 'json_object' },
       thinking: { type: 'disabled' },
       stream: false
-    }
+    },
+    Number(requestOptions.timeoutMs || 0)
   );
   const content = response && response.choices && response.choices[0] && response.choices[0].message
     ? response.choices[0].message.content

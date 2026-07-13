@@ -423,6 +423,30 @@ function mergeAiResult(aiResult, ruleResult, memberships, pathways) {
 }
 
 /**
+ * 方法是什么：把 DeepSeek 返回结果补全为可编辑议程。
+ * 方法作用：以 AI 返回的会议、角色、备稿和参与者为主，再从数据库匹配人员和 Pathways 描述。
+ * 为什么添加：生产解析明确使用 DeepSeek，不能先生成规则结果再把规则结果作为 AI 降级数据源。
+ */
+function buildAgendaFromAi(aiResult, memberships, pathways) {
+  if (!aiResult || typeof aiResult !== 'object') {
+    const error = new Error('DeepSeek 未返回有效的议程结果');
+    error.code = 'DEEPSEEK_EMPTY_RESULT';
+    throw error;
+  }
+  const agenda = {
+    meetingInfo: aiResult.meetingInfo || {},
+    roles: aiResult.roles || {},
+    preparedSpeeches: Array.isArray(aiResult.preparedSpeeches) ? aiResult.preparedSpeeches : [],
+    participants: Array.isArray(aiResult.participants) ? aiResult.participants : [],
+    nextMeeting: aiResult.nextMeeting || {},
+    confidence: aiResult.confidence || 0,
+    source: 'deepseek'
+  };
+  agenda.items = buildAgendaItems(agenda, memberships || [], pathways || []);
+  return agenda;
+}
+
+/**
  * 方法是什么：校验结构化议程并补充待确认列表。
  * 方法作用：统计未匹配人员、空流程和必要会议信息缺失情况。
  * 为什么添加：前端需要明确提示用户哪些字段需要人工检查，避免直接导出错误议程。
@@ -477,5 +501,6 @@ module.exports = {
   buildAgendaItems,
   parseAgendaByRules,
   mergeAiResult,
+  buildAgendaFromAi,
   validateAgenda
 };

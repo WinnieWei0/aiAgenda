@@ -40,6 +40,30 @@ function installInDir(dir) {
   if (result.status !== 0) {
     throw new Error(`依赖安装失败：${dir}`);
   }
+  refreshLocalDependencies(dir);
+}
+
+/**
+ * 方法是什么：刷新云函数的本地公共包副本。
+ * 方法作用：把 `file:` 依赖从当前源码目录复制到云函数的 node_modules 中。
+ * 为什么添加：npm 在版本号不变时可能保留旧副本，导致公共解析或 DeepSeek 修复没有进入部署包。
+ */
+function refreshLocalDependencies(dir) {
+  const packageJsonPath = path.join(dir, 'package.json');
+  const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
+  const dependencies = Object.assign({}, packageJson.dependencies, packageJson.devDependencies);
+  for (const [name, spec] of Object.entries(dependencies)) {
+    if (typeof spec !== 'string' || !spec.startsWith('file:')) {
+      continue;
+    }
+    const source = path.resolve(dir, spec.slice('file:'.length));
+    const target = path.join(dir, 'node_modules', name);
+    if (!fs.existsSync(source)) {
+      throw new Error(`本地依赖不存在：${source}`);
+    }
+    fs.rmSync(target, { recursive: true, force: true });
+    fs.cpSync(source, target, { recursive: true, dereference: true });
+  }
 }
 
 /**
