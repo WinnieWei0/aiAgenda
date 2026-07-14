@@ -8,7 +8,12 @@ const common = require('agenda-common');
 async function loadAgenda(agendaId) {
   const db = common.getDb();
   const res = await db.collection('agendas').doc(agendaId).get();
-  return res.data;
+  if (!res.data) {
+    return null;
+  }
+  return res.data.agenda
+    ? Object.assign({}, res.data.agenda, { _id: res.data._id, ownerOpenid: res.data.ownerOpenid, expiresAt: res.data.expiresAt })
+    : res.data;
 }
 
 /**
@@ -62,6 +67,9 @@ async function main(event) {
     const agenda = await loadAgenda(agendaId);
     if (!agenda) {
       return common.fail('AGENDA_NOT_FOUND', '议程不存在');
+    }
+    if (agenda.expiresAt && new Date(agenda.expiresAt).getTime() <= Date.now()) {
+      return common.fail('AGENDA_EXPIRED', '议程草稿已过期，请重新解析接龙');
     }
     if (agenda.ownerOpenid !== openid && !(await common.isAdmin(openid))) {
       return common.fail('FORBIDDEN', '只能导出自己的议程');

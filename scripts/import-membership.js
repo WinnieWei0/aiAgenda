@@ -6,7 +6,15 @@ const cloud = require('../cloudfunctions/seedWorkbookData/node_modules/wx-server
 const DEFAULT_WORKBOOK_PATH = 'E:\\小程序\\广州双语议程表.xlsx';
 const DEFAULT_ENV_ID = 'ai-agenda-d1gxlfuz6843bbed0';
 const MAX_MEMBERS = 26;
-const REMOVED_FIELDS = ['clubEn', 'clubZh', 'rawRow', 'sourceKey', 'agendaNameZh', 'aliases', 'titleOnAgenda'];
+const MEMBER_FIELDS = [
+  'birthday', 'competitionEligible', 'educationAwards', 'educationProgress',
+  'educationProgressUpdatedAt', 'email', 'isMentor', 'joinedAt', 'menteeCount',
+  'mentorName', 'nameEn', 'nameZh', 'nickName', 'notes', 'officerTitleEn',
+  'officerTitleZh', 'pathNameEn', 'pathNameZh', 'phone', 'quarter', 'status'
+];
+const REMOVED_FIELDS = [
+  'clubEn', 'clubZh', 'rawRow', 'sourceKey', 'agendaNameZh', 'aliases', 'titleOnAgenda', 'id'
+];
 
 /**
  * 方法是什么：读取本地导入配置。
@@ -33,10 +41,13 @@ function getConfig() {
  */
 function prepareMembers(members) {
   return (members || []).slice(0, MAX_MEMBERS).map(function prepareMember(member) {
-    const payload = Object.assign({}, member);
-    for (const field of REMOVED_FIELDS) {
-      delete payload[field];
+    const payload = {};
+    for (const field of MEMBER_FIELDS) {
+      payload[field] = member[field] === undefined || member[field] === null ? '' : member[field];
     }
+    payload.searchText = [payload.nickName, payload.nameZh, payload.nameEn, payload.mentorName,
+      payload.officerTitleZh, payload.officerTitleEn, payload.pathNameZh, payload.pathNameEn]
+      .filter(Boolean).join(' ').toLowerCase();
     return payload;
   });
 }
@@ -81,6 +92,12 @@ async function upsertMember(collection, member, removeCommand) {
     for (const field of REMOVED_FIELDS) {
       updateData[field] = removeCommand.remove();
     }
+    const allowedFields = new Set(MEMBER_FIELDS.concat(['searchText', 'updatedAt', 'createdAt']));
+    Object.keys(existing).forEach(function removeUnknownField(field) {
+      if (field !== '_id' && !allowedFields.has(field)) {
+        updateData[field] = removeCommand.remove();
+      }
+    });
     await collection.doc(existing._id).update({ data: updateData });
     return 'updated';
   }

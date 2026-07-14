@@ -1,31 +1,6 @@
-<view class="page">
-  <view class="section panel">
-    <view class="title">AI 议程表</view>
-    <view class="muted">管理基础数据、解析接龙并生成可编辑议程。</view>
-  </view>
-
-  <view class="section panel">
-    <view class="title">数据管理</view>
-    <view class="muted">当前版本不限制管理权限，所有用户都可以维护基础数据。</view>
-    <view class="nav-grid">
-      <button class="nav-button" bindtap="openMembersList">会员列表</button>
-      <button class="nav-button" bindtap="openPathwaysList">路径列表</button>
-      <button class="nav-button" bindtap="openRolesList">角色列表</button>
-    </view>
-  </view>
-
-  <view class="section panel">
-    <view class="title">议程工具</view>
-    <view class="button-row">
-      <button type="primary" bindtap="openParseTab">解析议程表</button>
-      <button bindtap="openHistory">历史议程</button>
-    </view>
-  </view>
-
-  <view class="section panel">
-    <view class="status-row">
-      <view class="status-label">云环境</view>
-      <view class="status-value">{{envId}}</view>
-    </view>
-  </view>
+<view class="page home-page">
+  <button class="home-button primary-button" bindtap="openParseTab">解析议程表</button>
+  <button class="home-button secondary-button" bindtap="openTimer">时间牌</button>
+  <button class="home-button secondary-button" bindtap="openMembersList">会员列表</button>
+  <button class="home-button secondary-button" bindtap="openPathwaysList">路径列表</button>
 </view>

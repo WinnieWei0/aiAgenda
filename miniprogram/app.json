@@ -6,6 +6,7 @@
     "pages/members/edit/edit",
     "pages/pathways/list/list",
     "pages/pathways/edit/edit",
+    "pages/timer/timer",
     "pages/roles/list/list",
     "pages/roles/edit/edit",
     "pages/editor/editor",

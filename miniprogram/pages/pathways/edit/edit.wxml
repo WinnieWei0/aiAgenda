@@ -1,16 +1,20 @@
 <view class="page">
   <view class="section panel">
     <view class="title">{{isEdit ? '编辑路径' : '新增路径'}}</view>
-    <view class="muted">保存后将写入 Pathways 数据表。</view>
   </view>
 
   <view class="section panel form-panel">
-    <input placeholder="项目代码，如 L4P3" value="{{pathway.code}}" data-field="code" bindinput="handleInput" />
-    <input placeholder="中文项目名" value="{{pathway.projectNameZh}}" data-field="projectNameZh" bindinput="handleInput" />
-    <input placeholder="英文项目名" value="{{pathway.projectNameEn}}" data-field="projectNameEn" bindinput="handleInput" />
-    <textarea placeholder="中文目标" value="{{pathway.objectiveZh}}" data-field="objectiveZh" bindinput="handleInput" />
-    <textarea placeholder="英文目标" value="{{pathway.objectiveEn}}" data-field="objectiveEn" bindinput="handleInput" />
-    <view class="button-row">
+    <view class="readonly-field"><text>id</text><text>{{pathway._id}}</text></view>
+    <view class="form-row"><text>code</text><input value="{{pathway.code}}" data-field="code" bindinput="handleInput" /></view>
+    <view class="readonly-field"><text>创建时间</text><text>{{pathway.createdAt}}</text></view>
+    <view class="form-row"><text>英文完整标签</text><input value="{{pathway.fullLabelEn}}" data-field="fullLabelEn" bindinput="handleInput" /></view>
+    <view class="form-row"><text>中文完整标签</text><input value="{{pathway.fullLabelZh}}" data-field="fullLabelZh" bindinput="handleInput" /></view>
+    <view class="form-row"><text>等级</text><input value="{{pathway.level}}" data-field="level" bindinput="handleInput" /></view>
+    <view class="form-row"><text>项目要求英文</text><textarea value="{{pathway.objectiveEn}}" data-field="objectiveEn" bindinput="handleInput" /></view>
+    <view class="form-row"><text>项目要求中文</text><textarea value="{{pathway.objectiveZh}}" data-field="objectiveZh" bindinput="handleInput" /></view>
+    <view class="readonly-field"><text>搜索关键词</text><text>{{pathway.searchText}}</text></view>
+    <view class="readonly-field"><text>更新时间</text><text>{{pathway.updatedAt}}</text></view>
+    <view class="button-row form-actions">
       <button type="primary" loading="{{saving}}" bindtap="savePathway">保存</button>
       <button bindtap="cancelEdit">取消</button>
     </view>

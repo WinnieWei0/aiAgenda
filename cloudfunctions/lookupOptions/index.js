@@ -16,9 +16,13 @@ function escapeSearchKeyword(keyword) {
  */
 async function searchMembers(keyword) {
   const db = common.getDb();
-  const res = await db.collection('memberships')
-    .where({ searchText: db.RegExp({ regexp: escapeSearchKeyword(keyword), options: 'i' }) })
-    .limit(8)
+  const collection = db.collection('memberships');
+  const query = keyword
+    ? collection.where({ searchText: db.RegExp({ regexp: escapeSearchKeyword(keyword), options: 'i' }) })
+    : collection;
+  const res = await query
+    .orderBy('joinedAt', 'asc')
+    .limit(keyword ? 8 : 100)
     .get();
   return res.data || [];
 }
@@ -30,9 +34,13 @@ async function searchMembers(keyword) {
  */
 async function searchPathways(keyword) {
   const db = common.getDb();
-  const res = await db.collection('pathways')
-    .where({ searchText: db.RegExp({ regexp: escapeSearchKeyword(keyword), options: 'i' }) })
-    .limit(8)
+  const collection = db.collection('pathways');
+  const query = keyword
+    ? collection.where({ searchText: db.RegExp({ regexp: escapeSearchKeyword(keyword), options: 'i' }) })
+    : collection;
+  const res = await query
+    .orderBy('code', 'asc')
+    .limit(keyword ? 8 : 100)
     .get();
   return res.data || [];
 }
@@ -46,9 +54,6 @@ async function main(event) {
   try {
     common.initCloud();
     const keyword = event && event.keyword ? event.keyword : '';
-    if (!keyword) {
-      return common.ok({ list: [] });
-    }
     if (event.type === 'pathways') {
       return common.ok({ list: await searchPathways(keyword) });
     }

@@ -80,8 +80,6 @@ Page({
       record.nameZh,
       record.nameEn,
       record.nickName,
-      record.agendaNameZh,
-      record.titleOnAgenda,
       record.searchText
     ].filter(Boolean).join(' ').toLowerCase();
   },

@@ -224,25 +224,36 @@ function drawAgendaTable(page, font, agenda, language) {
     drawCell(page, font, colX[index], y, colW[index], 14, headers[index], { fill: '#b8ecf4', align: 'center', fontSize: 8 });
   }
   y += 14;
-  for (const item of agenda.items || []) {
-    const isSpeech = item.type === 'preparedSpeech';
-    const person = isSpeech ? item.speech && item.speech.speaker : item.person;
-    const title = language === 'en' ? item.titleEn || item.titleZh : item.titleZh || item.titleEn;
-    const rowHeight = isSpeech ? 48 : 18;
-    drawCell(page, font, colX[0], y, colW[0], rowHeight, item.startTime || '', { fontSize: 7 });
-    drawCell(page, font, colX[1], y, colW[1], rowHeight, title, { fontSize: 7, fill: item.section === 'preparedSpeech' ? '#eeeeee' : '' });
-    drawCell(page, font, colX[2], y, colW[2], rowHeight, item.duration ? `${item.duration}${language === 'en' ? ' min' : '分钟'}` : '', { fontSize: 7, align: 'center' });
-    drawCell(page, font, colX[3], y, colW[3], rowHeight, getPersonName(person, language), { fontSize: 7 });
-    drawCell(page, font, colX[4], y, colW[4], rowHeight, getPersonClub(person, language), { fontSize: 7 });
-    if (isSpeech && item.speech) {
-      const projectTitle = language === 'en' ? item.speech.projectTitleEn : item.speech.projectTitleZh;
-      const objective = language === 'en' ? item.speech.projectObjectiveEn : item.speech.projectObjectiveZh;
-      drawText(page, font, projectTitle || '', colX[1] + 4, y + 15, { width: colW[1] - 8, height: 10, fontSize: 6 });
-      drawText(page, font, objective || '', colX[1] + 4, y + 27, { width: colW[1] - 8, height: 18, fontSize: 6 });
+  const sections = Array.isArray(agenda.sections) && agenda.sections.length
+    ? agenda.sections
+    : [{ id: '', titleZh: '', titleEn: '', items: agenda.items || [] }];
+  for (const section of sections) {
+    if (!section.items || !section.items.length) {
+      continue;
     }
-    y += rowHeight;
-    if (y > 735) {
-      break;
+    const sectionTitle = language === 'en' ? section.titleEn || section.titleZh : section.titleZh || section.titleEn;
+    drawCell(page, font, PAGE.margin, y, PAGE.width - PAGE.margin * 2, 16, sectionTitle, { fill: '#e2f4f6', fontSize: 7 });
+    y += 16;
+    for (const item of section.items) {
+      const isSpeech = item.type === 'preparedSpeech';
+      const person = isSpeech ? item.speech && item.speech.speaker : item.person;
+      const title = language === 'en' ? item.titleEn || item.titleZh : item.titleZh || item.titleEn;
+      const rowHeight = isSpeech ? 48 : 18;
+      drawCell(page, font, colX[0], y, colW[0], rowHeight, item.startTime || '', { fontSize: 7 });
+      drawCell(page, font, colX[1], y, colW[1], rowHeight, title, { fontSize: 7, fill: item.section === 'preparedSpeech' ? '#eeeeee' : '' });
+      drawCell(page, font, colX[2], y, colW[2], rowHeight, item.duration ? `${item.duration}${language === 'en' ? ' min' : '分钟'}` : '', { fontSize: 7, align: 'center' });
+      drawCell(page, font, colX[3], y, colW[3], rowHeight, getPersonName(person, language), { fontSize: 7 });
+      drawCell(page, font, colX[4], y, colW[4], rowHeight, getPersonClub(person, language), { fontSize: 7 });
+      if (isSpeech && item.speech) {
+        const projectTitle = language === 'en' ? item.speech.projectTitleEn : item.speech.projectTitleZh;
+        const objective = language === 'en' ? item.speech.projectObjectiveEn : item.speech.projectObjectiveZh;
+        drawText(page, font, projectTitle || '', colX[1] + 4, y + 15, { width: colW[1] - 8, height: 10, fontSize: 6 });
+        drawText(page, font, objective || '', colX[1] + 4, y + 27, { width: colW[1] - 8, height: 18, fontSize: 6 });
+      }
+      y += rowHeight;
+      if (y > 735) {
+        return;
+      }
     }
   }
 }

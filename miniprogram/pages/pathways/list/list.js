@@ -78,8 +78,6 @@ Page({
   buildSearchText(record) {
     return [
       record.code,
-      record.projectNameZh,
-      record.projectNameEn,
       record.fullLabelZh,
       record.fullLabelEn,
       record.objectiveZh,

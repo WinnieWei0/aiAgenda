@@ -1,3 +1,44 @@
-.form-panel input {
-  margin-bottom: 14rpx;
+.form-panel input,
+.form-panel textarea {
+  margin-top: 8rpx;
+}
+
+.form-row,
+.switch-row,
+.readonly-field {
+  margin-bottom: 18rpx;
+}
+
+.form-row text,
+.switch-row text,
+.readonly-field text:first-child {
+  display: block;
+  margin-bottom: 6rpx;
+  color: #475569;
+  font-size: 24rpx;
+}
+
+.switch-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.switch-row text {
+  margin: 0;
+}
+
+.readonly-field text:last-child {
+  display: block;
+  min-height: 42rpx;
+  padding: 12rpx;
+  box-sizing: border-box;
+  color: #64748b;
+  background: #f8fafc;
+  border-radius: 6rpx;
+  word-break: break-all;
+}
+
+.form-actions {
+  margin-top: 28rpx;
 }

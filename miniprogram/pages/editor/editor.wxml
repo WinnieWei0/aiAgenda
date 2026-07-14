@@ -1,10 +1,6 @@
-<view class="page">
-  <view class="section panel">
-    <view class="title">议程编辑</view>
-    <view class="muted">可编辑字段、添加流程，并通过拖动流程块调整顺序。</view>
-  </view>
-
-  <view class="section panel">
+<view class="page editor-page">
+  <view class="meeting-panel panel">
+    <view class="title">会议基本信息</view>
     <view class="form-row">
       <text>会议编号</text>
       <input value="{{agenda.meetingInfo.meetingNo}}" data-field="meetingNo" bindinput="handleMeetingInput" />
@@ -13,13 +9,15 @@
       <text>日期</text>
       <input value="{{agenda.meetingInfo.date}}" data-field="date" bindinput="handleMeetingInput" />
     </view>
-    <view class="form-row">
-      <text>开始时间</text>
-      <input value="{{agenda.meetingInfo.startTime}}" data-field="startTime" bindinput="handleMeetingInput" />
-    </view>
-    <view class="form-row">
-      <text>结束时间</text>
-      <input value="{{agenda.meetingInfo.endTime}}" data-field="endTime" bindinput="handleMeetingInput" />
+    <view class="form-row inline-fields">
+      <view>
+        <text>开始时间</text>
+        <input value="{{agenda.meetingInfo.startTime}}" data-field="startTime" bindinput="handleMeetingInput" />
+      </view>
+      <view>
+        <text>结束时间</text>
+        <input value="{{agenda.meetingInfo.endTime}}" data-field="endTime" bindinput="handleMeetingInput" />
+      </view>
     </view>
     <view class="form-row">
       <text>主题</text>
@@ -31,78 +29,74 @@
     </view>
   </view>
 
-  <view class="section">
-    <view class="button-row">
-      <button bindtap="addItem">新增流程</button>
-      <button type="primary" loading="{{saving}}" bindtap="saveAgenda">保存</button>
-      <button loading="{{exporting}}" bindtap="exportPdf">导出PDF</button>
+  <view wx:for="{{agenda.sections}}" wx:for-item="section" wx:for-index="sectionIndex" wx:key="id" class="agenda-section panel" data-section-index="{{sectionIndex}}">
+    <view class="section-header" catchtouchstart="handleSectionTouchStart" catchtouchmove="handleSectionTouchMove" catchtouchend="handleSectionTouchEnd">
+      <text class="drag-handle">☷</text>
+      <view class="section-title">
+        <text>{{section.titleZh}}</text>
+        <text class="section-title-en">{{section.titleEn}}</text>
+      </view>
+      <view class="section-actions">
+        <button size="mini" data-section-index="{{sectionIndex}}" data-direction="-1" bindtap="moveSection">上移</button>
+        <button size="mini" data-section-index="{{sectionIndex}}" data-direction="1" bindtap="moveSection">下移</button>
+      </view>
     </view>
+
+    <view wx:for="{{section.items}}" wx:for-item="row" wx:for-index="itemIndex" wx:key="id" class="agenda-item" data-section-index="{{sectionIndex}}" data-item-index="{{itemIndex}}">
+      <view class="item-header" catchtouchstart="handleItemTouchStart" catchtouchmove="handleItemTouchMove" catchtouchend="handleItemTouchEnd">
+        <text class="drag-handle">☷</text>
+        <text class="item-time">{{row.startTime}}</text>
+        <text class="item-order">{{itemIndex + 1}}</text>
+        <button size="mini" type="warn" data-section-index="{{sectionIndex}}" data-item-index="{{itemIndex}}" bindtap="deleteItem">删除</button>
+      </view>
+      <view class="form-row">
+        <text>流程</text>
+        <input value="{{row.titleZh}}" data-section-index="{{sectionIndex}}" data-item-index="{{itemIndex}}" data-field="titleZh" bindinput="handleItemInput" />
+      </view>
+      <view class="form-row">
+        <text>限时（分钟）</text>
+        <input type="number" value="{{row.duration}}" data-section-index="{{sectionIndex}}" data-item-index="{{itemIndex}}" data-field="duration" bindinput="handleItemInput" />
+      </view>
+      <view class="form-row">
+        <text>演讲者</text>
+        <picker class="member-picker" range="{{memberOptions}}" range-key="label" value="{{row.person.memberIndex}}" data-section-index="{{sectionIndex}}" data-item-index="{{itemIndex}}" bindchange="chooseMember">
+          <view class="picker-value">{{row.person.displayNameZh || row.person.rawName || '选择会员'}}</view>
+        </picker>
+        <input value="{{row.person.rawName}}" placeholder="也可手动输入" data-section-index="{{sectionIndex}}" data-item-index="{{itemIndex}}" data-field="rawName" bindinput="handlePersonInput" />
+      </view>
+      <view class="form-row">
+        <text>俱乐部</text>
+        <input value="{{row.person.clubZh}}" data-section-index="{{sectionIndex}}" data-item-index="{{itemIndex}}" data-field="clubZh" bindinput="handlePersonInput" />
+      </view>
+      <view wx:if="{{row.speech}}" class="speech-box">
+        <view class="form-row">
+          <text>项目代码</text>
+          <input value="{{row.speech.projectCode}}" data-section-index="{{sectionIndex}}" data-item-index="{{itemIndex}}" data-field="projectCode" bindinput="handleSpeechInput" />
+        </view>
+        <view class="form-row">
+          <text>项目名称</text>
+          <input value="{{row.speech.projectTitleZh}}" data-section-index="{{sectionIndex}}" data-item-index="{{itemIndex}}" data-field="projectTitleZh" bindinput="handleSpeechInput" />
+        </view>
+        <view class="form-row">
+          <text>项目要求</text>
+          <textarea value="{{row.speech.projectObjectiveZh}}" data-section-index="{{sectionIndex}}" data-item-index="{{itemIndex}}" data-field="projectObjectiveZh" bindinput="handleSpeechInput" />
+        </view>
+      </view>
+      <view class="item-move-actions">
+        <button size="mini" data-section-index="{{sectionIndex}}" data-item-index="{{itemIndex}}" data-direction="-1" bindtap="moveItem">上移</button>
+        <button size="mini" data-section-index="{{sectionIndex}}" data-item-index="{{itemIndex}}" data-direction="1" bindtap="moveItem">下移</button>
+      </view>
+    </view>
+
+    <button class="add-item-button" size="mini" data-section-index="{{sectionIndex}}" bindtap="addItem">新增流程</button>
+  </view>
+
+  <view class="bottom-actions">
     <view class="language-switch">
       <button size="mini" type="{{language === 'zh' ? 'primary' : 'default'}}" data-language="zh" bindtap="switchLanguage">中文</button>
       <button size="mini" type="{{language === 'en' ? 'primary' : 'default'}}" data-language="en" bindtap="switchLanguage">English</button>
     </view>
-  </view>
-
-  <view class="section">
-    <view wx:for="{{agenda.items}}" wx:key="id" class="item-card" data-index="{{index}}" bindtouchstart="handleItemTouchStart" bindtouchmove="handleItemTouchMove" bindtouchend="handleItemTouchEnd">
-      <view class="item-header">
-        <text>{{item.order}}. {{item.type}}</text>
-        <view>
-          <button size="mini" data-index="{{index}}" bindtap="moveItemUp">上移</button>
-          <button size="mini" data-index="{{index}}" bindtap="moveItemDown">下移</button>
-          <button size="mini" type="warn" data-index="{{index}}" bindtap="deleteItem">删除</button>
-        </view>
-      </view>
-      <view class="form-row">
-        <text>中文标题</text>
-        <input value="{{item.titleZh}}" data-index="{{index}}" data-field="titleZh" bindinput="handleItemInput" />
-      </view>
-      <view class="form-row">
-        <text>英文标题</text>
-        <input value="{{item.titleEn}}" data-index="{{index}}" data-field="titleEn" bindinput="handleItemInput" />
-      </view>
-      <view class="form-row">
-        <text>限时</text>
-        <input type="number" value="{{item.duration}}" data-index="{{index}}" data-field="duration" bindinput="handleItemInput" />
-      </view>
-      <view wx:if="{{item.person}}" class="form-row">
-        <text>中文姓名</text>
-        <input value="{{item.person.displayNameZh}}" data-index="{{index}}" data-field="displayNameZh" bindinput="handlePersonInput" />
-        <button size="mini" data-index="{{index}}" bindtap="searchMemberForItem">搜会员</button>
-      </view>
-      <view wx:if="{{item.person}}" class="form-row">
-        <text>俱乐部</text>
-        <input value="{{item.person.clubZh}}" data-index="{{index}}" data-field="clubZh" bindinput="handlePersonInput" />
-      </view>
-      <view wx:if="{{item.speech}}" class="speech-box">
-        <view class="form-row">
-          <text>项目代码</text>
-          <input value="{{item.speech.projectCode}}" data-index="{{index}}" data-field="projectCode" bindinput="handleSpeechInput" />
-          <button size="mini" data-index="{{index}}" bindtap="searchPathwayForItem">搜项目</button>
-        </view>
-        <view class="form-row">
-          <text>中文项目</text>
-          <input value="{{item.speech.projectTitleZh}}" data-index="{{index}}" data-field="projectTitleZh" bindinput="handleSpeechInput" />
-        </view>
-        <view class="form-row">
-          <text>项目目标</text>
-          <textarea value="{{item.speech.projectObjectiveZh}}" data-index="{{index}}" data-field="projectObjectiveZh" bindinput="handleSpeechInput" />
-        </view>
-      </view>
-    </view>
-  </view>
-
-  <view class="floating-results" wx:if="{{memberResults.length}}">
-    <view class="result-title">会员候选</view>
-    <view wx:for="{{memberResults}}" wx:key="_id" data-index="{{index}}" bindtap="chooseMember" class="result-item">
-      {{item.nameZh}} / {{item.nameEn}} - {{item.agendaNameZh}}
-    </view>
-  </view>
-
-  <view class="floating-results" wx:if="{{pathwayResults.length}}">
-    <view class="result-title">项目候选</view>
-    <view wx:for="{{pathwayResults}}" wx:key="_id" data-index="{{index}}" bindtap="choosePathway" class="result-item">
-      {{item.code}} {{item.projectNameZh}} / {{item.projectNameEn}}
-    </view>
+    <button loading="{{saving}}" bindtap="saveAgenda">保存</button>
+    <button class="export-button" loading="{{exporting}}" bindtap="exportPdf">导出 PDF</button>
   </view>
 </view>

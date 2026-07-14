@@ -1,6 +1,14 @@
 const DEFAULT_CLUB_NAME_ZH = '广州双语';
 const DEFAULT_CLUB_NAME_EN = 'Bilingual';
 
+const SECTION_DEFINITIONS = [
+  { id: 'opening', titleZh: '开场和会议促进者介绍', titleEn: 'Opening and Facilitators' },
+  { id: 'tableTopics', titleZh: '即兴演讲环节', titleEn: 'Table Topics Session' },
+  { id: 'preparedSpeech', titleZh: '备稿环节', titleEn: 'Prepared Speech Session' },
+  { id: 'evaluation', titleZh: '备稿点评环节', titleEn: 'Evaluation Session' },
+  { id: 'awardBooking', titleZh: '颁奖与角色预定', titleEn: 'Award and Role Booking' }
+];
+
 const ROLE_LABELS = [
   { key: 'guestReception', titleZh: '礼宾官（宾客）', titleEn: 'Guest Reception', patterns: ['礼宾官（宾客）', '礼宾官(宾客)'] },
   { key: 'memberReception', titleZh: '礼宾官（会员）', titleEn: 'Member Reception', patterns: ['礼宾官（会员）', '礼宾官(会员)'] },
@@ -63,7 +71,7 @@ function stripDecorations(line) {
  */
 function createAliasList(member) {
   const aliases = [];
-  const fields = ['nickName', 'nameZh', 'nameEn', 'titleOnAgenda', 'agendaNameZh'];
+  const fields = ['nickName', 'nameZh', 'nameEn', 'searchText'];
   for (const field of fields) {
     if (member && member[field]) {
       aliases.push(member[field]);
@@ -74,11 +82,6 @@ function createAliasList(member) {
     const chineseSurname = normalizeText(member.nameZh).slice(0, 1);
     if (firstEnglishName && chineseSurname) {
       aliases.push(`${firstEnglishName}${chineseSurname}`);
-    }
-  }
-  if (member && Array.isArray(member.aliases)) {
-    for (const alias of member.aliases) {
-      aliases.push(alias);
     }
   }
   return aliases;
@@ -266,10 +269,10 @@ function buildPerson(rawName, memberships) {
     return {
       rawName: normalizeText(rawName),
       memberId: member._id || member.id || '',
-      displayNameZh: member.agendaNameZh || member.nameZh || normalizeText(rawName),
-      displayNameEn: member.titleOnAgenda || member.nameEn || normalizeText(rawName),
-      clubZh: member.clubZh || DEFAULT_CLUB_NAME_ZH,
-      clubEn: member.clubEn || DEFAULT_CLUB_NAME_EN,
+      displayNameZh: member.nameZh || normalizeText(rawName),
+      displayNameEn: member.nameEn || normalizeText(rawName),
+      clubZh: DEFAULT_CLUB_NAME_ZH,
+      clubEn: DEFAULT_CLUB_NAME_EN,
       unresolved: false,
       confidence: match.confidence
     };
@@ -302,8 +305,8 @@ function enrichPreparedSpeeches(speeches, memberships, pathways) {
       title: speech.title || '',
       projectCode: speech.projectCode,
       pathwayId: pathway ? pathway._id || pathway.id || '' : '',
-      projectTitleZh: pathway ? pathway.fullLabelZh || `${pathway.code} ${pathway.projectNameZh || ''}`.trim() : speech.projectCode,
-      projectTitleEn: pathway ? pathway.fullLabelEn || `${pathway.code} ${pathway.projectNameEn || ''}`.trim() : speech.projectCode,
+      projectTitleZh: pathway ? pathway.fullLabelZh || pathway.code : speech.projectCode,
+      projectTitleEn: pathway ? pathway.fullLabelEn || pathway.code : speech.projectCode,
       projectObjectiveZh: pathway ? pathway.objectiveZh || '' : '',
       projectObjectiveEn: pathway ? pathway.objectiveEn || '' : '',
       speaker,
@@ -361,6 +364,7 @@ function buildAgendaItems(parsed, memberships, pathways) {
       titleZh: speech.title || `备稿演讲 ${speech.index}`,
       titleEn: speech.title || `Prepared Speech ${speech.index}`,
       duration: 7,
+      person: speech.speaker,
       speech
     });
     order += 1;
@@ -382,6 +386,56 @@ function buildAgendaItems(parsed, memberships, pathways) {
 }
 
 /**
+ * 方法是什么：把流程分组到 PDF 模块。
+ * 方法作用：按固定模块创建 sections 并把解析流程放入对应模块。
+ * 为什么添加：编辑页和 PDF 需要共享模块化议程结构。
+ */
+function groupItemsIntoSections(items) {
+  const sections = SECTION_DEFINITIONS.map((definition) => ({
+    id: definition.id,
+    titleZh: definition.titleZh,
+    titleEn: definition.titleEn,
+    items: []
+  }));
+  const sectionMap = sections.reduce((map, section) => {
+    map[section.id] = section;
+    return map;
+  }, {});
+  (items || []).forEach((item) => {
+    const sectionId = sectionMap[item.section] ? item.section : 'awardBooking';
+    sectionMap[sectionId].items.push(Object.assign({}, item, { section: sectionId }));
+  });
+  return sections.map((section) => Object.assign({}, section, {
+    items: section.items.map((item, index) => Object.assign({}, item, { order: index + 1 }))
+  }));
+}
+
+/**
+ * 方法是什么：计算议程开始时间。
+ * 方法作用：按模块和行顺序累计限时并写入 startTime。
+ * 为什么添加：拖动和修改限时后必须保持时间表连续。
+ */
+function calculateAgendaStartTimes(agenda) {
+  const match = String(agenda.meetingInfo && agenda.meetingInfo.startTime || '').match(/^(\d{1,2}):(\d{2})$/);
+  let cursor = match ? Number(match[1]) * 60 + Number(match[2]) : 0;
+  const formatTime = (minutes) => {
+    const normalized = ((minutes % 1440) + 1440) % 1440;
+    return `${String(Math.floor(normalized / 60)).padStart(2, '0')}:${String(normalized % 60).padStart(2, '0')}`;
+  };
+  agenda.sections = (agenda.sections || []).map((section) => Object.assign({}, section, {
+    items: (section.items || []).map((item, index) => {
+      const duration = Math.max(Number(item.duration) || 0, 0);
+      const next = Object.assign({}, item, { order: index + 1, startTime: formatTime(cursor) });
+      cursor += duration;
+      return next;
+    })
+  }));
+  agenda.items = agenda.sections.reduce((list, section) => list.concat(section.items), []);
+  agenda.items = agenda.items.map((item, index) => Object.assign({}, item, { order: index + 1 }));
+  return agenda;
+}
+
+/**
  * 方法是什么：使用规则从接龙文本生成结构化议程。
  * 方法作用：在没有 DeepSeek API Key 或 AI 调用失败时，仍然提取基础议程数据。
  * 为什么添加：开发、测试和弱网场景不能完全依赖大模型，规则解析可以作为稳定降级。
@@ -397,6 +451,8 @@ function parseAgendaByRules(rawText, memberships, pathways) {
     source: 'rules'
   };
   parsed.items = buildAgendaItems(parsed, memberships || [], pathways || []);
+  parsed.sections = groupItemsIntoSections(parsed.items);
+  calculateAgendaStartTimes(parsed);
   return parsed;
 }
 
@@ -419,6 +475,8 @@ function mergeAiResult(aiResult, ruleResult, memberships, pathways) {
     source: 'deepseek'
   };
   merged.items = buildAgendaItems(merged, memberships || [], pathways || []);
+  merged.sections = groupItemsIntoSections(merged.items);
+  calculateAgendaStartTimes(merged);
   return merged;
 }
 
@@ -443,6 +501,8 @@ function buildAgendaFromAi(aiResult, memberships, pathways) {
     source: 'deepseek'
   };
   agenda.items = buildAgendaItems(agenda, memberships || [], pathways || []);
+  agenda.sections = groupItemsIntoSections(agenda.items);
+  calculateAgendaStartTimes(agenda);
   return agenda;
 }
 
@@ -499,6 +559,8 @@ module.exports = {
   buildPerson,
   enrichPreparedSpeeches,
   buildAgendaItems,
+  groupItemsIntoSections,
+  calculateAgendaStartTimes,
   parseAgendaByRules,
   mergeAiResult,
   buildAgendaFromAi,

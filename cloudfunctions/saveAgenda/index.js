@@ -1,49 +1,99 @@
 const common = require('agenda-common');
 
+const DRAFT_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+const LEGACY_FIELDS = [
+  'rawText', 'meetingInfo', 'items', 'sections', 'participants', 'warnings', 'unresolvedNames',
+  'confidence', 'source'
+];
+
 /**
- * 方法是什么：清理前端提交的议程数据。
- * 方法作用：只保留保存需要的字段，并补充更新时间、创建人等审计字段。
- * 为什么添加：前端数据可能包含临时状态，入库前清理可以降低脏数据风险。
+ * 方法是什么：构建议程保存对象。
+ * 方法作用：规范化模块、流程行和会议信息后生成 JSON 载荷。
+ * 为什么添加：编辑保存和解析保存必须使用相同的数据形状。
  */
-function buildAgendaPayload(agenda, openid) {
+function buildAgendaPayload(agenda) {
+  const source = Array.isArray(agenda.sections) && agenda.sections.length
+    ? agenda
+    : Object.assign({}, agenda, { sections: common.parser.groupItemsIntoSections(agenda.items || []) });
+  const normalized = common.parser.calculateAgendaStartTimes(source);
   return {
-    rawText: agenda.rawText || '',
-    meetingInfo: agenda.meetingInfo || {},
-    items: Array.isArray(agenda.items) ? agenda.items : [],
-    participants: Array.isArray(agenda.participants) ? agenda.participants : [],
-    warnings: Array.isArray(agenda.warnings) ? agenda.warnings : [],
-    unresolvedNames: Array.isArray(agenda.unresolvedNames) ? agenda.unresolvedNames : [],
-    ownerOpenid: agenda.ownerOpenid || openid,
-    updatedAt: common.nowIso()
+    rawText: normalized.rawText || '',
+    meetingInfo: normalized.meetingInfo || {},
+    sections: Array.isArray(normalized.sections) ? normalized.sections : [],
+    items: Array.isArray(normalized.items) ? normalized.items : [],
+    participants: Array.isArray(normalized.participants) ? normalized.participants : [],
+    warnings: Array.isArray(normalized.warnings) ? normalized.warnings : [],
+    unresolvedNames: Array.isArray(normalized.unresolvedNames) ? normalized.unresolvedNames : []
   };
 }
 
 /**
- * 方法是什么：处理议程保存云函数请求。
- * 方法作用：新增或更新用户编辑后的议程记录。
- * 为什么添加：用户解析后会继续编辑流程和排序，需要把最终数据保存到服务器。
+ * 方法是什么：读取议程记录中的 JSON 数据。
+ * 方法作用：兼容新嵌套议程和旧平面数据格式。
+ * 为什么添加：已有草稿升级后仍可被编辑页继续使用。
+ */
+function getAgendaFromRecord(record) {
+  if (!record) {
+    return null;
+  }
+  if (record.agenda) {
+    return Object.assign({}, record.agenda, { _id: record._id, expiresAt: record.expiresAt });
+  }
+  return Object.assign({}, record);
+}
+
+/**
+ * 方法是什么：处理议程保存请求。
+ * 方法作用：更新用户唯一草稿并保持原有七天过期时间。
+ * 为什么添加：编辑修改不能通过保存动作延长草稿生命周期。
  */
 async function main(event) {
   try {
     common.initCloud();
     const openid = common.getOpenid();
-    const agenda = event && event.agenda ? event.agenda : null;
-    if (!agenda) {
+    const submitted = event && event.agenda ? event.agenda : null;
+    if (!submitted) {
       return common.fail('EMPTY_AGENDA', '缺少议程数据');
     }
     const db = common.getDb();
-    const payload = buildAgendaPayload(agenda, openid);
-    if (agenda._id) {
-      await db.collection('agendas').doc(agenda._id).update({ data: payload });
-      return common.ok({ _id: agenda._id, action: 'updated' });
+    const collection = db.collection('agendas');
+    const existingResult = await collection.where({ ownerOpenid: openid }).get();
+    const existingRecords = (existingResult.data || []).sort((left, right) => String(right.updatedAt || '').localeCompare(String(left.updatedAt || '')));
+    const existing = existingRecords.length ? existingRecords[0] : null;
+    for (const duplicate of existingRecords.slice(1)) {
+      await collection.doc(duplicate._id).remove();
     }
-    const addRes = await db.collection('agendas').add({
-      data: Object.assign({}, payload, { createdAt: common.nowIso() })
+    const now = new Date();
+    const existingExpiry = existing && existing.expiresAt ? new Date(existing.expiresAt) : null;
+    if (existingExpiry && existingExpiry.getTime() <= now.getTime()) {
+      return common.fail('AGENDA_EXPIRED', '议程草稿已过期，请重新解析接龙');
+    }
+    const expiresAt = existingExpiry
+      ? existingExpiry.toISOString()
+      : new Date(now.getTime() + DRAFT_TTL_MS).toISOString();
+    const agenda = buildAgendaPayload(submitted);
+    const payload = {
+      ownerOpenid: openid,
+      agenda,
+      expiresAt,
+      updatedAt: now.toISOString()
+    };
+    if (existing) {
+      const updateData = Object.assign({}, payload);
+      LEGACY_FIELDS.forEach((field) => {
+        updateData[field] = db.command.remove();
+      });
+      await collection.doc(existing._id).update({ data: updateData });
+      return common.ok({ _id: existing._id, action: 'updated', agenda: Object.assign({}, agenda, { _id: existing._id, expiresAt }) });
+    }
+    const addResult = await collection.add({
+      data: Object.assign({}, payload, { createdAt: now.toISOString() })
     });
-    return common.ok({ _id: addRes._id, action: 'created' });
+    return common.ok({ _id: addResult._id, action: 'created', agenda: Object.assign({}, agenda, { _id: addResult._id, expiresAt }) });
   } catch (error) {
     return common.handleError(error);
   }
 }
 
+module.exports = { DRAFT_TTL_MS, buildAgendaPayload, getAgendaFromRecord, main };
 exports.main = main;

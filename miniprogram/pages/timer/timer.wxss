@@ -1,0 +1,17 @@
+.timer-page {
+  display: flex;
+  justify-content: center;
+  padding-top: 120rpx;
+}
+
+.timer-placeholder {
+  width: 100%;
+  padding: 80rpx 24rpx;
+  box-sizing: border-box;
+  text-align: center;
+  color: #64748b;
+  background: #ffffff;
+  border: 1rpx solid #d9e2ec;
+  border-radius: 10rpx;
+  font-size: 40rpx;
+}

@@ -1,33 +1,24 @@
-.nav-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 12rpx;
-  margin-top: 18rpx;
+.home-page {
+  padding-top: 36rpx;
 }
 
-.nav-button {
-  min-height: 84rpx;
-  font-size: 26rpx;
+.home-button {
+  width: 100%;
+  height: 104rpx;
+  line-height: 104rpx;
+  margin: 0 0 24rpx;
+  border-radius: 12rpx;
+  font-size: 36rpx;
+  font-weight: 600;
 }
 
-.wide-button {
-  margin-top: 16rpx;
+.primary-button {
+  color: #ffffff;
+  background: #16a34a;
 }
 
-.status-row {
-  display: flex;
-  justify-content: space-between;
-  gap: 16rpx;
-}
-
-.status-label {
-  color: #697586;
-  flex: 0 0 150rpx;
-}
-
-.status-value {
-  color: #1f2933;
-  flex: 1;
-  text-align: right;
-  word-break: break-all;
+.secondary-button {
+  color: #111827;
+  background: #f3f4f6;
+  border: 1rpx solid #cbd5e1;
 }

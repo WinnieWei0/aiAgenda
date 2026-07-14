@@ -1,0 +1,3 @@
+<view class="page timer-page">
+  <view class="timer-placeholder">时间牌</view>
+</view>

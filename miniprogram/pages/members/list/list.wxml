@@ -14,8 +14,8 @@
     <view wx:elif="{{!filteredRecords.length}}" class="panel muted">暂无会员数据</view>
     <view wx:for="{{filteredRecords}}" wx:key="_id" class="record-card">
       <view class="record-title">{{item.nameZh || '未命名会员'}} / {{item.nameEn}}</view>
-      <view class="muted">{{item.nickName}} {{item.agendaNameZh}} {{item.titleOnAgenda}}</view>
-      <view class="muted">{{item.phone}} {{item.email}}</view>
+      <view class="muted">{{item.nickName}} {{item.phone}} {{item.email}}</view>
+      <view class="muted">{{item.status}} {{item.officerTitleZh}}</view>
       <view class="button-row card-actions">
         <button size="mini" data-id="{{item._id}}" bindtap="editRecord">编辑会员</button>
         <button size="mini" type="warn" data-id="{{item._id}}" data-name="{{item.nameZh || item.nameEn || item.nickName}}" bindtap="confirmDelete">删除</button>

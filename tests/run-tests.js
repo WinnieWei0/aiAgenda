@@ -4,6 +4,9 @@ const pdfRenderer = require('../cloudfunctions/common/pdf-renderer');
 const workbookParser = require('../cloudfunctions/seedWorkbookData/workbook-parser');
 const XLSX = require('../cloudfunctions/seedWorkbookData/node_modules/xlsx');
 const membershipImporter = require('../scripts/import-membership');
+const pathwayImporter = require('../scripts/import-pathways');
+const agendaUtil = require('../miniprogram/utils/agenda');
+const agendaQuery = require('../cloudfunctions/agendaQuery');
 
 let memberships = [];
 let pathways = [];
@@ -106,6 +109,8 @@ function testWorkbookData() {
   assert.ok(!Object.prototype.hasOwnProperty.call(prepared[0], 'sourceKey'), '不应保存 sourceKey');
   assert.ok(!Object.prototype.hasOwnProperty.call(prepared[0], 'rawRow'), '不应保存 rawRow');
   assert.ok(!Object.prototype.hasOwnProperty.call(prepared[0], 'titleOnAgenda'), '不应保存 titleOnAgenda');
+  const pathway = pathwayImporter.preparePathway(pathways[0]);
+  assert.deepStrictEqual(Object.keys(pathway).sort(), ['code', 'fullLabelEn', 'fullLabelZh', 'level', 'objectiveEn', 'objectiveZh', 'searchText'].sort(), 'Pathways 字段白名单异常');
 }
 
 /**
@@ -124,7 +129,7 @@ function testNameMatching() {
 /**
  * 方法是什么：测试规则解析议程。
  * 方法作用：用第 760 期样例接龙验证会议字段、角色、备稿和参与者。
- * 为什么添加：DeepSeek 不可用时规则解析必须能支撑开发调试和基础使用。
+ * 为什么添加：保留纯函数测试覆盖解析结果到议程结构的转换。
  */
 function testRuleParser() {
   const agenda = parser.validateAgenda(parser.parseAgendaByRules(SAMPLE_TEXT, memberships, pathways));
@@ -135,6 +140,40 @@ function testRuleParser() {
   assert.ok(agenda.items.length >= 10, '应生成基础流程项目');
   assert.strictEqual(agenda.participants.length, 3);
   return agenda;
+}
+
+/**
+ * 方法是什么：测试模块化议程时间和排序。
+ * 方法作用：验证模块、流程行、限时累计和同模块移动逻辑。
+ * 为什么添加：编辑器的核心行为不能只依赖微信开发者工具手工验证。
+ */
+function testAgendaModel() {
+  const agenda = agendaUtil.normalizeAgenda({
+    meetingInfo: { startTime: '19:30' },
+    sections: [
+      { id: 'opening', items: [{ titleZh: '开场', duration: 2, person: {} }, { titleZh: '主持', duration: 5, person: {} }] },
+      { id: 'tableTopics', items: [{ titleZh: '即兴', duration: 7, person: {} }] }
+    ]
+  });
+  assert.strictEqual(agenda.sections.length, 5, '应包含五个 PDF 模块');
+  assert.deepStrictEqual(agenda.items.slice(0, 3).map(function getTime(item) {
+    return item.startTime;
+  }), ['19:30', '19:32', '19:37'], '开始时间累计异常');
+  const moved = agendaUtil.moveItem(agenda.sections, 0, 1, 0);
+  const reordered = agendaUtil.normalizeAgenda(Object.assign({}, agenda, { sections: moved }));
+  assert.strictEqual(reordered.sections[0].items[0].titleZh, '主持', '模块内流程排序异常');
+}
+
+/**
+ * 方法是什么：测试议程草稿过期判断。
+ * 方法作用：验证七天前、无日期和未来日期的处理。
+ * 为什么添加：草稿生命周期是数据库保存契约的一部分。
+ */
+function testDraftExpiry() {
+  const now = new Date('2026-07-14T00:00:00.000Z');
+  assert.strictEqual(agendaQuery.isExpired({ expiresAt: '2026-07-13T00:00:00.000Z' }, now), true);
+  assert.strictEqual(agendaQuery.isExpired({ expiresAt: '2026-07-15T00:00:00.000Z' }, now), false);
+  assert.strictEqual(agendaQuery.isExpired({}, now), true);
 }
 
 /**
@@ -157,6 +196,8 @@ async function main() {
   testWorkbookData();
   testNameMatching();
   const agenda = testRuleParser();
+  testAgendaModel();
+  testDraftExpiry();
   await testPdfRenderer(agenda);
   console.log('核心测试通过。');
 }

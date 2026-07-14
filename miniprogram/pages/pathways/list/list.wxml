@@ -13,12 +13,12 @@
     <view wx:if="{{loading}}" class="panel">加载中...</view>
     <view wx:elif="{{!filteredRecords.length}}" class="panel muted">暂无路径数据</view>
     <view wx:for="{{filteredRecords}}" wx:key="_id" class="record-card">
-      <view class="record-title">{{item.code}} {{item.projectNameZh || '未命名项目'}}</view>
-      <view class="muted">{{item.projectNameEn}}</view>
+      <view class="record-title">{{item.code}} {{item.fullLabelZh || '未命名项目'}}</view>
+      <view class="muted">{{item.fullLabelEn}}</view>
       <view class="muted">{{item.objectiveZh}}</view>
       <view class="button-row card-actions">
         <button size="mini" data-id="{{item._id}}" bindtap="editRecord">编辑路径</button>
-        <button size="mini" type="warn" data-id="{{item._id}}" data-name="{{item.code || item.projectNameZh}}" bindtap="confirmDelete">删除</button>
+        <button size="mini" type="warn" data-id="{{item._id}}" data-name="{{item.code || item.fullLabelZh}}" bindtap="confirmDelete">删除</button>
       </view>
     </view>
   </view>

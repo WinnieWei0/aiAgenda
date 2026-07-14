@@ -6,7 +6,7 @@ const common = require('agenda-common');
  * 为什么添加：管理员维护 Pathways 时需要按代码或项目名称快速定位记录。
  */
 function buildSearchText(pathway) {
-  const parts = [pathway.code, pathway.projectNameZh, pathway.projectNameEn, pathway.fullLabelZh, pathway.fullLabelEn, pathway.objectiveZh, pathway.objectiveEn];
+  const parts = [pathway.code, pathway.fullLabelZh, pathway.fullLabelEn, pathway.objectiveZh, pathway.objectiveEn];
   const text = [];
   for (const part of parts) {
     if (part) {
@@ -21,21 +21,46 @@ function buildSearchText(pathway) {
  * 方法作用：根据 `_id` 新增或更新项目代码、名称和目标说明。
  * 为什么添加：备稿项目描述要从数据库读取，管理员必须能修正和补充项目数据。
  */
+const PATHWAY_FIELDS = ['code', 'fullLabelEn', 'fullLabelZh', 'level', 'objectiveEn', 'objectiveZh'];
+const LEGACY_FIELDS = ['sourceKey', 'projectNameEn', 'projectNameZh', 'detailZh', 'skillZh', 'rawRow', 'id'];
+
+function buildPathwayPayload(pathway) {
+  const payload = {};
+  for (const field of PATHWAY_FIELDS) {
+    payload[field] = pathway[field] === undefined || pathway[field] === null ? '' : pathway[field];
+  }
+  payload.searchText = [payload.code, payload.fullLabelEn, payload.fullLabelZh, payload.objectiveEn, payload.objectiveZh]
+    .filter(Boolean).join(' ').toLowerCase();
+  return payload;
+}
+
+/**
+ * 方法是什么：保存路径记录。
+ * 方法作用：按路径 ID 更新或新增严格字段集合中的记录。
+ * 为什么添加：路径编辑页不能继续写入旧项目字段。
+ */
 async function savePathway(pathway) {
   const db = common.getDb();
-  const payload = Object.assign({}, pathway, {
-    searchText: buildSearchText(pathway),
-    updatedAt: common.nowIso()
-  });
+  const payload = Object.assign({}, buildPathwayPayload(pathway), { updatedAt: common.nowIso() });
   if (pathway._id) {
     const id = pathway._id;
     delete payload._id;
-    await db.collection('pathways').doc(id).update({ data: payload });
+    const updateData = Object.assign({}, payload);
+    LEGACY_FIELDS.forEach((field) => {
+      updateData[field] = db.command.remove();
+    });
+    const existing = await db.collection('pathways').doc(id).get();
+    const allowedFields = new Set(PATHWAY_FIELDS.concat(['searchText', 'createdAt', 'updatedAt']));
+    Object.keys(existing.data || {}).forEach((field) => {
+      if (field !== '_id' && !allowedFields.has(field)) {
+        updateData[field] = db.command.remove();
+      }
+    });
+    await db.collection('pathways').doc(id).update({ data: updateData });
     return { _id: id, action: 'updated' };
   }
-  const sourceKey = pathway.sourceKey || `manual-${Date.now()}`;
   const res = await db.collection('pathways').add({
-    data: Object.assign({}, payload, { sourceKey, createdAt: common.nowIso() })
+    data: Object.assign({}, payload, { createdAt: common.nowIso() })
   });
   return { _id: res._id, action: 'created' };
 }
@@ -62,7 +87,7 @@ async function main(event) {
     const action = event && event.action ? event.action : 'list';
     const db = common.getDb();
     if (action === 'list') {
-      return common.ok(await common.listCollection('pathways', event || {}));
+      return common.ok(await common.listCollection('pathways', Object.assign({}, event || {}, { orderBy: 'code', order: 'asc' })));
     }
     if (action === 'get') {
       return common.ok({ record: await getPathway(event.id) });
