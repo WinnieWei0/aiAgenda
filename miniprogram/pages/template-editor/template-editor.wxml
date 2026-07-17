@@ -1,0 +1,51 @@
+<view class="template-editor" wx:if="{{!loading}}">
+  <view class="tab-bar"><button class="{{tab === 'page1' ? 'active' : ''}}" data-tab="page1" bindtap="switchTab">第一页</button><button class="{{tab === 'rules' ? 'active' : ''}}" data-tab="rules" bindtap="switchTab">议程规则</button><button class="{{tab === 'page2' ? 'active' : ''}}" data-tab="page2" bindtap="switchTab">第二页</button></view>
+
+  <view wx:if="{{tab === 'page1'}}" class="editor-band">
+    <view class="band-title">品牌与会议信息</view>
+    <label class="field"><text>俱乐部标题</text><input value="{{template.fixedContent.clubTitle}}" data-group="fixedContent" data-field="clubTitle" bindinput="handleTemplateInput" /></label>
+    <label class="field"><text>副标题</text><input value="{{template.fixedContent.clubSubtitle}}" data-group="fixedContent" data-field="clubSubtitle" bindinput="handleTemplateInput" /></label>
+    <label class="field"><text>Charter 信息</text><textarea value="{{template.fixedContent.charter}}" data-group="fixedContent" data-field="charter" bindinput="handleTemplateInput" /></label>
+    <label class="field"><text>会议时间</text><textarea value="{{template.fixedContent.meetingTime}}" data-group="fixedContent" data-field="meetingTime" bindinput="handleTemplateInput" /></label>
+    <label class="field"><text>地址</text><textarea value="{{template.fixedContent.venue}}" data-group="fixedContent" data-field="venue" bindinput="handleTemplateInput" /></label>
+    <label class="field"><text>费用</text><textarea value="{{template.fixedContent.fees}}" data-group="fixedContent" data-field="fees" bindinput="handleTemplateInput" /></label>
+    <label class="field"><text>禁忌话题</text><textarea value="{{template.fixedContent.tabooTopics}}" data-group="fixedContent" data-field="tabooTopics" bindinput="handleTemplateInput" /></label>
+    <label class="field"><text>英文使命</text><textarea value="{{template.fixedContent.missionEn}}" data-group="fixedContent" data-field="missionEn" bindinput="handleTemplateInput" /></label>
+    <label class="field"><text>中文使命</text><textarea value="{{template.fixedContent.missionZh}}" data-group="fixedContent" data-field="missionZh" bindinput="handleTemplateInput" /></label>
+    <label class="field"><text>价值观</text><input value="{{template.fixedContent.values}}" data-group="fixedContent" data-field="values" bindinput="handleTemplateInput" /></label>
+    <label class="field"><text>俱乐部介绍</text><textarea value="{{template.fixedContent.clubIntro}}" data-group="fixedContent" data-field="clubIntro" bindinput="handleTemplateInput" /></label>
+    <label class="field"><text>上周最佳（每行：标签|姓名）</text><textarea value="{{textFields.winners}}" data-key="winners" bindinput="handleTextListInput" /></label>
+    <label class="field"><text>计时规则（每格用 | 分隔）</text><textarea value="{{textFields.timerRules}}" data-key="timerRules" bindinput="handleTextListInput" /></label>
+    <view class="asset-actions"><button data-field="logo" bindtap="replaceAsset">替换 Logo</button><button data-field="membershipQr" bindtap="replaceAsset">会员二维码</button><button data-field="officialQr" bindtap="replaceAsset">公众号二维码</button><button data-field="meetingGroupQr" bindtap="replaceAsset">默认例会群</button></view>
+  </view>
+
+  <view wx:if="{{tab === 'rules'}}" class="editor-band">
+    <view class="setting-row"><text class="band-title">特别主题环节</text><switch checked="{{template.settings.specialSessionEnabled}}" bindchange="toggleSpecialSession" /></view>
+    <view wx:for="{{template.agendaRules}}" wx:for-item="rule" wx:for-index="ruleIndex" wx:key="id" class="rule-row">
+      <view class="rule-id">{{rule.id}}</view>
+      <input class="rule-title" value="{{rule.titleZh}}" data-index="{{ruleIndex}}" data-field="titleZh" bindinput="handleRuleInput" />
+      <input class="rule-duration" type="number" value="{{rule.duration}}" data-index="{{ruleIndex}}" data-field="duration" bindinput="handleRuleInput" />
+      <label><checkbox checked="{{rule.memberTitleEditable}}" data-index="{{ruleIndex}}" data-field="memberTitleEditable" bindchange="handleRuleInput" />标题</label>
+      <label><checkbox checked="{{rule.memberDurationEditable}}" data-index="{{ruleIndex}}" data-field="memberDurationEditable" bindchange="handleRuleInput" />时长</label>
+      <label><checkbox checked="{{rule.memberPersonEditable}}" data-index="{{ruleIndex}}" data-field="memberPersonEditable" bindchange="handleRuleInput" />人员</label>
+    </view>
+  </view>
+
+  <view wx:if="{{tab === 'page2'}}" class="editor-band">
+    <label class="field"><text>双语动态标题</text><input value="{{template.page2.updatesTitle}}" data-group="page2" data-field="updatesTitle" bindinput="handleTemplateInput" /></label>
+    <label class="field"><text>笔记标题</text><input value="{{template.page2.notesTitle}}" data-group="page2" data-field="notesTitle" bindinput="handleTemplateInput" /></label>
+    <label class="field"><text>教育体系标题</text><input value="{{template.page2.educationTitle}}" data-group="page2" data-field="educationTitle" bindinput="handleTemplateInput" /></label>
+    <label class="field"><text>教育路径（每行一项）</text><textarea value="{{textFields.pathways}}" data-key="pathways" bindinput="handleTextListInput" /></label>
+    <label class="field"><text>终极目标</text><input value="{{template.page2.goal}}" data-group="page2" data-field="goal" bindinput="handleTemplateInput" /></label>
+    <label class="field"><text>双语成就（每行一项）</text><textarea value="{{textFields.achievements}}" data-key="achievements" bindinput="handleTextListInput" /></label>
+    <label class="field"><text>会议流程（每行一项）</text><textarea value="{{textFields.meetingFlow}}" data-key="meetingFlow" bindinput="handleTextListInput" /></label>
+    <label class="field"><text>会员收获（每行一项）</text><textarea value="{{textFields.benefits}}" data-key="benefits" bindinput="handleTextListInput" /></label>
+    <label class="field"><text>入会说明</text><textarea value="{{template.page2.joining}}" data-group="page2" data-field="joining" bindinput="handleTemplateInput" /></label>
+    <label class="field"><text>推荐资源</text><textarea value="{{template.page2.resources}}" data-group="page2" data-field="resources" bindinput="handleTemplateInput" /></label>
+    <button data-field="educationSystem" bindtap="replaceAsset">替换教育体系图</button>
+    <view class="band-title officer-title">俱乐部干事</view>
+    <view wx:for="{{template.page2.officers}}" wx:for-item="officer" wx:for-index="officerIndex" wx:key="role" class="officer-editor"><input value="{{officer.role}}" data-index="{{officerIndex}}" data-field="role" bindinput="handleOfficerInput" /><input value="{{officer.name}}" data-index="{{officerIndex}}" data-field="name" bindinput="handleOfficerInput" /><input value="{{officer.phone}}" data-index="{{officerIndex}}" data-field="phone" bindinput="handleOfficerInput" /><input value="{{officer.wechat}}" data-index="{{officerIndex}}" data-field="wechat" bindinput="handleOfficerInput" /></view>
+  </view>
+
+  <view class="save-bar"><button loading="{{saving}}" bindtap="saveTemplate">保存模板</button><button class="preview-button" loading="{{saving}}" bindtap="previewTemplate">保存并预览</button></view>
+</view>

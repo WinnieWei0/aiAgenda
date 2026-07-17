@@ -4,6 +4,7 @@ App({
     user: null,
     roles: [],
     canClaimAdmin: false,
+    isSuperAdminMode: false,
     currentAgenda: null
   },
 
@@ -65,6 +66,25 @@ App({
    */
   isAdmin() {
     return this.globalData.roles.indexOf('admin') >= 0;
+  },
+
+  /**
+   * 方法是什么：切换模拟超管模式。
+   * 方法作用：在当前小程序运行期间切换普通会员与模板超管界面。
+   * 为什么添加：本期明确只需要前端模拟身份，不做角色授权或持久化。
+   */
+  toggleSuperAdminMode() {
+    this.globalData.isSuperAdminMode = !this.globalData.isSuperAdminMode;
+    return this.globalData.isSuperAdminMode;
+  },
+
+  /**
+   * 方法是什么：判断是否处于模拟超管模式。
+   * 方法作用：供首页、编辑器和模板页面统一控制可编辑字段。
+   * 为什么添加：模拟状态不能继续复用数据库中的 admin 角色。
+   */
+  isSuperAdminMode() {
+    return Boolean(this.globalData.isSuperAdminMode);
   },
 
   /**

@@ -7,6 +7,7 @@ const membershipImporter = require('../scripts/import-membership');
 const pathwayImporter = require('../scripts/import-pathways');
 const agendaUtil = require('../miniprogram/utils/agenda');
 const agendaQuery = require('../cloudfunctions/agendaQuery');
+const { PDFDocument } = require('../cloudfunctions/common/node_modules/pdf-lib');
 
 let memberships = [];
 let pathways = [];
@@ -148,20 +149,91 @@ function testRuleParser() {
  * 为什么添加：编辑器的核心行为不能只依赖微信开发者工具手工验证。
  */
 function testAgendaModel() {
-  const agenda = agendaUtil.normalizeAgenda({
-    meetingInfo: { startTime: '19:30' },
-    sections: [
-      { id: 'opening', items: [{ titleZh: '开场', duration: 2, person: {} }, { titleZh: '主持', duration: 5, person: {} }] },
-      { id: 'tableTopics', items: [{ titleZh: '即兴', duration: 7, person: {} }] }
+  const template = agendaUtil.createDefaultTemplate();
+  const agenda = agendaUtil.createAgendaFromFacts({
+    meetingInfo: { startTime: '19:30', endTime: '21:30' },
+    preparedSpeeches: [{ id: 'one', duration: 6 }, { id: 'two', duration: 7 }]
+  }, template);
+  const timeMap = Object.fromEntries(agenda.sections.map(function mapSection(section) {
+    return [section.id, [section.startTime, section.duration]];
+  }));
+  assert.strictEqual(agenda.schemaVersion, 2, '应升级为 AgendaV2');
+  assert.deepStrictEqual(timeMap.venueIntroduction, ['19:30', 2]);
+  assert.deepStrictEqual(timeMap.opening, ['19:32', 5]);
+  assert.deepStrictEqual(timeMap.facilitatorIntroduction, ['19:37', 12]);
+  assert.deepStrictEqual(timeMap.tableTopics, ['19:49', 25]);
+  assert.deepStrictEqual(timeMap.preparedSpeech, ['20:14', 14]);
+  assert.deepStrictEqual(timeMap.break, ['20:28', 5]);
+  assert.deepStrictEqual(timeMap.specialSession, ['20:33', 25]);
+  assert.deepStrictEqual(timeMap.evaluation, ['20:58', 7]);
+  assert.deepStrictEqual(timeMap.facilitatorReport, ['21:05', 17]);
+  assert.deepStrictEqual(timeMap.vote, ['21:22', 1]);
+  assert.deepStrictEqual(timeMap.closing, ['21:23', 7]);
+  assert.deepStrictEqual(timeMap.end, ['21:30', 0]);
+  assert.strictEqual(agenda.computedEndTime, '21:30');
+  assert.strictEqual(agenda.timeMismatch, false);
+}
+
+/**
+ * 方法是什么：测试 Pathways 时长和点评派生。
+ * 方法作用：验证区间上限、缺省七分钟以及备稿排序删除后的点评同步。
+ * 为什么添加：备稿块是新编辑器中数据联动和时间计算最复杂的部分。
+ */
+function testPreparedSpeechRules() {
+  assert.strictEqual(agendaUtil.parsePathwayDuration('建议演讲 4-6分钟', 7), 6);
+  assert.strictEqual(agendaUtil.parsePathwayDuration('演讲时间 5至7 分钟', 7), 7);
+  assert.strictEqual(agendaUtil.parsePathwayDuration('没有时间', 7), 7);
+  const template = agendaUtil.createDefaultTemplate();
+  const agenda = agendaUtil.createAgendaFromFacts({
+    preparedSpeeches: [
+      { id: 'one', titleZh: '第一篇', duration: 6, speaker: { rawName: '甲' }, evaluator: { rawName: '点评甲' } },
+      { id: 'two', titleZh: '第二篇', duration: 7, speaker: { rawName: '乙' }, evaluator: { rawName: '点评乙' } }
     ]
-  });
-  assert.strictEqual(agenda.sections.length, 5, '应包含五个 PDF 模块');
-  assert.deepStrictEqual(agenda.items.slice(0, 3).map(function getTime(item) {
-    return item.startTime;
-  }), ['19:30', '19:32', '19:37'], '开始时间累计异常');
-  const moved = agendaUtil.moveItem(agenda.sections, 0, 1, 0);
-  const reordered = agendaUtil.normalizeAgenda(Object.assign({}, agenda, { sections: moved }));
-  assert.strictEqual(reordered.sections[0].items[0].titleZh, '主持', '模块内流程排序异常');
+  }, template);
+  const prepared = agenda.sections.find(function findPrepared(section) { return section.id === 'preparedSpeech'; });
+  const evaluation = agenda.sections.find(function findEvaluation(section) { return section.id === 'evaluation'; });
+  assert.strictEqual(evaluation.children.length, 2);
+  assert.strictEqual(evaluation.children[1].person.rawName, '点评乙');
+  prepared.children.splice(0, 1);
+  agendaUtil.calculateAgenda(agenda, template);
+  assert.strictEqual(evaluation.children.length, 1);
+  assert.strictEqual(evaluation.children[0].person.rawName, '点评乙');
+}
+
+/**
+ * 方法是什么：测试模板开关和旧议程升级。
+ * 方法作用：验证特别主题全局停用以及旧 roleKey 草稿能转换为 AgendaV2。
+ * 为什么添加：上线后现有七天草稿和超管模板设置都必须继续生效。
+ */
+function testTemplateAndLegacyUpgrade() {
+  const template = agendaUtil.createDefaultTemplate();
+  template.settings.specialSessionEnabled = false;
+  const normalized = agendaUtil.createAgendaFromFacts({ preparedSpeeches: [{ duration: 6 }, { duration: 7 }] }, template);
+  const special = normalized.sections.find(function findSpecial(section) { return section.id === 'specialSession'; });
+  assert.strictEqual(special.enabled, false);
+  assert.strictEqual(normalized.computedEndTime, '21:05');
+  const legacy = agendaUtil.normalizeAgenda({
+    meetingInfo: { meetingNo: '700', startTime: '19:30', endTime: '21:30' },
+    items: [
+      { id: 'manager', roleKey: 'meetingManager', person: { rawName: '经理' } },
+      { id: 'speech', type: 'preparedSpeech', titleZh: '旧备稿', duration: 6, person: { rawName: '旧演讲者' }, speech: { evaluator: { rawName: '旧点评者' } } }
+    ]
+  }, agendaUtil.createDefaultTemplate());
+  assert.strictEqual(legacy.schemaVersion, 2);
+  assert.ok(legacy.warnings.includes('议程已从旧版结构自动升级'));
+  assert.strictEqual(legacy.sections.find(function findPreparation(section) { return section.id === 'preparation'; }).row.person.rawName, '经理');
+
+  const firstTemplate = agendaUtil.createDefaultTemplate();
+  firstTemplate.updatedAt = '2026-07-16T00:00:00.000Z';
+  const currentAgenda = agendaUtil.createAgendaFromFacts({}, firstTemplate);
+  currentAgenda.sections.find(function findTopics(section) { return section.id === 'tableTopics'; }).children.find(function findSpeech(row) { return row.id === 'tableTopicsSpeech'; }).duration = 18;
+  const nextTemplate = agendaUtil.cloneJson(firstTemplate);
+  nextTemplate.updatedAt = '2026-07-17T00:00:00.000Z';
+  nextTemplate.agendaRules.find(function findVenue(rule) { return rule.id === 'venueIntroduction'; }).duration = 3;
+  nextTemplate.agendaRules.find(function findSpeechRule(rule) { return rule.id === 'tableTopicsSpeech'; }).duration = 20;
+  const refreshed = agendaUtil.normalizeAgenda(currentAgenda, nextTemplate);
+  assert.strictEqual(refreshed.sections.find(function findVenueSection(section) { return section.id === 'venueIntroduction'; }).row.duration, 3, '锁定时长应跟随模板更新');
+  assert.strictEqual(refreshed.sections.find(function findTopicsSection(section) { return section.id === 'tableTopics'; }).children.find(function findMemberSpeech(row) { return row.id === 'tableTopicsSpeech'; }).duration, 18, '会员动态时长不应被模板覆盖');
 }
 
 /**
@@ -182,9 +254,32 @@ function testDraftExpiry() {
  * 为什么添加：导出 PDF 是核心交付物，测试可以提前发现字体、依赖或渲染器异常。
  */
 async function testPdfRenderer(agenda) {
-  const buffer = await pdfRenderer.renderAgendaPdf(agenda, 'zh');
+  const buffer = await pdfRenderer.renderAgendaPdf(agenda, 'zh', agendaUtil.createDefaultTemplate());
   assert.ok(buffer.length > 10000, 'PDF 文件大小异常');
   assert.strictEqual(buffer.slice(0, 4).toString(), '%PDF', '应生成 PDF 文件');
+}
+
+/**
+ * 方法是什么：测试超长议程 PDF 续页。
+ * 方法作用：用八个备稿块验证渲染器会插入议程续页并保留最终资料页。
+ * 为什么添加：会员可多次新增备稿，第一页溢出时绝不能裁切或覆盖计时区。
+ */
+async function testPdfOverflow() {
+  const template = agendaUtil.createDefaultTemplate();
+  const preparedSpeeches = Array.from({ length: 8 }, function createSpeech(_, index) {
+    return {
+      id: `overflow-${index}`,
+      titleZh: `超长备稿演讲 ${index + 1}`,
+      duration: 7,
+      speaker: { rawName: `演讲者${index + 1}` },
+      evaluator: { rawName: `点评者${index + 1}` },
+      pathway: { fullLabelZh: 'L2P1 了解你的沟通风格', objectiveZh: '这是用于验证自动分页的较长项目目标描述，建议演讲时间为5-7分钟。' }
+    };
+  });
+  const agenda = agendaUtil.createAgendaFromFacts({ preparedSpeeches }, template);
+  const buffer = await pdfRenderer.renderAgendaPdf(agenda, 'zh', template);
+  const document = await PDFDocument.load(buffer);
+  assert.ok(document.getPageCount() >= 3, '超长议程应生成至少一个续页');
 }
 
 /**
@@ -197,8 +292,11 @@ async function main() {
   testNameMatching();
   const agenda = testRuleParser();
   testAgendaModel();
+  testPreparedSpeechRules();
+  testTemplateAndLegacyUpgrade();
   testDraftExpiry();
   await testPdfRenderer(agenda);
+  await testPdfOverflow();
   console.log('核心测试通过。');
 }
 

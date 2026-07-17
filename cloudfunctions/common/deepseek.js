@@ -69,6 +69,8 @@ function buildAgendaPrompt() {
     'JSON 字段包括 meetingInfo、roles、preparedSpeeches、participants、nextMeeting、confidence。',
     'preparedSpeeches 数组字段包括 index、speakerRawName、projectCode、evaluatorRawName、title。',
     'roles 使用 key 到对象的映射，对象字段包括 key、titleZh、titleEn、rawName。',
+    'roles 请优先使用这些 key：meetingManager、guestReception、memberReception、toastmaster、photographer、timer、ahCounter、grammarian、generalEvaluator、tableTopicsMaster、tableTopicsEvaluator。',
+    '只提取接龙中的事实，不要生成议程环节、开始时间、限时或流程顺序。',
     '不要虚构 Pathways 描述，项目描述会由系统根据 projectCode 再匹配。'
   ].join('\n');
 }

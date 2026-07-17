@@ -51,6 +51,31 @@ async function saveExportRecord(agendaId, language, fileID, openid) {
 }
 
 /**
+ * 方法是什么：下载超管替换的云端模板素材。
+ * 方法作用：把 cloud 文件 ID 转换为 PDF 渲染器可嵌入的 base64 图片数据。
+ * 为什么添加：服务端渲染不能直接用小程序 image 控件使用的云存储标识。
+ */
+async function hydrateAssetBuffers(template, agenda) {
+  template.assetBuffers = {};
+  agenda.assetBuffers = {};
+  const jobs = [];
+  Object.entries(template.assets || {}).forEach(([field, fileID]) => {
+    if (String(fileID || '').startsWith('cloud://')) {
+      jobs.push(common.cloud.downloadFile({ fileID }).then((result) => {
+        template.assetBuffers[field] = Buffer.from(result.fileContent).toString('base64');
+      }));
+    }
+  });
+  const meetingGroupQr = agenda.assets && agenda.assets.meetingGroupQr;
+  if (String(meetingGroupQr || '').startsWith('cloud://')) {
+    jobs.push(common.cloud.downloadFile({ fileID: meetingGroupQr }).then((result) => {
+      agenda.assetBuffers.meetingGroupQr = Buffer.from(result.fileContent).toString('base64');
+    }));
+  }
+  await Promise.all(jobs);
+}
+
+/**
  * 方法是什么：处理议程 PDF 导出云函数请求。
  * 方法作用：读取议程、生成中/英文 PDF、上传云存储并返回文件 ID。
  * 为什么添加：PDF 生成需要服务端能力，小程序端只负责触发和预览结果。
@@ -74,7 +99,9 @@ async function main(event) {
     if (agenda.ownerOpenid !== openid && !(await common.isAdmin(openid))) {
       return common.fail('FORBIDDEN', '只能导出自己的议程');
     }
-    const buffer = await common.pdfRenderer.renderAgendaPdf(agenda, language);
+    const template = await common.getAgendaTemplate();
+    await hydrateAssetBuffers(template, agenda);
+    const buffer = await common.pdfRenderer.renderAgendaPdf(agenda, language, template);
     const fileID = await uploadPdf(buffer, agenda, language);
     const exportId = await saveExportRecord(agendaId, language, fileID, openid);
     const temp = await common.cloud.getTempFileURL({ fileList: [fileID] });

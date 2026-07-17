@@ -11,20 +11,12 @@ const LEGACY_FIELDS = [
  * 方法作用：规范化模块、流程行和会议信息后生成 JSON 载荷。
  * 为什么添加：编辑保存和解析保存必须使用相同的数据形状。
  */
-function buildAgendaPayload(agenda) {
-  const source = Array.isArray(agenda.sections) && agenda.sections.length
-    ? agenda
-    : Object.assign({}, agenda, { sections: common.parser.groupItemsIntoSections(agenda.items || []) });
-  const normalized = common.parser.calculateAgendaStartTimes(source);
-  return {
-    rawText: normalized.rawText || '',
-    meetingInfo: normalized.meetingInfo || {},
-    sections: Array.isArray(normalized.sections) ? normalized.sections : [],
-    items: Array.isArray(normalized.items) ? normalized.items : [],
-    participants: Array.isArray(normalized.participants) ? normalized.participants : [],
-    warnings: Array.isArray(normalized.warnings) ? normalized.warnings : [],
-    unresolvedNames: Array.isArray(normalized.unresolvedNames) ? normalized.unresolvedNames : []
-  };
+function buildAgendaPayload(agenda, template) {
+  const normalized = common.agendaModel.normalizeAgenda(agenda, template || common.agendaModel.createDefaultTemplate());
+  normalized.items = common.agendaModel.flattenAgendaRows(normalized);
+  delete normalized._id;
+  delete normalized.expiresAt;
+  return normalized;
 }
 
 /**
@@ -71,7 +63,8 @@ async function main(event) {
     const expiresAt = existingExpiry
       ? existingExpiry.toISOString()
       : new Date(now.getTime() + DRAFT_TTL_MS).toISOString();
-    const agenda = buildAgendaPayload(submitted);
+    const template = await common.getAgendaTemplate();
+    const agenda = buildAgendaPayload(submitted, template);
     const payload = {
       ownerOpenid: openid,
       agenda,

@@ -1,0 +1,67 @@
+<view class="preview-page" wx:if="{{!loading && agenda && template}}">
+  <scroll-view class="paper-scroll" scroll-x="true">
+    <view class="paper page-one">
+      <view class="brand-header">
+        <view class="brand-title">{{template.fixedContent.clubTitle}}</view>
+        <view class="brand-subtitle">{{template.fixedContent.clubSubtitle}}</view>
+        <view class="charter">{{template.fixedContent.charter}}</view>
+      </view>
+      <view class="info-strip">
+        <image class="club-logo" src="{{template.previewAssets.logo || template.assets.logo}}" mode="aspectFit" />
+        <view class="info-card"><text class="info-title">会议时间 Time</text><text>{{template.fixedContent.meetingTime}}</text></view>
+        <view class="info-card wide"><text class="info-title">会议地址 Venue</text><text>{{template.fixedContent.venue}}</text></view>
+        <view class="info-card wide"><text class="info-title">费用说明 Fees</text><text>{{template.fixedContent.fees}}</text></view>
+        <view class="info-card"><text class="info-title">禁忌话题 Taboo Topics</text><text>{{template.fixedContent.tabooTopics}}</text></view>
+      </view>
+      <view class="mission"><text class="mission-en">{{template.fixedContent.missionEn}}</text><text>{{template.fixedContent.missionZh}}</text></view>
+      <view class="meeting-meta"><text>No. {{agenda.meetingInfo.meetingNo}}</text><text>日期：{{agenda.meetingInfo.date}}</text><text>主题：{{agenda.meetingInfo.theme}}</text></view>
+
+      <view class="page-one-body">
+        <view class="agenda-table">
+          <view class="table-row table-head"><text class="time-cell">会议促进者</text><text class="title-cell"></text><text class="duration-cell">限时</text><text class="person-cell">演讲者</text><text class="club-cell">俱乐部</text></view>
+          <view wx:for="{{rows}}" wx:for-item="row" wx:key="id" class="table-row {{row.isGroup ? 'group-row' : ''}} {{row.type === 'note' ? 'note-row' : ''}}">
+            <text class="time-cell">{{row.startTime}}</text>
+            <view class="title-cell">
+              <text>{{row.titleZh}}</text>
+              <text wx:if="{{row.type === 'preparedSpeechBlock' && row.pathway.fullLabelZh}}" class="project-line">{{row.pathway.fullLabelZh}}</text>
+              <text wx:if="{{row.type === 'preparedSpeechBlock' && row.pathway.objectiveZh}}" class="objective-line">{{row.pathway.objectiveZh}}</text>
+            </view>
+            <text class="duration-cell">{{row.durationDisplay}}</text>
+            <text class="person-cell">{{row.personDisplay}}</text>
+            <text class="club-cell">{{row.clubDisplay}}</text>
+          </view>
+        </view>
+        <view class="sidebar">
+          <view class="side-title">上周最佳演讲者</view>
+          <view wx:for="{{template.sidebar.winners}}" wx:key="label" class="winner"><text>{{item.label}}</text><text>{{item.value}}</text></view>
+          <view class="side-title">国际演讲会价值观</view><view class="side-copy centered">{{template.fixedContent.values}}</view>
+          <view class="side-title">广州双语国际演讲俱乐部</view><view class="side-copy">{{template.fixedContent.clubIntro}}</view>
+          <image class="side-qr" src="{{template.previewAssets.membershipQr || template.assets.membershipQr}}" mode="aspectFit" /><text class="qr-label">会员副会长</text>
+          <image class="side-qr" src="{{template.previewAssets.officialQr || template.assets.officialQr}}" mode="aspectFit" /><text class="qr-label">公众号</text>
+          <image class="side-qr" src="{{template.previewAssets.meetingGroupQr || agenda.assets.meetingGroupQr}}" mode="aspectFit" /><text class="qr-label">例会群</text>
+        </view>
+      </view>
+      <view class="timing-title">计时规则（请有效利用你在台上有限的时间）</view>
+      <view class="timing-table"><view wx:for="{{template.timerRules}}" wx:for-item="timerRow" wx:key="index" class="timing-row"><text wx:for="{{timerRow}}" wx:key="index" class="timing-cell timing-{{index}}">{{item}}</text></view></view>
+    </view>
+
+    <view class="paper page-two">
+      <view class="page-two-grid">
+        <view class="notes-column"><view class="cyan-title">{{template.page2.updatesTitle}}</view><view class="updates-space"></view><view class="cyan-title">{{template.page2.notesTitle}}</view></view>
+        <view class="club-column">
+          <view class="cyan-title">{{template.page2.educationTitle}}</view>
+          <view class="education-block"><view class="pathway-list"><text wx:for="{{template.page2.pathways}}" wx:key="*this">{{index + 1}}. {{item}}</text></view><image src="{{template.previewAssets.educationSystem || template.assets.educationSystem}}" mode="aspectFit" /></view>
+          <view class="goal">{{template.page2.goal}}</view>
+          <view class="two-columns"><view><view class="gray-title">双语成就</view><text wx:for="{{template.page2.achievements}}" wx:key="*this">{{item}}</text></view><view><view class="gray-title">会议流程</view><text wx:for="{{template.page2.meetingFlow}}" wx:key="*this">{{item}}</text></view></view>
+          <view class="two-columns tall"><view><view class="gray-title">我们在头马可以收获什么？</view><text wx:for="{{template.page2.benefits}}" wx:key="*this">{{item}}</text></view><view><view class="gray-title">如何加入我们</view><text class="joining">{{template.page2.joining}}</text></view></view>
+          <view class="cyan-title">2026年（上）俱乐部干事 Club Officer Team</view>
+          <view class="officer-head"><text>干事 Officer</text><text>电话 Phone</text><text>微信 WeChat</text></view>
+          <view wx:for="{{template.page2.officers}}" wx:key="role" class="officer-row"><text>{{item.role}} · {{item.name}}</text><text>{{item.phone}}</text><text>{{item.wechat}}</text></view>
+        </view>
+      </view>
+      <view class="resources">{{template.page2.resources}}</view>
+    </view>
+  </scroll-view>
+  <view class="export-bar"><button type="primary" loading="{{exporting}}" bindtap="exportPdf">导出 PDF</button></view>
+</view>
+<view wx:if="{{loading}}" class="loading">正在生成模板预览...</view>

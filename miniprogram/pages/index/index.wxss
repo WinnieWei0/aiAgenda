@@ -2,6 +2,40 @@
   padding-top: 36rpx;
 }
 
+.mode-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 28rpx;
+  padding: 24rpx;
+  border-left: 8rpx solid #0f766e;
+  background: #ffffff;
+}
+
+.mode-label {
+  display: block;
+  color: #64748b;
+  font-size: 24rpx;
+}
+
+.mode-value {
+  color: #111827;
+  font-size: 32rpx;
+  font-weight: 700;
+}
+
+.mode-value.admin {
+  color: #b42318;
+}
+
+.mode-button {
+  width: 190rpx;
+  margin: 0;
+  color: #ffffff;
+  background: #334155;
+  font-size: 28rpx;
+}
+
 .home-button {
   width: 100%;
   height: 104rpx;
@@ -21,4 +55,9 @@
   color: #111827;
   background: #f3f4f6;
   border: 1rpx solid #cbd5e1;
+}
+
+.template-button {
+  color: #ffffff;
+  background: #b42318;
 }

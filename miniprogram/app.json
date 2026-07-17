@@ -10,6 +10,8 @@
     "pages/roles/list/list",
     "pages/roles/edit/edit",
     "pages/editor/editor",
+    "pages/template-preview/template-preview",
+    "pages/template-editor/template-editor",
     "pages/history/history",
     "pages/admin/admin"
   ],

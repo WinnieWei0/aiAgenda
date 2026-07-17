@@ -1,0 +1,24 @@
+.template-editor { padding-bottom: 140rpx; }
+.tab-bar { position: sticky; top: 0; z-index: 5; display: grid; grid-template-columns: repeat(3,1fr); border-bottom: 1rpx solid #cbd5e1; background: #ffffff; }
+.tab-bar button { margin: 0; border-radius: 0; background: #ffffff; color: #475569; font-size: 28rpx; }
+.tab-bar button.active { border-bottom: 6rpx solid #0f766e; color: #0f766e; font-weight: 700; }
+.editor-band { padding: 28rpx 24rpx; }
+.band-title { font-size: 32rpx; font-weight: 700; }
+.field { display: block; margin-top: 22rpx; }
+.field text { display: block; margin-bottom: 8rpx; color: #475569; font-size: 24rpx; }
+.field input, .field textarea { box-sizing: border-box; width: 100%; min-height: 72rpx; padding: 14rpx 16rpx; border: 1rpx solid #cbd5e1; background: #ffffff; }
+.field textarea { min-height: 150rpx; }
+.asset-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 14rpx; margin-top: 24rpx; }
+.asset-actions button { width: 100%; margin: 0; font-size: 26rpx; }
+.setting-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20rpx; padding: 20rpx 0; border-bottom: 1rpx solid #e2e8f0; }
+.muted { display: block; margin-top: 6rpx; color: #64748b; font-size: 24rpx; }
+.rule-row { display: grid; grid-template-columns: 190rpx minmax(180rpx,1fr) 100rpx repeat(3,100rpx); gap: 10rpx; align-items: center; padding: 14rpx 0; border-bottom: 1rpx solid #e2e8f0; overflow-x: auto; }
+.rule-id { color: #64748b; font-size: 22rpx; }
+.rule-title, .rule-duration { box-sizing: border-box; height: 64rpx; padding: 0 10rpx; border: 1rpx solid #cbd5e1; }
+.rule-row label { font-size: 22rpx; white-space: nowrap; }
+.officer-title { margin-top: 30rpx; }
+.officer-editor { display: grid; grid-template-columns: 1.4fr 1fr 1fr 1fr; gap: 8rpx; padding: 12rpx 0; border-bottom: 1rpx solid #e2e8f0; }
+.officer-editor input { min-width: 0; height: 64rpx; padding: 0 8rpx; border: 1rpx solid #cbd5e1; font-size: 22rpx; }
+.save-bar { position: fixed; right: 0; bottom: 0; left: 0; z-index: 10; display: grid; grid-template-columns: 1fr 1fr; gap: 16rpx; padding: 18rpx 24rpx calc(18rpx + env(safe-area-inset-bottom)); border-top: 1rpx solid #cbd5e1; background: #ffffff; }
+.save-bar button { width: 100%; margin: 0; }
+.preview-button { color: #ffffff; background: #0f766e; }

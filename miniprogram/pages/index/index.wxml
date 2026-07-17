@@ -1,6 +1,14 @@
 <view class="page home-page">
+  <view class="mode-bar">
+    <view>
+      <text class="mode-label">当前身份</text>
+      <text class="mode-value {{isSuperAdmin ? 'admin' : ''}}">{{isSuperAdmin ? '模拟超管' : '普通会员'}}</text>
+    </view>
+    <button class="mode-button" bindtap="toggleSuperAdmin">{{isSuperAdmin ? '退出超管' : '我是超管'}}</button>
+  </view>
   <button class="home-button primary-button" bindtap="openParseTab">解析议程表</button>
   <button class="home-button secondary-button" bindtap="openTimer">时间牌</button>
   <button class="home-button secondary-button" bindtap="openMembersList">会员列表</button>
   <button class="home-button secondary-button" bindtap="openPathwaysList">路径列表</button>
+  <button wx:if="{{isSuperAdmin}}" class="home-button template-button" bindtap="openTemplateEditor">编辑议程模板</button>
 </view>

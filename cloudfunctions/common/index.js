@@ -2,6 +2,7 @@ const cloud = require('wx-server-sdk');
 const parser = require('./parser');
 const deepseek = require('./deepseek');
 const pdfRenderer = require('./pdf-renderer');
+const agendaModel = require('./agenda-model');
 
 let cloudInitialized = false;
 
@@ -200,6 +201,56 @@ async function ensureDefaultRoles() {
 }
 
 /**
+ * 方法是什么：读取当前全局议程模板。
+ * 方法作用：按固定模板 ID 查询数据库，并在首次使用时写入默认两页模板。
+ * 为什么添加：解析、预览、保存和 PDF 导出必须共享同一份模板内容与规则。
+ */
+async function getAgendaTemplate() {
+  const db = getDb();
+  const collection = db.collection('agenda_templates');
+  const templateId = agendaModel.TEMPLATE_ID;
+  const result = await collection.where({ templateId }).limit(1).get();
+  if (result.data && result.data.length) {
+    return Object.assign(agendaModel.createDefaultTemplate(), result.data[0]);
+  }
+  const template = agendaModel.createDefaultTemplate();
+  const addResult = await collection.add({ data: Object.assign({}, template, { createdAt: nowIso(), updatedAt: nowIso() }) });
+  return Object.assign({}, template, { _id: addResult._id });
+}
+
+/**
+ * 方法是什么：保存当前全局议程模板。
+ * 方法作用：合并默认结构、校验数组字段并更新模板单例。
+ * 为什么添加：模拟超管需要维护两页固定内容、素材、环节规则和会员权限。
+ */
+async function saveAgendaTemplate(value) {
+  const db = getDb();
+  const source = value || {};
+  const defaults = agendaModel.createDefaultTemplate();
+  const template = Object.assign({}, defaults, source, {
+    templateId: agendaModel.TEMPLATE_ID,
+    schemaVersion: agendaModel.AGENDA_SCHEMA_VERSION,
+    fixedContent: Object.assign({}, defaults.fixedContent, source.fixedContent || {}),
+    assets: Object.assign({}, defaults.assets, source.assets || {}),
+    sidebar: Object.assign({}, defaults.sidebar, source.sidebar || {}),
+    page2: Object.assign({}, defaults.page2, source.page2 || {}),
+    settings: Object.assign({}, defaults.settings, source.settings || {}),
+    agendaRules: Array.isArray(source.agendaRules) && source.agendaRules.length ? source.agendaRules : defaults.agendaRules,
+    timerRules: Array.isArray(source.timerRules) && source.timerRules.length ? source.timerRules : defaults.timerRules,
+    updatedAt: nowIso()
+  });
+  delete template._id;
+  const collection = db.collection('agenda_templates');
+  const existing = await collection.where({ templateId: agendaModel.TEMPLATE_ID }).limit(1).get();
+  if (existing.data && existing.data.length) {
+    await collection.doc(existing.data[0]._id).update({ data: template });
+    return Object.assign({}, template, { _id: existing.data[0]._id });
+  }
+  const added = await collection.add({ data: Object.assign({}, template, { createdAt: nowIso() }) });
+  return Object.assign({}, template, { _id: added._id });
+}
+
+/**
  * 方法是什么：把函数异常转换为标准响应。
  * 方法作用：捕获业务错误和未知错误，返回前端可识别的错误结构。
  * 为什么添加：云函数入口较多，统一错误处理能让前端提示稳定，也减少重复 try/catch 代码。
@@ -215,6 +266,7 @@ module.exports = {
   parser,
   deepseek,
   pdfRenderer,
+  agendaModel,
   initCloud,
   getDb,
   getOpenid,
@@ -229,5 +281,7 @@ module.exports = {
   isAdmin,
   requireAdmin,
   ensureDefaultRoles,
+  getAgendaTemplate,
+  saveAgendaTemplate,
   handleError
 };

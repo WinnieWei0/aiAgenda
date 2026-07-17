@@ -84,12 +84,13 @@ async function main(event) {
     if (!rawText) {
       return common.fail('EMPTY_TEXT', '请先粘贴接龙文本');
     }
-    const [memberships, pathways] = await Promise.all([
+    const [memberships, pathways, template] = await Promise.all([
       loadAll('memberships'),
-      loadAll('pathways')
+      loadAll('pathways'),
+      common.getAgendaTemplate()
     ]);
     const aiResult = await common.deepseek.parseAgendaWithDeepSeek(rawText, { timeoutMs: 15000 });
-    const agenda = common.parser.buildAgendaFromAi(aiResult, memberships, pathways);
+    const agenda = common.parser.buildAgendaFromAi(aiResult, memberships, pathways, template);
     const validated = common.parser.validateAgenda(Object.assign({}, agenda, { rawText }));
     const draft = await saveCurrentDraft(common.getDb(), openid, validated);
     const savedAgenda = Object.assign({}, validated, { _id: draft._id, expiresAt: draft.expiresAt });

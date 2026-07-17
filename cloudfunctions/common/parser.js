@@ -1,5 +1,6 @@
 const DEFAULT_CLUB_NAME_ZH = '广州双语';
 const DEFAULT_CLUB_NAME_EN = 'Bilingual';
+const agendaModel = require('./agenda-model');
 
 const SECTION_DEFINITIONS = [
   { id: 'opening', titleZh: '开场和会议促进者介绍', titleEn: 'Opening and Facilitators' },
@@ -13,7 +14,9 @@ const ROLE_LABELS = [
   { key: 'guestReception', titleZh: '礼宾官（宾客）', titleEn: 'Guest Reception', patterns: ['礼宾官（宾客）', '礼宾官(宾客)'] },
   { key: 'memberReception', titleZh: '礼宾官（会员）', titleEn: 'Member Reception', patterns: ['礼宾官（会员）', '礼宾官(会员)'] },
   { key: 'photoMasterGuest', titleZh: '摄影师（宾客）', titleEn: 'Guest Photo Master', patterns: ['摄影师（宾客）', '摄影师(宾客)'] },
+  { key: 'photographer', titleZh: '摄影师', titleEn: 'Photographer', patterns: ['摄影师', '摄影官'] },
   { key: 'ahCounterGuest', titleZh: '哼哈师（宾客）', titleEn: 'Guest Ah-counter', patterns: ['哼哈师（宾客）', '哼哈师(宾客)'] },
+  { key: 'ahCounter', titleZh: '哼哈师', titleEn: 'Ah-counter', patterns: ['哼哈师', '哼哈官'] },
   { key: 'meetingManager', titleZh: '会议经理', titleEn: 'Meeting Manager', patterns: ['会议经理'] },
   { key: 'toastmaster', titleZh: '总主持人', titleEn: 'Toastmaster of the Meeting', patterns: ['总主持人', '主持人'] },
   { key: 'timer', titleZh: '时间官', titleEn: 'Timer', patterns: ['时间官', '计时员'] },
@@ -317,6 +320,55 @@ function enrichPreparedSpeeches(speeches, memberships, pathways) {
 }
 
 /**
+ * 方法是什么：构建固定模板使用的角色人员映射。
+ * 方法作用：把 AI 角色对象、兼容角色别名和下一期主持人转换为标准人员。
+ * 为什么添加：固定 AgendaV2 通过 rolePeople 绑定接龙事实，不能再读取旧平面流程。
+ */
+function buildRolePeople(parsed, memberships) {
+  const roles = parsed.roles || {};
+  const getRawName = (key) => roles[key] && roles[key].rawName ? roles[key].rawName : '';
+  const nextMeeting = parsed.nextMeeting || {};
+  return {
+    meetingManager: buildPerson(getRawName('meetingManager'), memberships),
+    guestReception: buildPerson(getRawName('guestReception'), memberships),
+    memberReception: buildPerson(getRawName('memberReception'), memberships),
+    toastmaster: buildPerson(getRawName('toastmaster'), memberships),
+    photographer: buildPerson(getRawName('photographer') || getRawName('photoMasterGuest'), memberships),
+    timer: buildPerson(getRawName('timer'), memberships),
+    ahCounter: buildPerson(getRawName('ahCounter') || getRawName('ahCounterGuest'), memberships),
+    grammarian: buildPerson(getRawName('grammarian'), memberships),
+    generalEvaluator: buildPerson(getRawName('generalEvaluator'), memberships),
+    tableTopicsMaster: buildPerson(getRawName('tableTopicsMaster'), memberships),
+    tableTopicsEvaluator: buildPerson(getRawName('tableTopicsEvaluator'), memberships),
+    venueIntroduction: buildPerson(getRawName('venueIntroduction'), memberships),
+    nextMeetingHost: buildPerson(nextMeeting.hostRawName || nextMeeting.toastmasterRawName || nextMeeting.rawName || '', memberships)
+  };
+}
+
+/**
+ * 方法是什么：把解析事实构建为 AgendaV2。
+ * 方法作用：匹配会员和 Pathways 后，交给确定性模板模型生成固定流程与时间链。
+ * 为什么添加：AI 结果只能提供事实，议程结构、权限和默认时长必须由系统控制。
+ */
+function buildAgendaV2(parsed, memberships, pathways, template) {
+  const preparedSpeeches = enrichPreparedSpeeches(parsed.preparedSpeeches || [], memberships || [], pathways || []);
+  const agenda = agendaModel.createAgendaFromFacts({
+    rawText: parsed.rawText || '',
+    meetingInfo: parsed.meetingInfo || {},
+    rolePeople: buildRolePeople(parsed, memberships || []),
+    preparedSpeeches,
+    participants: parsed.participants || []
+  }, template || agendaModel.createDefaultTemplate());
+  agenda.roles = parsed.roles || {};
+  agenda.preparedSpeeches = preparedSpeeches;
+  agenda.nextMeeting = parsed.nextMeeting || {};
+  agenda.confidence = parsed.confidence || 0;
+  agenda.source = parsed.source || 'deepseek';
+  agenda.items = agendaModel.flattenAgendaRows(agenda);
+  return agenda;
+}
+
+/**
  * 方法是什么：根据解析结果生成默认议程流程。
  * 方法作用：把会议信息、角色、备稿和点评串成可编辑、可排序的流程数组。
  * 为什么添加：前端需要统一的表单数据模型，而接龙文本本身不是按 PDF 流程顺序组织的。
@@ -450,10 +502,8 @@ function parseAgendaByRules(rawText, memberships, pathways) {
     confidence: 0.72,
     source: 'rules'
   };
-  parsed.items = buildAgendaItems(parsed, memberships || [], pathways || []);
-  parsed.sections = groupItemsIntoSections(parsed.items);
-  calculateAgendaStartTimes(parsed);
-  return parsed;
+  parsed.rawText = rawText;
+  return buildAgendaV2(parsed, memberships || [], pathways || []);
 }
 
 /**
@@ -474,10 +524,7 @@ function mergeAiResult(aiResult, ruleResult, memberships, pathways) {
     confidence: aiResult.confidence || ruleResult.confidence,
     source: 'deepseek'
   };
-  merged.items = buildAgendaItems(merged, memberships || [], pathways || []);
-  merged.sections = groupItemsIntoSections(merged.items);
-  calculateAgendaStartTimes(merged);
-  return merged;
+  return buildAgendaV2(merged, memberships || [], pathways || []);
 }
 
 /**
@@ -485,7 +532,7 @@ function mergeAiResult(aiResult, ruleResult, memberships, pathways) {
  * 方法作用：以 AI 返回的会议、角色、备稿和参与者为主，再从数据库匹配人员和 Pathways 描述。
  * 为什么添加：生产解析明确使用 DeepSeek，不能先生成规则结果再把规则结果作为 AI 降级数据源。
  */
-function buildAgendaFromAi(aiResult, memberships, pathways) {
+function buildAgendaFromAi(aiResult, memberships, pathways, template) {
   if (!aiResult || typeof aiResult !== 'object') {
     const error = new Error('DeepSeek 未返回有效的议程结果');
     error.code = 'DEEPSEEK_EMPTY_RESULT';
@@ -500,10 +547,7 @@ function buildAgendaFromAi(aiResult, memberships, pathways) {
     confidence: aiResult.confidence || 0,
     source: 'deepseek'
   };
-  agenda.items = buildAgendaItems(agenda, memberships || [], pathways || []);
-  agenda.sections = groupItemsIntoSections(agenda.items);
-  calculateAgendaStartTimes(agenda);
-  return agenda;
+  return buildAgendaV2(agenda, memberships || [], pathways || [], template);
 }
 
 /**
@@ -520,7 +564,8 @@ function validateAgenda(agenda) {
   if (!agenda.meetingInfo || !agenda.meetingInfo.meetingNo) {
     warnings.push('未识别到会议编号');
   }
-  for (const item of agenda.items || []) {
+  const items = agenda.items && agenda.items.length ? agenda.items : agendaModel.flattenAgendaRows(agenda);
+  for (const item of items) {
     const people = [];
     if (item.person) {
       people.push(item.person);
@@ -530,6 +575,15 @@ function validateAgenda(agenda) {
     }
     if (item.speech && item.speech.evaluator) {
       people.push(item.speech.evaluator);
+    }
+    if (item.speaker) {
+      people.push(item.speaker);
+    }
+    if (item.evaluator) {
+      people.push(item.evaluator);
+    }
+    if (Array.isArray(item.persons)) {
+      people.push(...item.persons);
     }
     for (const person of people) {
       if (person && person.unresolved && person.rawName) {
@@ -558,6 +612,8 @@ module.exports = {
   parseParticipants,
   buildPerson,
   enrichPreparedSpeeches,
+  buildRolePeople,
+  buildAgendaV2,
   buildAgendaItems,
   groupItemsIntoSections,
   calculateAgendaStartTimes,
