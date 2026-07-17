@@ -10,6 +10,7 @@ Page({
     loading: true,
     saving: false,
     memberOptions: [],
+    memberLabels: [],
     pathwayOptions: []
   },
 
@@ -70,7 +71,7 @@ Page({
         label: [member.nameZh, member.nameEn, member.nickName].filter(Boolean).join(' / '),
         member
       }));
-      this.setData({ memberOptions });
+      this.setData({ memberOptions, memberLabels: memberOptions.map((option) => option.label || '未命名会员') });
     } catch (error) {
       cloud.showError(error);
     }
@@ -148,7 +149,17 @@ Page({
       row.canEditDuration = this.data.isSuperAdmin || Boolean(row.permissions && row.permissions.memberDuration);
       row.canEditPerson = this.data.isSuperAdmin || Boolean(row.permissions && row.permissions.memberPerson);
       row.canEditClub = this.data.isSuperAdmin || Boolean(row.permissions && row.permissions.memberClub);
+      row.displayTitle = row.titleZh;
+      if (row.id === 'topicExplanation') {
+        row.displayTitle = '即兴主持人';
+      }
+      if (row.id === 'tableTopicsSpeech') {
+        row.displayTitle = '即兴演讲时间';
+      }
       row.person = this.decoratePerson(row.person);
+      if (row.id === 'openingIcebreaker') {
+        row.person.inputMode = 'select';
+      }
       row.persons = (row.persons || []).map((person) => this.decoratePerson(person));
       if (row.type === 'preparedSpeechBlock') {
         row.speaker = this.decoratePerson(row.speaker);

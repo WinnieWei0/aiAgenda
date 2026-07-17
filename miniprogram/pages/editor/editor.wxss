@@ -23,11 +23,14 @@
 .row-main > input[disabled] { border-color: transparent; color: #111827; background: transparent; }
 .duration-input { width: 110rpx; height: 64rpx; padding: 0 10rpx; border: 1rpx solid #cbd5e1; text-align: right; }
 .note-row { padding: 14rpx; background: #e5e7eb; font-style: italic; }
-.person-editor { display: grid; grid-template-columns: 100rpx minmax(0, 1fr) 112rpx 190rpx; gap: 10rpx; align-items: center; margin-top: 14rpx; }
+.person-editor { margin-top: 14rpx; }
+.person-line { display: grid; grid-template-columns: 100rpx minmax(0, 1fr) 112rpx; gap: 10rpx; align-items: center; }
 .person-label { color: #64748b; font-size: 24rpx; }
 .person-control, .club-input { box-sizing: border-box; width: 100%; min-width: 0; height: 64rpx; padding: 0 12rpx; border: 1rpx solid #cbd5e1; }
 .person-control .picker-value { min-height: 64rpx; padding: 12rpx; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .switch-button { width: 112rpx; margin: 0; }
+.club-line { display: grid; grid-template-columns: 100rpx minmax(0, 1fr); gap: 10rpx; align-items: center; margin-top: 10rpx; }
+.club-label { color: #64748b; font-size: 24rpx; }
 .club-input[disabled] { color: #475569; background: #f1f5f9; }
 .fixed-person, .derived-person, .fixed-club { margin-top: 12rpx; color: #475569; }
 .prepared-block { margin: 18rpx 0; padding: 20rpx; border-left: 6rpx solid #0f766e; background: #f8fafc; }
@@ -42,4 +45,4 @@
 .bottom-actions { position: fixed; right: 0; bottom: 0; left: 0; z-index: 10; display: grid; grid-template-columns: 1fr 1fr; gap: 16rpx; padding: 18rpx 24rpx calc(18rpx + env(safe-area-inset-bottom)); border-top: 1rpx solid #d7dde5; background: #ffffff; }
 .bottom-actions button { width: 100%; margin: 0; }
 .preview-button { color: #ffffff; background: #0f766e; }
-@media (max-width: 360px) { .field-grid { grid-template-columns: 1fr; } .field.full { grid-column: auto; } .person-editor { grid-template-columns: 84rpx minmax(0, 1fr) 96rpx; } .club-input { grid-column: 2 / -1; } }
+@media (max-width: 360px) { .field-grid { grid-template-columns: 1fr; } .field.full { grid-column: auto; } .person-line { grid-template-columns: 84rpx minmax(0, 1fr) 96rpx; } .club-line { grid-template-columns: 84rpx minmax(0, 1fr); } }
