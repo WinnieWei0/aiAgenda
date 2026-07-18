@@ -9,6 +9,8 @@ Page({
     isSuperAdmin: false,
     loading: true,
     saving: false,
+    memberLoading: false,
+    memberLoadError: false,
     memberOptions: [],
     memberLabels: [],
     pathwayOptions: []
@@ -65,15 +67,23 @@ Page({
    * 为什么添加：选择会员时需要自动填入姓名和广州双语俱乐部。
    */
   async loadMembers() {
+    this.setData({ memberLoading: true, memberLoadError: false });
     try {
       const data = await cloud.callCloud('lookupOptions', { type: 'memberships', keyword: '' });
       const memberOptions = (data.list || []).map((member) => ({
         label: [member.nameZh, member.nameEn, member.nickName].filter(Boolean).join(' / '),
         member
       }));
-      this.setData({ memberOptions, memberLabels: memberOptions.map((option) => option.label || '未命名会员') });
+      this.setData({
+        memberOptions,
+        memberLabels: memberOptions.map((option) => option.label || '未命名会员'),
+        memberLoadError: false
+      });
     } catch (error) {
+      this.setData({ memberOptions: [], memberLabels: [], memberLoadError: true });
       cloud.showError(error);
+    } finally {
+      this.setData({ memberLoading: false });
     }
   },
 
@@ -158,6 +168,7 @@ Page({
       }
       row.person = this.decoratePerson(row.person);
       if (row.id === 'openingIcebreaker') {
+        row.canEditPerson = true;
         row.person.inputMode = 'select';
       }
       row.persons = (row.persons || []).map((person) => this.decoratePerson(person));
@@ -225,6 +236,9 @@ Page({
     if (this.data.isSuperAdmin) {
       return true;
     }
+    if (row && row.id === 'openingIcebreaker' && field === 'person') {
+      return true;
+    }
     const map = { titleZh: 'memberTitle', duration: 'memberDuration', person: 'memberPerson', club: 'memberClub' };
     return Boolean(row && row.permissions && row.permissions[map[field]]);
   },
@@ -271,7 +285,14 @@ Page({
     if (!row || !person || !this.canEditRow(row, 'person')) {
       return;
     }
-    person.inputMode = person.inputMode === 'select' ? 'input' : 'select';
+    const nextMode = person.inputMode === 'select' ? 'input' : 'select';
+    person.inputMode = nextMode;
+    if (nextMode === 'input') {
+      person.memberId = '';
+      person.memberIndex = -1;
+      person.clubZh = '';
+      person.clubEn = '';
+    }
     this.setAgenda(agenda);
   },
 

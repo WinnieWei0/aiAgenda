@@ -88,6 +88,7 @@ Page({
       return;
     }
     app.setCurrentAgenda(this.data.agenda);
-    wx.navigateTo({ url: '/pages/editor/editor' });
+    const id = this.data.agenda._id ? `?id=${this.data.agenda._id}` : '';
+    wx.navigateTo({ url: `/pages/editor/editor${id}` });
   }
 });

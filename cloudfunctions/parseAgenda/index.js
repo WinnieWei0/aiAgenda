@@ -49,7 +49,7 @@ function buildDraftPayload(agenda, openid, now) {
  */
 async function saveCurrentDraft(db, openid, agenda) {
   const now = new Date();
-  const collection = db.collection('agendas');
+  const collection = await common.ensureCollection('agendas');
   const existing = await collection.where({ ownerOpenid: openid }).get();
   const payload = buildDraftPayload(agenda, openid, now);
   const records = (existing.data || []).sort((left, right) => String(right.updatedAt || '').localeCompare(String(left.updatedAt || '')));

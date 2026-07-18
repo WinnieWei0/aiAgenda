@@ -4,13 +4,20 @@
  * 为什么添加：所有页面都会调用云函数，封装后可以保持错误处理一致。
  */
 async function callCloud(name, data) {
-  const res = await wx.cloud.callFunction({
-    name,
-    data: data || {}
-  });
+  let res;
+  try {
+    res = await wx.cloud.callFunction({
+      name,
+      data: data || {}
+    });
+  } catch (error) {
+    const code = error && (error.errCode || error.code) ? ` (${error.errCode || error.code})` : '';
+    const detail = error && (error.errMsg || error.message) ? `：${error.errMsg || error.message}` : '';
+    throw new Error(`${name} 云函数调用失败${code}${detail}`);
+  }
   if (!res.result || !res.result.ok) {
     const message = res.result && res.result.error ? res.result.error.message : '云函数调用失败';
-    throw new Error(message);
+    throw new Error(`${name}：${message}`);
   }
   return res.result.data;
 }

@@ -12,13 +12,14 @@ const CLOUD_DIR = path.join(ROOT, 'cloudfunctions');
  */
 function findCloudFunctionDirs() {
   const dirs = [];
+  const requested = new Set(process.argv.slice(2));
   const entries = fs.readdirSync(CLOUD_DIR, { withFileTypes: true });
   for (const entry of entries) {
     if (!entry.isDirectory()) {
       continue;
     }
     const dir = path.join(CLOUD_DIR, entry.name);
-    if (fs.existsSync(path.join(dir, 'package.json'))) {
+    if (fs.existsSync(path.join(dir, 'package.json')) && (!requested.size || requested.has(entry.name))) {
       dirs.push(dir);
     }
   }
@@ -39,6 +40,12 @@ function installInDir(dir) {
   });
   if (result.status !== 0) {
     throw new Error(`依赖安装失败：${dir}`);
+  }
+  if (path.basename(dir) !== 'common' && path.basename(dir) !== 'exportAgendaPdf') {
+    const obsoletePdfPackages = ['pdf-lib', '@pdf-lib', 'pako'];
+    for (const packageName of obsoletePdfPackages) {
+      fs.rmSync(path.join(dir, 'node_modules', packageName), { recursive: true, force: true });
+    }
   }
   refreshLocalDependencies(dir);
 }
@@ -62,7 +69,18 @@ function refreshLocalDependencies(dir) {
       throw new Error(`本地依赖不存在：${source}`);
     }
     fs.rmSync(target, { recursive: true, force: true });
-    fs.cpSync(source, target, { recursive: true, dereference: true });
+    const includePdfFiles = path.basename(dir) === 'exportAgendaPdf';
+    const entries = ['index.js', 'parser.js', 'deepseek.js', 'agenda-model.js', 'package.json'];
+    if (includePdfFiles) {
+      entries.push('pdf-renderer.js', 'fonts', 'assets');
+    }
+    fs.mkdirSync(target, { recursive: true });
+    for (const entry of entries) {
+      const entrySource = path.join(source, entry);
+      if (fs.existsSync(entrySource)) {
+        fs.cpSync(entrySource, path.join(target, entry), { recursive: true, dereference: true });
+      }
+    }
   }
 }
 

@@ -17,7 +17,7 @@
   </view>
 
   <block wx:for="{{agenda.sections}}" wx:for-item="section" wx:for-index="sectionIndex" wx:key="id">
-    <view wx:if="{{section.enabled !== false}}" class="panel agenda-section">
+    <view wx:if="{{section.enabled !== false && section.id !== 'evaluation' && section.id !== 'facilitatorReport' && section.id !== 'vote' && section.id !== 'specialSession'}}" class="panel agenda-section">
       <view class="section-heading">
         <view>
           <text class="section-time">{{section.startTime}}</text>
@@ -28,13 +28,13 @@
 
       <view wx:if="{{section.type === 'row'}}" class="agenda-row single-row">
         <label wx:if="{{section.row.canEditTitle}}" class="field"><text>流程</text><input value="{{section.row.titleZh}}" data-scope="section" data-section-index="{{sectionIndex}}" data-field="titleZh" bindinput="handleRowInput" /></label>
-        <label wx:if="{{section.row.showDuration}}" class="field compact"><text>限时</text><input type="number" disabled="{{!section.row.canEditDuration}}" value="{{section.row.duration}}" data-scope="section" data-section-index="{{sectionIndex}}" data-field="duration" bindinput="handleRowInput" /></label>
-        <template is="person-editor" wx:if="{{section.row.personMode === 'editable'}}" data="{{row: section.row, person: section.row.person, scope: 'section', sectionIndex: sectionIndex, personField: 'person', memberOptions: memberOptions}}" />
+        <label wx:if="{{section.row.showDuration && section.row.id !== 'preparation' && section.row.id !== 'signIn' && section.row.id !== 'venueIntroduction'}}" class="field compact"><text>限时</text><input type="number" disabled="{{!section.row.canEditDuration}}" value="{{section.row.duration}}" data-scope="section" data-section-index="{{sectionIndex}}" data-field="duration" bindinput="handleRowInput" /></label>
+         <template is="person-editor" wx:if="{{section.row.personMode === 'editable'}}" data="{{row: section.row, person: section.row.person, scope: 'section', sectionIndex: sectionIndex, personField: 'person', memberLabels: memberLabels, memberLoading: memberLoading, memberLoadError: memberLoadError}}" />
         <block wx:if="{{section.row.personMode === 'multiple'}}">
-          <template is="person-editor" wx:for="{{section.row.persons}}" wx:for-item="multiPerson" wx:for-index="personIndex" wx:key="personIndex" data="{{row: section.row, person: multiPerson, scope: 'section', sectionIndex: sectionIndex, personField: 'multi', personIndex: personIndex, memberOptions: memberOptions, label: personIndex === 0 ? '宾客SAA' : '会员SAA'}}" />
+           <template is="person-editor" wx:for="{{section.row.persons}}" wx:for-item="multiPerson" wx:for-index="personIndex" wx:key="personIndex" data="{{row: section.row, person: multiPerson, scope: 'section', sectionIndex: sectionIndex, personField: 'multi', personIndex: personIndex, memberLabels: memberLabels, memberLoading: memberLoading, memberLoadError: memberLoadError, label: personIndex === 0 ? '宾客SAA' : '会员SAA'}}" />
         </block>
         <view wx:if="{{section.row.personMode === 'fixed' && section.row.person.rawName}}" class="fixed-person">{{section.row.person.displayNameZh || section.row.person.rawName}} · {{section.row.person.clubZh}}</view>
-        <view wx:if="{{section.row.clubMode === 'fixed'}}" class="fixed-club">{{section.row.clubZh}}</view>
+        <view wx:if="{{section.row.clubMode === 'fixed' && section.row.id !== 'break'}}" class="fixed-club">{{section.row.clubZh}}</view>
       </view>
 
       <block wx:if="{{section.type === 'group'}}" wx:for="{{section.children}}" wx:for-item="row" wx:for-index="childIndex" wx:key="id">
@@ -43,14 +43,13 @@
           <label class="field"><text>演讲标题</text><input value="{{row.titleZh}}" data-scope="child" data-section-index="{{sectionIndex}}" data-child-index="{{childIndex}}" data-field="titleZh" bindinput="handleRowInput" /></label>
           <label class="field compact"><text>限时（分钟）</text><input type="number" value="{{row.duration}}" data-scope="child" data-section-index="{{sectionIndex}}" data-child-index="{{childIndex}}" data-field="duration" bindinput="handleRowInput" /></label>
           <label class="field"><text>Pathways 项目</text><picker range="{{pathwayOptions}}" range-key="label" value="{{row.pathwayIndex}}" data-scope="child" data-section-index="{{sectionIndex}}" data-child-index="{{childIndex}}" bindchange="choosePathway"><view class="picker-value">{{row.pathway.fullLabelZh || '选择项目'}}</view></picker></label>
-          <view wx:if="{{row.pathway.objectiveZh}}" class="objective">{{row.pathway.objectiveZh}}</view>
-          <template is="person-editor" data="{{row: row, person: row.speaker, scope: 'child', sectionIndex: sectionIndex, childIndex: childIndex, personField: 'speaker', memberOptions: memberOptions, label: '演讲者'}}" />
-          <template is="person-editor" data="{{row: row, person: row.evaluator, scope: 'child', sectionIndex: sectionIndex, childIndex: childIndex, personField: 'evaluator', memberOptions: memberOptions, label: '点评者'}}" />
+           <template is="person-editor" data="{{row: row, person: row.speaker, scope: 'child', sectionIndex: sectionIndex, childIndex: childIndex, personField: 'speaker', memberLabels: memberLabels, memberLoading: memberLoading, memberLoadError: memberLoadError, label: '演讲者'}}" />
+           <template is="person-editor" data="{{row: row, person: row.evaluator, scope: 'child', sectionIndex: sectionIndex, childIndex: childIndex, personField: 'evaluator', memberLabels: memberLabels, memberLoading: memberLoading, memberLoadError: memberLoadError, label: '点评者'}}" />
           <view class="sort-actions"><button size="mini" data-child-index="{{childIndex}}" data-direction="-1" bindtap="movePreparedBlock">上移</button><button size="mini" data-child-index="{{childIndex}}" data-direction="1" bindtap="movePreparedBlock">下移</button></view>
         </view>
-        <view wx:else hidden="{{row.id === 'guestIntroduction' || row.id === 'topicNote' || row.id === 'topicSummary' || row.id === 'tableTopicsIcebreaker'}}" class="agenda-row {{row.type === 'note' ? 'note-row' : ''}}">
+        <view wx:else hidden="{{row.id === 'guestIntroduction' || row.id === 'topicNote' || row.id === 'topicSummary' || row.id === 'tableTopicsIcebreaker' || row.id === 'feedback' || row.id === 'award'}}" class="agenda-row {{row.type === 'note' ? 'note-row' : ''}}">
           <view class="row-main"><input disabled="{{!row.canEditTitle}}" value="{{row.displayTitle || row.titleZh}}" data-scope="child" data-section-index="{{sectionIndex}}" data-child-index="{{childIndex}}" data-field="titleZh" bindinput="handleRowInput" /><input wx:if="{{row.showDuration}}" class="duration-input" type="number" disabled="{{!row.canEditDuration}}" value="{{row.duration}}" data-scope="child" data-section-index="{{sectionIndex}}" data-child-index="{{childIndex}}" data-field="duration" bindinput="handleRowInput" /><text wx:if="{{row.showDuration}}">分钟</text></view>
-          <template is="person-editor" wx:if="{{row.personMode === 'editable' && row.id !== 'tableTopicsSpeech'}}" data="{{row: row, person: row.person, scope: 'child', sectionIndex: sectionIndex, childIndex: childIndex, personField: 'person', memberOptions: memberOptions, label: row.id === 'topicExplanation' ? '即兴主持人' : (row.id === 'tableTopicsEvaluation' ? '即兴点评' : '演讲者')}}" />
+           <template is="person-editor" wx:if="{{(row.personMode === 'editable' && row.id !== 'tableTopicsSpeech') || row.id === 'openingIcebreaker'}}" data="{{row: row, person: row.person, scope: 'child', sectionIndex: sectionIndex, childIndex: childIndex, personField: 'person', memberLabels: memberLabels, memberLoading: memberLoading, memberLoadError: memberLoadError, label: row.id === 'topicExplanation' ? '即兴主持人' : (row.id === 'tableTopicsEvaluation' ? '即兴点评' : '演讲者')}}" />
           <view wx:if="{{row.personMode === 'fixed' && row.id !== 'openingIcebreaker'}}" class="fixed-person">{{row.person.displayNameZh || row.person.rawName}} · {{row.person.clubZh}}</view>
           <view wx:if="{{row.personMode === 'derived'}}" class="derived-person">{{row.person.displayNameZh || row.person.rawName || '待选择点评者'}} · {{row.person.clubZh}}</view>
         </view>
@@ -67,10 +66,13 @@
   <view class="person-editor">
     <view class="person-line">
       <text class="person-label">{{label || '演讲者'}}</text>
-      <picker wx:if="{{person.inputMode === 'select'}}" class="person-control" disabled="{{!row.canEditPerson}}" range="{{memberLabels}}" value="{{person.memberIndex}}" data-scope="{{scope}}" data-section-index="{{sectionIndex}}" data-child-index="{{childIndex}}" data-person-field="{{personField}}" data-person-index="{{personIndex}}" bindchange="chooseMember"><view class="picker-value">{{person.displayNameZh || person.rawName || '选择会员'}}</view></picker>
+      <picker wx:if="{{person.inputMode === 'select'}}" class="person-control" disabled="{{!row.canEditPerson || memberLoading || memberLoadError || !memberLabels.length}}" range="{{memberLabels}}" value="{{person.memberIndex}}" data-scope="{{scope}}" data-section-index="{{sectionIndex}}" data-child-index="{{childIndex}}" data-person-field="{{personField}}" data-person-index="{{personIndex}}" bindchange="chooseMember"><view class="picker-value">{{person.displayNameZh || person.rawName || '选择会员'}}</view></picker>
       <input wx:else class="person-control" disabled="{{!row.canEditPerson}}" value="{{person.rawName}}" placeholder="输入姓名" data-scope="{{scope}}" data-section-index="{{sectionIndex}}" data-child-index="{{childIndex}}" data-person-field="{{personField}}" data-person-index="{{personIndex}}" data-field="rawName" bindinput="handlePersonInput" />
       <button wx:if="{{row.id !== 'openingIcebreaker'}}" class="switch-button" size="mini" disabled="{{!row.canEditPerson}}" data-scope="{{scope}}" data-section-index="{{sectionIndex}}" data-child-index="{{childIndex}}" data-person-field="{{personField}}" data-person-index="{{personIndex}}" bindtap="togglePersonMode">{{person.inputMode === 'select' ? '输入' : '选择'}}</button>
     </view>
-    <view class="club-line"><text class="club-label">俱乐部</text><input class="club-input" disabled="{{person.memberId || !row.canEditClub}}" value="{{person.clubZh}}" placeholder="俱乐部" data-scope="{{scope}}" data-section-index="{{sectionIndex}}" data-child-index="{{childIndex}}" data-person-field="{{personField}}" data-person-index="{{personIndex}}" data-field="clubZh" bindinput="handlePersonInput" /></view>
+    <text wx:if="{{person.inputMode === 'select' && memberLoading}}" class="member-status">会员列表加载中...</text>
+    <text wx:if="{{person.inputMode === 'select' && memberLoadError}}" class="member-status error">会员列表加载失败，请稍后重试</text>
+    <text wx:if="{{person.inputMode === 'select' && !memberLoading && !memberLoadError && !memberLabels.length}}" class="member-status">暂无可选会员</text>
+    <view wx:if="{{row.id !== 'openingIcebreaker'}}" class="club-line"><text class="club-label">俱乐部</text><input class="club-input" disabled="{{person.memberId || !row.canEditClub}}" value="{{person.clubZh}}" placeholder="俱乐部" data-scope="{{scope}}" data-section-index="{{sectionIndex}}" data-child-index="{{childIndex}}" data-person-field="{{personField}}" data-person-index="{{personIndex}}" data-field="clubZh" bindinput="handlePersonInput" /></view>
   </view>
 </template>

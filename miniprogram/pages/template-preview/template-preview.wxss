@@ -18,6 +18,7 @@
 .table-row { display: grid; grid-template-columns: 72rpx minmax(0,1fr) 74rpx 180rpx 120rpx; min-height: 26rpx; border-bottom: 1rpx solid #111827; font-family: serif; font-size: 17rpx; }
 .table-row > text, .title-cell { padding: 3rpx 5rpx; border-right: 1rpx solid #111827; }
 .table-head { min-height: 30rpx; background: #9bdcf6; font-weight: 700; text-align: center; }
+.facilitator-head { grid-column: 1 / 3; }
 .group-row { font-weight: 700; }
 .note-row { background: #d1d5db; font-style: italic; }
 .project-line, .objective-line { display: block; margin-top: 4rpx; font-size: 14rpx; font-weight: 400; }

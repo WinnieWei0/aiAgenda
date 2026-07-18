@@ -1,5 +1,5 @@
 <view class="preview-page" wx:if="{{!loading && agenda && template}}">
-  <scroll-view class="paper-scroll" scroll-x="true">
+  <scroll-view class="paper-scroll" scroll-x="true" enhanced="true" show-scrollbar="false">
     <view class="paper page-one">
       <view class="brand-header">
         <view class="brand-title">{{template.fixedContent.clubTitle}}</view>
@@ -18,7 +18,7 @@
 
       <view class="page-one-body">
         <view class="agenda-table">
-          <view class="table-row table-head"><text class="time-cell">会议促进者</text><text class="title-cell"></text><text class="duration-cell">限时</text><text class="person-cell">演讲者</text><text class="club-cell">俱乐部</text></view>
+          <view class="table-row table-head"><text class="facilitator-head">会议促进者</text><text class="duration-cell">限时</text><text class="person-cell">演讲者</text><text class="club-cell">俱乐部</text></view>
           <view wx:for="{{rows}}" wx:for-item="row" wx:key="id" class="table-row {{row.isGroup ? 'group-row' : ''}} {{row.type === 'note' ? 'note-row' : ''}}">
             <text class="time-cell">{{row.startTime}}</text>
             <view class="title-cell">
@@ -27,8 +27,8 @@
               <text wx:if="{{row.type === 'preparedSpeechBlock' && row.pathway.objectiveZh}}" class="objective-line">{{row.pathway.objectiveZh}}</text>
             </view>
             <text class="duration-cell">{{row.durationDisplay}}</text>
-            <text class="person-cell">{{row.personDisplay}}</text>
-            <text class="club-cell">{{row.clubDisplay}}</text>
+            <text class="person-cell">{{row.personDisplay || ''}}</text>
+            <text class="club-cell">{{row.clubDisplay || ''}}</text>
           </view>
         </view>
         <view class="sidebar">

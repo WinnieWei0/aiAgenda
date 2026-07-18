@@ -20,11 +20,25 @@ async function searchMembers(keyword) {
   const query = keyword
     ? collection.where({ searchText: db.RegExp({ regexp: escapeSearchKeyword(keyword), options: 'i' }) })
     : collection;
-  const res = await query
-    .orderBy('joinedAt', 'asc')
-    .limit(keyword ? 8 : 100)
-    .get();
-  return res.data || [];
+  const res = await query.limit(keyword ? 8 : 100).get();
+  return sortMembers(res.data || []);
+}
+
+/**
+ * 方法是什么：稳定排序会员候选。
+ * 方法作用：在不依赖 CloudBase 排序索引的情况下保持选择列表顺序稳定。
+ * 为什么添加：部分会员记录的 joinedAt 为空或类型不一致，直接 orderBy 会导致查询失败。
+ */
+function sortMembers(list) {
+  return (list || []).slice().sort((left, right) => {
+    const leftName = String(left.nameZh || left.nameEn || left.nickName || '').toLowerCase();
+    const rightName = String(right.nameZh || right.nameEn || right.nickName || '').toLowerCase();
+    const nameCompare = leftName.localeCompare(rightName, 'zh-CN');
+    if (nameCompare !== 0) {
+      return nameCompare;
+    }
+    return String(left._id || '').localeCompare(String(right._id || ''));
+  });
 }
 
 /**
@@ -63,4 +77,5 @@ async function main(event) {
   }
 }
 
+module.exports = { escapeSearchKeyword, sortMembers, searchMembers, searchPathways, main };
 exports.main = main;

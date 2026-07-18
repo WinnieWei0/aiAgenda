@@ -7,6 +7,9 @@ const membershipImporter = require('../scripts/import-membership');
 const pathwayImporter = require('../scripts/import-pathways');
 const agendaUtil = require('../miniprogram/utils/agenda');
 const agendaQuery = require('../cloudfunctions/agendaQuery');
+const common = require('../cloudfunctions/common');
+const lookupOptions = require('../cloudfunctions/lookupOptions');
+const saveAgenda = require('../cloudfunctions/saveAgenda');
 const { PDFDocument } = require('../cloudfunctions/common/node_modules/pdf-lib');
 
 let memberships = [];
@@ -249,6 +252,40 @@ function testDraftExpiry() {
 }
 
 /**
+ * 方法是什么：测试集合不存在错误识别。
+ * 方法作用：覆盖 CloudBase 数字错误码和文本错误两种返回形式。
+ * 为什么添加：新环境必须自动创建 agenda_templates 和 agendas，而不是首次读取直接失败。
+ */
+function testCollectionMissingError() {
+  assert.strictEqual(common.isCollectionMissingError({ errCode: -502005 }), true);
+  assert.strictEqual(common.isCollectionMissingError({ message: 'database collection not exists' }), true);
+  assert.strictEqual(common.isCollectionMissingError({ errCode: -502003 }), false);
+}
+
+/**
+ * 方法是什么：测试会员选择候选排序和议程保存载荷。
+ * 方法作用：覆盖会员 picker 的稳定顺序以及 JSON 草稿的规范化存储形状。
+ * 为什么添加：会员查询不能依赖数据库排序索引，保存结果也必须保持完整 AgendaV2。
+ */
+function testMemberOptionsAndAgendaPayload() {
+  const sorted = lookupOptions.sortMembers([
+    { _id: '2', nameZh: '周沫' },
+    { _id: '1', nameZh: '马威' },
+    { _id: '3', nameEn: 'Brittany Cai' }
+  ]);
+  assert.deepStrictEqual(sorted.map((member) => member._id), ['1', '2', '3']);
+
+  const agenda = agendaUtil.createAgendaFromFacts({ meetingInfo: { theme: '保存测试' } }, agendaUtil.createDefaultTemplate());
+  agenda._id = 'temporary-id';
+  agenda.expiresAt = '2026-07-25T00:00:00.000Z';
+  const payload = saveAgenda.buildAgendaPayload(agenda, agendaUtil.createDefaultTemplate());
+  assert.strictEqual(payload.schemaVersion, 2);
+  assert.strictEqual(payload.meetingInfo.theme, '保存测试');
+  assert.strictEqual(Object.prototype.hasOwnProperty.call(payload, '_id'), false);
+  assert.strictEqual(Object.prototype.hasOwnProperty.call(payload, 'expiresAt'), false);
+}
+
+/**
  * 方法是什么：测试 PDF 生成能力。
  * 方法作用：用规则解析出的议程生成中文 PDF，并确认返回内容是 PDF 文件。
  * 为什么添加：导出 PDF 是核心交付物，测试可以提前发现字体、依赖或渲染器异常。
@@ -295,6 +332,8 @@ async function main() {
   testPreparedSpeechRules();
   testTemplateAndLegacyUpgrade();
   testDraftExpiry();
+  testCollectionMissingError();
+  testMemberOptionsAndAgendaPayload();
   await testPdfRenderer(agenda);
   await testPdfOverflow();
   console.log('核心测试通过。');

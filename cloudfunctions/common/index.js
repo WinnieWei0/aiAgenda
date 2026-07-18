@@ -1,10 +1,10 @@
 const cloud = require('wx-server-sdk');
 const parser = require('./parser');
 const deepseek = require('./deepseek');
-const pdfRenderer = require('./pdf-renderer');
 const agendaModel = require('./agenda-model');
 
 let cloudInitialized = false;
+const ensuredCollections = new Set();
 
 /**
  * 方法是什么：初始化 CloudBase 云能力。
@@ -26,6 +26,46 @@ function initCloud() {
  */
 function getDb() {
   return initCloud().database();
+}
+
+/**
+ * 方法是什么：判断数据库错误是否表示集合不存在。
+ * 方法作用：兼容 CloudBase SDK 的数字错误码和文本错误信息。
+ * 为什么添加：新环境首次读取集合时会抛出 -502005，不能直接进入后续初始化逻辑。
+ */
+function isCollectionMissingError(error) {
+  const code = Number(error && (error.errCode || error.code));
+  const message = String(error && (error.errMsg || error.message) || '').toLowerCase();
+  return code === -502005 || message.includes('collection not exist') || message.includes('collection_not_exist');
+}
+
+/**
+ * 方法是什么：确保云数据库集合存在。
+ * 方法作用：首次运行时自动创建缺失集合，并在当前云函数实例中缓存检查结果。
+ * 为什么添加：CloudBase 对不存在集合执行查询会直接失败，无法依靠首次 add 自动完成初始化。
+ */
+async function ensureCollection(collectionName) {
+  if (ensuredCollections.has(collectionName)) {
+    return getDb().collection(collectionName);
+  }
+  const db = getDb();
+  try {
+    await db.collection(collectionName).limit(1).get();
+  } catch (error) {
+    if (!isCollectionMissingError(error)) {
+      throw error;
+    }
+    try {
+      await db.createCollection(collectionName);
+    } catch (createError) {
+      const message = String(createError && (createError.errMsg || createError.message) || '').toLowerCase();
+      if (!message.includes('already exist') && !message.includes('collection exists')) {
+        throw createError;
+      }
+    }
+  }
+  ensuredCollections.add(collectionName);
+  return db.collection(collectionName);
 }
 
 /**
@@ -207,7 +247,7 @@ async function ensureDefaultRoles() {
  */
 async function getAgendaTemplate() {
   const db = getDb();
-  const collection = db.collection('agenda_templates');
+  const collection = await ensureCollection('agenda_templates');
   const templateId = agendaModel.TEMPLATE_ID;
   const result = await collection.where({ templateId }).limit(1).get();
   if (result.data && result.data.length) {
@@ -240,7 +280,7 @@ async function saveAgendaTemplate(value) {
     updatedAt: nowIso()
   });
   delete template._id;
-  const collection = db.collection('agenda_templates');
+  const collection = await ensureCollection('agenda_templates');
   const existing = await collection.where({ templateId: agendaModel.TEMPLATE_ID }).limit(1).get();
   if (existing.data && existing.data.length) {
     await collection.doc(existing.data[0]._id).update({ data: template });
@@ -261,14 +301,15 @@ function handleError(error) {
   return fail(code, message);
 }
 
-module.exports = {
+const commonExports = {
   cloud,
   parser,
   deepseek,
-  pdfRenderer,
   agendaModel,
   initCloud,
   getDb,
+  isCollectionMissingError,
+  ensureCollection,
   getOpenid,
   ok,
   fail,
@@ -285,3 +326,17 @@ module.exports = {
   saveAgendaTemplate,
   handleError
 };
+
+Object.defineProperty(commonExports, 'pdfRenderer', {
+  enumerable: true,
+  /**
+   * 方法是什么：按需读取 PDF 渲染模块。
+   * 方法作用：只在导出云函数实际访问时加载 PDF 引擎。
+   * 为什么添加：普通查询和保存云函数不应携带或初始化大型 PDF 依赖。
+   */
+  get() {
+    return require('./pdf-renderer');
+  }
+});
+
+module.exports = commonExports;

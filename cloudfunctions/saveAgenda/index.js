@@ -48,7 +48,7 @@ async function main(event) {
       return common.fail('EMPTY_AGENDA', '缺少议程数据');
     }
     const db = common.getDb();
-    const collection = db.collection('agendas');
+    const collection = await common.ensureCollection('agendas');
     const existingResult = await collection.where({ ownerOpenid: openid }).get();
     const existingRecords = (existingResult.data || []).sort((left, right) => String(right.updatedAt || '').localeCompare(String(left.updatedAt || '')));
     const existing = existingRecords.length ? existingRecords[0] : null;

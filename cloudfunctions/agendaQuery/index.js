@@ -29,8 +29,7 @@ function hydrateRecord(record) {
  * 为什么添加：系统只保留每个用户一份当前议程。
  */
 async function getCurrentDraft(openid) {
-  const db = common.getDb();
-  const collection = db.collection('agendas');
+  const collection = await common.ensureCollection('agendas');
   const result = await collection.where({ ownerOpenid: openid }).get();
   const records = (result.data || []).sort((left, right) => String(right.updatedAt || '').localeCompare(String(left.updatedAt || '')));
   const record = records.length ? records[0] : null;
@@ -53,8 +52,8 @@ async function getCurrentDraft(openid) {
  * 为什么添加：编辑和导出入口都需要服务端权限控制。
  */
 async function getAgenda(openid, agendaId) {
-  const db = common.getDb();
-  const result = await db.collection('agendas').doc(agendaId).get();
+  const collection = await common.ensureCollection('agendas');
+  const result = await collection.doc(agendaId).get();
   const record = result.data;
   if (!record || isExpired(record, new Date())) {
     const notFound = new Error('议程不存在或已过期');
@@ -75,8 +74,8 @@ async function getAgenda(openid, agendaId) {
  * 为什么添加：移除历史页面后仍避免旧客户端调用失败。
  */
 async function listAgendas(openid) {
-  const db = common.getDb();
-  const result = await db.collection('agendas').where({ ownerOpenid: openid }).limit(20).get();
+  const collection = await common.ensureCollection('agendas');
+  const result = await collection.where({ ownerOpenid: openid }).limit(20).get();
   const list = [];
   for (const record of result.data || []) {
     if (!isExpired(record, new Date())) {
