@@ -30,7 +30,8 @@
 .person-line { display: grid; grid-template-columns: 100rpx minmax(0, 1fr) 112rpx; gap: 10rpx; align-items: center; }
 .person-label { color: #64748b; font-size: 24rpx; }
 .person-control, .club-input { box-sizing: border-box; width: 100%; min-width: 0; height: 64rpx; padding: 0 12rpx; border: 1rpx solid #cbd5e1; }
-.person-control .picker-value { min-height: 64rpx; padding: 12rpx; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.member-picker { height: 64rpx; padding: 0; border: 0; }
+.person-control .picker-value { box-sizing: border-box; min-height: 64rpx; padding: 12rpx; border: 1rpx solid #cbd5e1; background: #ffffff; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .switch-button { width: 112rpx; margin: 0; }
 .club-line { display: grid; grid-template-columns: 100rpx minmax(0, 1fr); gap: 10rpx; align-items: center; margin-top: 10rpx; }
 .club-label { color: #64748b; font-size: 24rpx; }
