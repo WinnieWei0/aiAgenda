@@ -28,11 +28,16 @@ async function callCloud(name, data) {
  * 为什么添加：用户操作失败时需要得到明确反馈，而不是只在控制台报错。
  */
 function showError(error) {
+  const rawMessage = error && error.message ? error.message : '操作失败';
+  const isDeploymentError = /-504002|FUNCTIONS_EXECUTE_FAIL|SyntaxError: Invalid or unexpected token/i.test(rawMessage);
   wx.showToast({
-    title: error && error.message ? error.message : '操作失败',
+    title: isDeploymentError ? '云函数部署异常，请重新部署' : rawMessage,
     icon: 'none',
     duration: 2600
   });
+  if (typeof console !== 'undefined' && console.error) {
+    console.error(error);
+  }
 }
 
 /**

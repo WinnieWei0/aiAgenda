@@ -431,12 +431,14 @@ Page({
    * 方法作用：提交服务端规范化结果并保持原七天过期时间。
    * 为什么添加：预览和 PDF 必须使用数据库中的最新议程。
    */
-  async saveAgenda() {
+  async saveAgenda(options) {
     this.setData({ saving: true });
     try {
       const data = await cloud.callCloud('saveAgenda', { agenda: this.data.agenda });
       this.setAgenda(data.agenda);
-      cloud.showSuccess('已保存');
+      if (!(options && options.silent)) {
+        cloud.showSuccess('已保存');
+      }
       return data.agenda;
     } catch (error) {
       cloud.showError(error);
@@ -452,7 +454,10 @@ Page({
    * 为什么添加：新的编辑流程要求在导出前先确认完整两页版式。
    */
   async goPreview() {
-    const agenda = await this.saveAgenda();
+    if (this.data.saving) {
+      return;
+    }
+    const agenda = await this.saveAgenda({ silent: true });
     if (agenda && agenda._id) {
       wx.navigateTo({ url: `/pages/template-preview/template-preview?id=${agenda._id}` });
     }

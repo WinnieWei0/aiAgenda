@@ -91,6 +91,9 @@ Page({
    * 为什么添加：导出动作迁移到模板预览页后可以避免未经确认直接生成。
    */
   async exportPdf() {
+    if (this.data.exporting) {
+      return;
+    }
     if (!this.data.agendaId) {
       wx.showToast({ title: '请先保存议程', icon: 'none' });
       return;

@@ -62,6 +62,6 @@
       <view class="resources">{{template.page2.resources}}</view>
     </view>
   </scroll-view>
-  <view class="export-bar"><button type="primary" loading="{{exporting}}" bindtap="exportPdf">导出 PDF</button></view>
+  <view class="export-bar"><button type="primary" disabled="{{exporting}}" bindtap="exportPdf">{{exporting ? '正在生成 PDF...' : '导出 PDF'}}</button></view>
 </view>
 <view wx:if="{{loading}}" class="loading">正在生成模板预览...</view>
