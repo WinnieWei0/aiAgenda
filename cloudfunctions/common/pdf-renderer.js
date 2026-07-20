@@ -273,8 +273,14 @@ function drawAgendaHeader(page, font, y, language) {
   const labels = language === 'en' ? ['Time', 'Agenda', 'Limit', 'Speaker', 'Club'] : ['时间', '会议促进者', '限时', '演讲者', '俱乐部'];
   let cursor = x;
   labels.forEach((label, index) => {
-    drawCell(page, font, cursor, y, widths[index], 11, label, { fill: '#9bdcf6', align: 'center', fontSize: 6.2 });
+    drawCell(page, font, cursor, y, widths[index], 11, label, { fill: '#9bdcf6', align: 'center', fontSize: 6.2, border: false });
     cursor += widths[index];
+  });
+  page.drawLine({
+    start: { x, y: topY(y + 11, 0) },
+    end: { x: x + widths.reduce((total, width) => total + width, 0), y: topY(y + 11, 0) },
+    thickness: 0.55,
+    color: BORDER
   });
   return { x, widths, height: 11 };
 }
@@ -294,10 +300,20 @@ function drawAgendaRow(page, font, row, table, y, language) {
     title = [title, language === 'en' ? pathway.fullLabelEn || pathway.fullLabelZh : pathway.fullLabelZh, language === 'en' ? pathway.objectiveEn || pathway.objectiveZh : pathway.objectiveZh].filter(Boolean).join('\n');
   }
   const values = [row.startTime || '', title, duration, getRowPersonName(row, language), getRowClub(row, language)];
+  if (row.pdfSectionStart) {
+    const tableWidth = table.widths.reduce((total, width) => total + width, 0);
+    page.drawLine({
+      start: { x: table.x, y: topY(y, 0) },
+      end: { x: table.x + tableWidth, y: topY(y, 0) },
+      thickness: 0.55,
+      color: BORDER
+    });
+  }
   let cursor = table.x;
   values.forEach((value, index) => {
     drawCell(page, font, cursor, y, table.widths[index], height, value, {
       fill,
+      border: false,
       fontSize: row.type === 'preparedSpeechBlock' && index === 1 ? 5.4 : 5.8,
       lineHeight: 6.4,
       align: index === 2 ? 'right' : 'left'
@@ -370,7 +386,10 @@ function drawTimerRules(page, font, template, language) {
  */
 function drawAgendaPages(pdfDoc, font, template, agenda, images) {
   const language = agendaModel.normalizeLanguage(agenda.meetingInfo && agenda.meetingInfo.language);
-  const rows = agendaModel.flattenAgendaRows(agenda);
+  const sectionStartIds = new Set((agenda.sections || []).map((section) => section.type === 'row' && section.row ? section.row.id : section.id));
+  const rows = agendaModel.flattenAgendaRows(agenda).map((row) => Object.assign({}, row, {
+    pdfSectionStart: sectionStartIds.has(row.id)
+  }));
   const firstPage = pdfDoc.addPage([PAGE.width, PAGE.height]);
   drawFirstPageHeader(firstPage, font, template, agenda, images, language);
   let page = firstPage;

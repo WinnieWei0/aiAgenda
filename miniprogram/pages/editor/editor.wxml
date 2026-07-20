@@ -2,7 +2,7 @@
   <view class="panel basic-info-panel">
     <view class="panel-title">基础信息</view>
     <view class="basic-info-grid">
-      <label class="field"><text>No.（第几期）</text><input value="{{agenda.meetingInfo.meetingNo}}" data-field="meetingNo" bindinput="handleBasicInfoInput" /></label>
+      <label class="field"><text>No.</text><input value="{{agenda.meetingInfo.meetingNo}}" data-field="meetingNo" bindinput="handleBasicInfoInput" /></label>
       <label class="field"><text>日期</text><input disabled value="{{agenda.meetingInfo.date}}" placeholder="从接龙信息读取" /></label>
       <label class="field"><text>语言</text><input disabled value="{{agenda.meetingInfo.language === 'en' ? 'English' : '中文'}}" /></label>
       <label class="field"><text>主题</text><input value="{{agenda.meetingInfo.theme}}" placeholder="请输入本期会议主题" data-field="theme" bindinput="handleBasicInfoInput" /></label>
@@ -78,6 +78,17 @@
 
   <view class="panel qr-panel"><text class="panel-title">例会群二维码</text><button size="mini" bindtap="chooseMeetingGroupQr">替换图片</button></view>
   <view class="bottom-actions"><button loading="{{saving}}" bindtap="saveAgenda">保存草稿</button><button class="preview-button" loading="{{saving}}" bindtap="goPreview">预览并导出</button></view>
+
+  <view wx:if="{{validationDialogVisible}}" class="validation-mask">
+    <view class="validation-dialog">
+      <text class="validation-title">请完善议程表单</text>
+      <scroll-view scroll-y class="validation-list">
+        <text wx:for="{{validationErrors}}" wx:key="*this" class="validation-error">{{item}}</text>
+        <text wx:if="{{validationRemaining > 0}}" class="validation-error validation-more">另有{{validationRemaining}}项未填写</text>
+      </scroll-view>
+      <button class="validation-confirm" bindtap="dismissValidationDialog">返回填写</button>
+    </view>
+  </view>
 </view>
 
 <template name="person-editor">

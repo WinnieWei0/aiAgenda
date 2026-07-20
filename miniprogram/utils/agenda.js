@@ -795,6 +795,105 @@ function flattenAgendaRows(agendaValue) {
   return rows;
 }
 
+/**
+ * 方法是什么：校验议程是否满足预览和导出条件。
+ * 方法作用：检查编辑页可见的基础信息、流程字段、人员、俱乐部和备稿项目并返回缺项列表。
+ * 为什么添加：保存草稿可以保留半成品，但预览和导出的表单必须每一项都有有效值。
+ */
+function validateAgendaForPreview(agendaValue) {
+  const agenda = agendaValue || {};
+  const meetingInfo = agenda.meetingInfo || {};
+  const language = normalizeLanguage(meetingInfo.language);
+  const errors = [];
+  const hiddenSectionIds = new Set(['evaluation', 'facilitatorReport', 'vote', 'specialSession']);
+  const hiddenRowIds = new Set(['guestIntroduction', 'topicNote', 'topicSummary', 'tableTopicsIcebreaker', 'feedback', 'award']);
+  const anchorRowIds = new Set(['preparation', 'signIn', 'venueIntroduction']);
+  const hasText = (value) => String(value === undefined || value === null ? '' : value).trim().length > 0;
+  const localizedText = (value, zhField, enField) => language === 'en'
+    ? value && (value[enField] || value[zhField])
+    : value && value[zhField];
+  const addTextError = (label, value) => {
+    if (!hasText(value)) {
+      errors.push(`${label}不能为空`);
+    }
+  };
+  const addDurationError = (label, value) => {
+    if (!Number.isFinite(Number(value)) || Number(value) <= 0) {
+      errors.push(`${label}的限时必须大于0`);
+    }
+  };
+  const validatePerson = (personValue, label, requireClub) => {
+    const person = personValue || {};
+    const name = language === 'en'
+      ? person.displayNameEn || person.rawName
+      : person.displayNameZh || person.rawName;
+    const club = language === 'en' ? person.clubEn : person.clubZh;
+    addTextError(`${label}姓名`, name);
+    if (requireClub) {
+      addTextError(`${label}俱乐部`, club);
+    }
+  };
+  const validatePreparedBlock = (row, label) => {
+    addTextError(`${label}标题`, localizedText(row, 'titleZh', 'titleEn'));
+    addDurationError(label, row.duration);
+    const pathway = row.pathway || {};
+    addTextError(`${label} Pathways项目`, localizedText(pathway, 'fullLabelZh', 'fullLabelEn') || pathway.code);
+    validatePerson(row.speaker, `${label}演讲者`, true);
+    validatePerson(row.evaluator, `${label}点评者`, true);
+  };
+  const validateRow = (row, label, isSectionRow) => {
+    if (!row || hiddenRowIds.has(row.id)) {
+      return;
+    }
+    if (row.type === 'preparedSpeechBlock') {
+      validatePreparedBlock(row, label);
+      return;
+    }
+    addTextError(`${label}标题`, localizedText(row, 'titleZh', 'titleEn'));
+    const durationVisible = row.showDuration && (!isSectionRow || !anchorRowIds.has(row.id));
+    if (durationVisible) {
+      addDurationError(label, row.duration);
+    }
+    if (row.personMode === 'multiple') {
+      (row.persons || []).forEach((person, index) => {
+        if (row.id !== 'signIn' || index !== 0) {
+          validatePerson(person, `${label}人员${index + 1}`, true);
+        }
+      });
+      return;
+    }
+    const personVisible = row.personMode === 'editable' && row.id !== 'tableTopicsSpeech' || row.id === 'openingIcebreaker';
+    if (personVisible) {
+      validatePerson(row.person, label, row.id !== 'openingIcebreaker');
+    }
+  };
+
+  addTextError('会议期数', meetingInfo.meetingNo);
+  addTextError('会议日期', meetingInfo.date);
+  addTextError('会议主题', meetingInfo.theme);
+
+  (agenda.sections || []).forEach((section, sectionIndex) => {
+    if (!section || section.enabled === false || section.languageGate && section.languageGate !== language || hiddenSectionIds.has(section.id)) {
+      return;
+    }
+    const sectionLabel = localizedText(section, 'titleZh', 'titleEn')
+      || localizedText(section.row, 'titleZh', 'titleEn')
+      || `流程${sectionIndex + 1}`;
+    if (section.type === 'row') {
+      validateRow(section.row, sectionLabel, true);
+      return;
+    }
+    if (section.type === 'group') {
+      addTextError(`${sectionLabel}模块标题`, localizedText(section, 'titleZh', 'titleEn'));
+      (section.children || []).forEach((row, rowIndex) => {
+        const rowLabel = localizedText(row, 'titleZh', 'titleEn') || `${sectionLabel}第${rowIndex + 1}项`;
+        validateRow(row, rowLabel, false);
+      });
+    }
+  });
+  return errors;
+}
+
 module.exports = {
   TEMPLATE_ID,
   AGENDA_SCHEMA_VERSION,
@@ -820,5 +919,6 @@ module.exports = {
   applyTemplateRules,
   moveItem,
   flattenAgendaRows,
+  validateAgendaForPreview,
   DYNAMIC_MODULES
 };

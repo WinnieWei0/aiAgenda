@@ -70,4 +70,12 @@
 .bottom-actions { position: fixed; right: 0; bottom: 0; left: 0; z-index: 10; display: grid; grid-template-columns: 1fr 1fr; gap: 16rpx; padding: 18rpx 24rpx calc(18rpx + env(safe-area-inset-bottom)); border-top: 1rpx solid #d7dde5; background: #ffffff; }
 .bottom-actions button { width: 100%; margin: 0; }
 .preview-button { color: #ffffff; background: #0f766e; }
+.validation-mask { position: fixed; top: 0; right: 0; bottom: 0; left: 0; z-index: 100; display: flex; align-items: center; justify-content: center; padding: 28rpx; background: rgba(0, 0, 0, 0.55); }
+.validation-dialog { box-sizing: border-box; width: 100%; max-width: 680rpx; overflow: hidden; border-radius: 8rpx; background: #ffffff; }
+.validation-title { display: block; padding: 34rpx 32rpx 22rpx; color: #111827; font-size: 34rpx; font-weight: 700; text-align: center; }
+.validation-list { box-sizing: border-box; max-height: 480rpx; padding: 6rpx 40rpx 28rpx; }
+.validation-error { display: block; margin-top: 12rpx; color: #64748b; font-size: 28rpx; line-height: 1.5; word-break: break-all; }
+.validation-more { color: #9a3412; }
+.validation-confirm { width: 100%; margin: 0; border-top: 1rpx solid #e2e8f0; border-radius: 0; color: #49678f; background: #ffffff; font-weight: 700; }
+.validation-confirm::after { border: 0; }
 @media (max-width: 360px) { .field-grid { grid-template-columns: 1fr; } .field.full { grid-column: auto; } .person-line { grid-template-columns: 84rpx minmax(0, 1fr) 96rpx; } .club-line { grid-template-columns: 84rpx minmax(0, 1fr); } }

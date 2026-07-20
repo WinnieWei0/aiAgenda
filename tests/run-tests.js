@@ -206,6 +206,45 @@ function testPreparedSpeechRules() {
 }
 
 /**
+ * 方法是什么：测试预览导出前的完整表单校验。
+ * 方法作用：验证会议基础信息、流程人员、俱乐部和备稿项目缺失时均会阻止提交。
+ * 为什么添加：草稿允许不完整，但进入预览前必须确保所有可见表单项都有值。
+ */
+function testAgendaPreviewValidation() {
+  const template = agendaUtil.createDefaultTemplate();
+  const agenda = agendaUtil.createAgendaFromFacts({
+    meetingInfo: { meetingNo: '800', date: '2026-07-20', theme: '完整性测试', language: 'zh' },
+    rolePeople: {
+      meetingManager: { rawName: '经理' },
+      memberReception: { rawName: '会员SAA' },
+      venueIntroduction: { rawName: '宾客SAA' },
+      toastmaster: { rawName: '主持人' },
+      photographer: { rawName: '摄影师' },
+      timer: { rawName: '时间官' },
+      ahCounter: { rawName: '哼哈官' },
+      grammarian: { rawName: '语法师' },
+      generalEvaluator: { rawName: '总点评' },
+      tableTopicsMaster: { rawName: '即兴主持人' },
+      tableTopicsEvaluator: { rawName: '即兴点评' },
+      nextMeetingHost: { rawName: '下期主持人' }
+    },
+    preparedSpeeches: [{
+      titleZh: '测试演讲',
+      duration: 7,
+      pathway: { code: 'L1P1', fullLabelZh: 'L1P1 破冰演讲' },
+      speaker: { rawName: '演讲者' },
+      evaluator: { rawName: '点评者' }
+    }]
+  }, template);
+  assert.deepStrictEqual(agendaUtil.validateAgendaForPreview(agenda), []);
+  agenda.meetingInfo.theme = '';
+  agenda.sections.find((section) => section.id === 'preparedSpeech').children[0].speaker.clubZh = '';
+  const errors = agendaUtil.validateAgendaForPreview(agenda);
+  assert.ok(errors.includes('会议主题不能为空'));
+  assert.ok(errors.some((message) => message.includes('演讲者俱乐部不能为空')));
+}
+
+/**
  * 方法是什么：测试模板开关和旧议程升级。
  * 方法作用：验证特别主题全局停用以及旧 roleKey 草稿能转换为 AgendaV2。
  * 为什么添加：上线后现有七天草稿和超管模板设置都必须继续生效。
@@ -415,6 +454,40 @@ async function testPdfRenderer(agenda) {
 }
 
 /**
+ * 方法是什么：测试 PDF 议程区域的分隔线绘制规则。
+ * 方法作用：确认表头和数据行没有单元格边框，且只有顶层模块行会额外绘制横线。
+ * 为什么添加：导出样式要求取消竖线及小模块横线，需要防止后续表格重构恢复默认边框。
+ */
+function testPdfAgendaLineStyle() {
+  const rectangles = [];
+  const lines = [];
+  const page = {
+    drawRectangle(options) { rectangles.push(options); },
+    drawLine(options) { lines.push(options); },
+    drawText() {}
+  };
+  const font = {
+    widthOfTextAtSize(text, size) { return String(text).length * size; }
+  };
+  const table = pdfRenderer.drawAgendaHeader(page, font, 100, 'zh');
+  assert.strictEqual(rectangles.length, 5);
+  assert.ok(rectangles.every((rectangle) => rectangle.borderWidth === 0), '议程表头不应绘制竖线');
+  assert.strictEqual(lines.length, 1, '议程表头只应绘制底部横线');
+
+  rectangles.length = 0;
+  lines.length = 0;
+  pdfRenderer.drawAgendaRow(page, font, { id: 'opening', titleZh: '开场白', pdfSectionStart: true }, table, 111, 'zh');
+  assert.ok(rectangles.every((rectangle) => rectangle.borderWidth === 0), '大模块行不应绘制单元格边框');
+  assert.strictEqual(lines.length, 1, '大模块开始处应绘制一条横线');
+
+  rectangles.length = 0;
+  lines.length = 0;
+  pdfRenderer.drawAgendaRow(page, font, { id: 'icebreaker', titleZh: '破冰', pdfSectionStart: false }, table, 121, 'zh');
+  assert.ok(rectangles.every((rectangle) => rectangle.borderWidth === 0), '小模块行不应绘制单元格边框');
+  assert.strictEqual(lines.length, 0, '小模块之间不应绘制横线');
+}
+
+/**
  * 方法是什么：测试超长议程 PDF 续页。
  * 方法作用：用八个备稿块验证渲染器会插入议程续页并保留最终资料页。
  * 为什么添加：会员可多次新增备稿，第一页溢出时绝不能裁切或覆盖计时区。
@@ -448,6 +521,7 @@ async function main() {
   const agenda = testRuleParser();
   testAgendaModel();
   testPreparedSpeechRules();
+  testAgendaPreviewValidation();
   testTemplateAndLegacyUpgrade();
   testLocalizedTemplateAndAnchors();
   testDynamicAgendaModules();
@@ -456,6 +530,7 @@ async function main() {
   testDraftExpiry();
   testCollectionMissingError();
   testMemberOptionsAndAgendaPayload();
+  testPdfAgendaLineStyle();
   await testPdfRenderer(agenda);
   await testPdfOverflow();
   console.log('核心测试通过。');

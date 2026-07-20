@@ -16,7 +16,10 @@ Page({
     pathwayOptions: [],
     languageLabels: ['中文', 'English'],
     addModuleOptions: [],
-    addModuleLabels: []
+    addModuleLabels: [],
+    validationDialogVisible: false,
+    validationErrors: [],
+    validationRemaining: 0
   },
 
   /**
@@ -598,9 +601,33 @@ Page({
     if (this.data.saving) {
       return;
     }
+    const validationErrors = agendaUtil.validateAgendaForPreview(this.data.agenda);
+    if (validationErrors.length) {
+      const visibleErrors = validationErrors.slice(0, 6);
+      const remaining = validationErrors.length - visibleErrors.length;
+      this.setData({
+        validationDialogVisible: true,
+        validationErrors: visibleErrors,
+        validationRemaining: remaining
+      });
+      return;
+    }
     const agenda = await this.saveAgenda({ silent: true });
     if (agenda && agenda._id) {
       wx.navigateTo({ url: `/pages/template-preview/template-preview?id=${agenda._id}` });
     }
+  },
+
+  /**
+   * 方法是什么：关闭议程校验错误弹窗。
+   * 方法作用：隐藏逐行错误列表并清除上一次校验结果。
+   * 为什么添加：自定义弹窗需要由页面显式维护显示状态，避免系统弹窗折叠换行。
+   */
+  dismissValidationDialog() {
+    this.setData({
+      validationDialogVisible: false,
+      validationErrors: [],
+      validationRemaining: 0
+    });
   }
 });
