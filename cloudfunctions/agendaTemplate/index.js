@@ -7,8 +7,9 @@ const common = require('agenda-common');
  */
 function resolveViewModel(agenda, template) {
   const normalized = common.agendaModel.normalizeAgenda(agenda, template);
+  const language = common.agendaModel.normalizeLanguage(normalized.meetingInfo.language);
   return {
-    template,
+    template: common.agendaModel.resolveTemplateLocale(template, language),
     agenda: normalized,
     rows: common.agendaModel.flattenAgendaRows(normalized)
   };
@@ -31,7 +32,7 @@ async function main(event) {
     }
     if (action === 'resolve') {
       const template = event.template
-        ? Object.assign(common.agendaModel.createDefaultTemplate(), event.template)
+        ? common.agendaModel.normalizeTemplate(event.template)
         : await common.getAgendaTemplate();
       return common.ok(resolveViewModel(event.agenda || {}, template));
     }

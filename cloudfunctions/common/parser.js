@@ -68,6 +68,48 @@ function stripDecorations(line) {
 }
 
 /**
+ * 方法是什么：清理角色报名位置中的空白占位符。
+ * 方法作用：把太阳、玫瑰等表示“待报名”的符号转换为空姓名，同时保留真实姓名。
+ * 为什么添加：规则解析和 AI 都可能把报名占位符识别为人员，必须在构建议程前统一过滤。
+ */
+function cleanRoleSignupValue(value) {
+  const text = normalizeText(value);
+  if (!text) {
+    return '';
+  }
+  const cleaned = text
+    .replace(/\[(?:太阳|玫瑰花?|庆祝|sun|rose)\]/gi, '')
+    .replace(/[☀🌞🌹🥀\uFE0F]/g, '')
+    .trim();
+  if (/^(?:太阳|玫瑰花?|sun|rose)$/i.test(cleaned)) {
+    return '';
+  }
+  return cleaned;
+}
+
+/**
+ * 方法是什么：从接龙开头的会议标题行提取期数和语言。
+ * 方法作用：以“第 N 期中文/英文会议”标题为准，避免正文中的语言字样干扰模板语言。
+ * 为什么添加：期数和语言是确定性基础信息，不应依赖 AI 推测或扫描整篇文本。
+ */
+function parseMeetingHeader(rawText) {
+  const text = normalizeText(rawText);
+  const lines = text.split('\n').map(normalizeText).filter(Boolean);
+  const header = lines.find(function findMeetingHeader(line) {
+    return /第\s*\d+\s*期/.test(line) && /会议|meeting|session/i.test(line);
+  }) || lines.find(function findMeetingNumber(line) {
+    return /第\s*\d+\s*期/.test(line);
+  }) || '';
+  const meetingNoMatch = header.match(/第\s*(\d+)\s*期/);
+  const isEnglish = /英文会议|英语会议|english\s+meeting|english\s+session/i.test(header);
+  return {
+    header,
+    meetingNo: meetingNoMatch ? meetingNoMatch[1] : '',
+    language: isEnglish ? 'en' : 'zh'
+  };
+}
+
+/**
  * 方法是什么：为一个会员生成可搜索别名列表。
  * 方法作用：聚合中文名、英文名、昵称、议程显示名和手工别名，用于姓名模糊匹配。
  * 为什么添加：同一个人在接龙里可能写简称、英文名或带头衔的议程名，统一别名能提高匹配率。
@@ -172,19 +214,20 @@ function findPathway(projectCode, pathways) {
  */
 function parseMeetingInfo(rawText) {
   const text = normalizeText(rawText);
-  const meetingNoMatch = text.match(/第\s*(\d+)\s*期/);
+  const headerInfo = parseMeetingHeader(text);
+  const fallbackMeetingNoMatch = text.match(/第\s*(\d+)\s*期/);
   const timeMatch = text.match(/时间[:：]\s*(\d{4})年(\d{1,2})月(\d{1,2})日周?([^\d\s]*)\s*(\d{1,2}:\d{2})\s*[-–~至]\s*(\d{1,2}:\d{2})/);
   const addressMatch = text.match(/地址[:：]\s*([^\n]+)/);
   const themeMatch = text.match(/主题[:：]\s*([^\n]+)/);
   return {
-    meetingNo: meetingNoMatch ? meetingNoMatch[1] : '',
+    meetingNo: headerInfo.meetingNo || (fallbackMeetingNoMatch ? fallbackMeetingNoMatch[1] : ''),
     date: timeMatch ? `${timeMatch[1]}-${String(timeMatch[2]).padStart(2, '0')}-${String(timeMatch[3]).padStart(2, '0')}` : '',
     weekday: timeMatch ? timeMatch[4] : '',
     startTime: timeMatch ? timeMatch[5] : '19:30',
     endTime: timeMatch ? timeMatch[6] : '21:30',
     address: addressMatch ? normalizeText(addressMatch[1]) : '',
     theme: themeMatch ? normalizeText(themeMatch[1]) : '',
-    language: 'zh'
+    language: headerInfo.language
   };
 }
 
@@ -201,14 +244,14 @@ function parseRoleLines(rawText) {
     for (const role of ROLE_LABELS) {
       for (const pattern of role.patterns) {
         const escaped = pattern.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-        const regex = new RegExp(`${escaped}\\s*[:：]\\s*(.+)$`);
+        const regex = new RegExp(`${escaped}\\s*[:：]\\s*(.*)$`);
         const match = cleanLine.match(regex);
         if (match) {
           roles[role.key] = {
             key: role.key,
             titleZh: role.titleZh,
             titleEn: role.titleEn,
-            rawName: normalizeText(match[1])
+            rawName: cleanRoleSignupValue(match[1])
           };
         }
       }
@@ -326,7 +369,7 @@ function enrichPreparedSpeeches(speeches, memberships, pathways) {
  */
 function buildRolePeople(parsed, memberships) {
   const roles = parsed.roles || {};
-  const getRawName = (key) => roles[key] && roles[key].rawName ? roles[key].rawName : '';
+  const getRawName = (key) => cleanRoleSignupValue(roles[key] && roles[key].rawName ? roles[key].rawName : '');
   const nextMeeting = parsed.nextMeeting || {};
   return {
     meetingManager: buildPerson(getRawName('meetingManager'), memberships),
@@ -346,6 +389,20 @@ function buildRolePeople(parsed, memberships) {
 }
 
 /**
+ * 方法是什么：规范化整组角色解析结果。
+ * 方法作用：复制 AI 或规则返回的角色对象，并统一清除每个角色的空缺占位符。
+ * 为什么添加：保存到 AgendaV2 的原始角色也必须保持干净，不能只清洗页面使用的人员映射。
+ */
+function sanitizeRoleMap(roles) {
+  return Object.keys(roles || {}).reduce(function sanitizeRole(result, key) {
+    result[key] = Object.assign({}, roles[key], {
+      rawName: cleanRoleSignupValue(roles[key] && roles[key].rawName)
+    });
+    return result;
+  }, {});
+}
+
+/**
  * 方法是什么：把解析事实构建为 AgendaV2。
  * 方法作用：匹配会员和 Pathways 后，交给确定性模板模型生成固定流程与时间链。
  * 为什么添加：AI 结果只能提供事实，议程结构、权限和默认时长必须由系统控制。
@@ -359,7 +416,7 @@ function buildAgendaV2(parsed, memberships, pathways, template) {
     preparedSpeeches,
     participants: parsed.participants || []
   }, template || agendaModel.createDefaultTemplate());
-  agenda.roles = parsed.roles || {};
+  agenda.roles = sanitizeRoleMap(parsed.roles || {});
   agenda.preparedSpeeches = preparedSpeeches;
   agenda.nextMeeting = parsed.nextMeeting || {};
   agenda.confidence = parsed.confidence || 0;
@@ -524,6 +581,10 @@ function mergeAiResult(aiResult, ruleResult, memberships, pathways) {
     confidence: aiResult.confidence || ruleResult.confidence,
     source: 'deepseek'
   };
+  merged.meetingInfo.language = ruleResult.meetingInfo.language;
+  if (ruleResult.meetingInfo.meetingNo) {
+    merged.meetingInfo.meetingNo = ruleResult.meetingInfo.meetingNo;
+  }
   return buildAgendaV2(merged, memberships || [], pathways || []);
 }
 
@@ -602,6 +663,8 @@ module.exports = {
   normalizeText,
   normalizeName,
   stripDecorations,
+  cleanRoleSignupValue,
+  parseMeetingHeader,
   createAliasList,
   pushUniqueMember,
   matchMemberByName,

@@ -30,7 +30,7 @@ Page({
       this.setData({
         template: resolved.template,
         agenda: resolved.agenda,
-        rows: this.decorateRows(resolved.rows || []),
+        rows: this.decorateRows(resolved.rows || [], resolved.agenda && resolved.agenda.meetingInfo && resolved.agenda.meetingInfo.language),
         loading: false
       });
     } catch (error) {
@@ -44,20 +44,22 @@ Page({
    * 方法作用：提前生成限时、人员和俱乐部显示文本并兼容所有节点类型。
    * 为什么添加：WXML 中直接访问可选的普通人员、多人签到和备稿人员容易产生空路径。
    */
-  decorateRows(rows) {
+  decorateRows(rows, languageValue) {
+    const language = languageValue === 'en' ? 'en' : 'zh';
     return rows.map((row) => {
       const next = Object.assign({}, row);
+      next.titleDisplay = language === 'en' ? (row.titleEn || row.titleZh) : row.titleZh;
       if (row.type === 'preparedSpeechBlock') {
-        next.personDisplay = row.speaker && (row.speaker.displayNameZh || row.speaker.rawName) || '';
-        next.clubDisplay = row.speaker && row.speaker.clubZh || '';
+        next.personDisplay = row.speaker && (language === 'en' ? row.speaker.displayNameEn : row.speaker.displayNameZh) || row.speaker && row.speaker.rawName || '';
+        next.clubDisplay = row.speaker && (language === 'en' ? row.speaker.clubEn : row.speaker.clubZh) || '';
       } else if (Array.isArray(row.persons) && row.persons.length) {
-        next.personDisplay = row.persons.map((person) => person.displayNameZh || person.rawName).filter(Boolean).join(' && ');
-        next.clubDisplay = row.clubZh || row.persons.map((person) => person.clubZh).filter(Boolean).join(' && ');
+        next.personDisplay = row.persons.map((person) => language === 'en' ? person.displayNameEn || person.rawName : person.displayNameZh || person.rawName).filter(Boolean).join(' && ');
+        next.clubDisplay = language === 'en' ? row.clubEn || row.persons.map((person) => person.clubEn).filter(Boolean).join(' && ') : row.clubZh || row.persons.map((person) => person.clubZh).filter(Boolean).join(' && ');
       } else {
-        next.personDisplay = row.person && (row.person.displayNameZh || row.person.rawName) || '';
-        next.clubDisplay = row.clubZh || row.person && row.person.clubZh || '';
+        next.personDisplay = row.person && (language === 'en' ? row.person.displayNameEn || row.person.rawName : row.person.displayNameZh || row.person.rawName) || '';
+        next.clubDisplay = language === 'en' ? row.clubEn || row.person && row.person.clubEn || '' : row.clubZh || row.person && row.person.clubZh || '';
       }
-      next.durationDisplay = row.duration ? `${row.duration} 分钟` : '';
+      next.durationDisplay = row.duration ? `${row.duration} ${language === 'en' ? 'min' : '分钟'}` : '';
       return next;
     });
   },
@@ -100,7 +102,7 @@ Page({
     }
     this.setData({ exporting: true });
     try {
-      const data = await cloud.callCloud('exportAgendaPdf', { agendaId: this.data.agendaId, language: 'zh' });
+      const data = await cloud.callCloud('exportAgendaPdf', { agendaId: this.data.agendaId });
       const download = await wx.downloadFile({ url: data.tempFileURL });
       await wx.openDocument({ filePath: download.tempFilePath, fileType: 'pdf', showMenu: true });
     } catch (error) {

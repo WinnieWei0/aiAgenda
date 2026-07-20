@@ -13,7 +13,10 @@ Page({
     memberLoadError: false,
     memberOptions: [],
     memberLabels: [],
-    pathwayOptions: []
+    pathwayOptions: [],
+    languageLabels: ['中文', 'English'],
+    addModuleOptions: [],
+    addModuleLabels: []
   },
 
   /**
@@ -141,8 +144,9 @@ Page({
   setAgenda(value) {
     const agenda = agendaUtil.normalizeAgenda(value, this.data.template);
     this.decorateAgenda(agenda);
+    const addModuleOptions = this.getAvailableModules(agenda);
     app.setCurrentAgenda(agenda);
-    this.setData({ agenda });
+    this.setData({ agenda, addModuleOptions, addModuleLabels: addModuleOptions.map((item) => item.label) });
   },
 
   /**
@@ -151,6 +155,10 @@ Page({
    * 为什么添加：WXML 不能调用权限函数或在模板中执行复杂查找。
    */
   decorateAgenda(agenda) {
+    const language = agendaUtil.normalizeLanguage(agenda.meetingInfo && agenda.meetingInfo.language);
+    const groupTitles = {
+      opening: 'Opening', facilitatorIntroduction: 'Meeting Facilitator Introductions', tableTopics: 'Table Topics', preparedSpeech: 'Prepared Speeches', evaluation: 'Prepared Speech Evaluations', facilitatorReport: 'Meeting Facilitator Reports', closing: 'Closing', end: 'Meeting Adjourned'
+    };
     const decorateRow = (row) => {
       if (!row) {
         return;
@@ -159,11 +167,11 @@ Page({
       row.canEditDuration = this.data.isSuperAdmin || Boolean(row.permissions && row.permissions.memberDuration);
       row.canEditPerson = this.data.isSuperAdmin || Boolean(row.permissions && row.permissions.memberPerson);
       row.canEditClub = this.data.isSuperAdmin || Boolean(row.permissions && row.permissions.memberClub);
-      row.displayTitle = row.titleZh;
-      if (row.id === 'topicExplanation') {
+      row.displayTitle = language === 'en' ? (row.titleEn || row.titleZh) : row.titleZh;
+      if (row.id === 'topicExplanation' && language === 'zh') {
         row.displayTitle = '即兴主持人';
       }
-      if (row.id === 'tableTopicsSpeech') {
+      if (row.id === 'tableTopicsSpeech' && language === 'zh') {
         row.displayTitle = '即兴演讲时间';
       }
       row.person = this.decoratePerson(row.person);
@@ -179,9 +187,56 @@ Page({
       }
     };
     agenda.sections.forEach((section) => {
+      section.displayTitle = language === 'en' ? (section.titleEn || groupTitles[section.id] || section.titleZh || section.row && section.row.titleEn) : (section.titleZh || section.row && section.row.titleZh);
       decorateRow(section.row);
       (section.children || []).forEach(decorateRow);
     });
+    const visibleSections = agenda.sections.filter((section) => section.enabled !== false && (!section.languageGate || section.languageGate === language));
+    visibleSections.forEach((section, index) => {
+      const previous = index > 0 ? visibleSections[index - 1] : null;
+      section.positionAfterLabel = previous ? (previous.displayTitle || previous.row && previous.row.displayTitle || '') : '';
+      const sourceIndex = agenda.sections.findIndex((item) => item.id === section.id);
+      const firstMovableIndex = agenda.sections.findIndex((item) => item.id === 'facilitatorIntroduction') + 1;
+      const endIndex = agenda.sections.findIndex((item) => item.id === 'end');
+      section.canMoveUp = sourceIndex > firstMovableIndex;
+      section.canMoveDown = sourceIndex >= firstMovableIndex && sourceIndex < endIndex - 1;
+    });
+    agenda.sections.forEach((section) => {
+      (section.children || []).forEach((row, index) => {
+        if (row.dynamic) {
+          const previous = index > 0 ? section.children[index - 1] : null;
+          row.positionAfterLabel = previous ? previous.displayTitle : section.displayTitle;
+        }
+      });
+    });
+  },
+
+  /**
+   * 方法是什么：计算当前可新增的每期模块。
+   * 方法作用：过滤已存在模块，并仅在英文会议提供 Free Talk。
+   * 为什么添加：每种动态模块每期最多一个，新增菜单必须随议程状态即时变化。
+   */
+  getAvailableModules(agenda) {
+    const language = agendaUtil.normalizeLanguage(agenda.meetingInfo && agenda.meetingInfo.language);
+    const existing = new Set();
+    (agenda.sections || []).forEach((section) => {
+      if (section.moduleKind) {
+        existing.add(section.moduleKind);
+      }
+      (section.children || []).forEach((row) => {
+        if (row.moduleKind) {
+          existing.add(row.moduleKind);
+        }
+      });
+    });
+    const labels = {
+      icebreaker: language === 'en' ? 'Icebreaker' : '破冰',
+      freeTalk: 'Free Talk',
+      workshop: language === 'en' ? 'Workshop' : '工作坊',
+      educationAward: language === 'en' ? 'Education Credit Awards' : '教育积分颁奖',
+      memberInterview: language === 'en' ? 'New Member Interview' : '新会员面试'
+    };
+    return Object.keys(agendaUtil.DYNAMIC_MODULES).filter((kind) => !existing.has(kind) && (kind !== 'freeTalk' || language === 'en')).map((kind) => ({ kind, label: labels[kind] }));
   },
 
   /**
@@ -239,8 +294,23 @@ Page({
     if (row && row.id === 'openingIcebreaker' && field === 'person') {
       return true;
     }
-    const map = { titleZh: 'memberTitle', duration: 'memberDuration', person: 'memberPerson', club: 'memberClub' };
+    const map = { titleZh: 'memberTitle', titleEn: 'memberTitle', duration: 'memberDuration', person: 'memberPerson', club: 'memberClub' };
     return Boolean(row && row.permissions && row.permissions[map[field]]);
+  },
+
+  /**
+   * 方法是什么：修改所有会员可维护的会议基础信息。
+   * 方法作用：仅接受会议期数和主题，日期继续使用接龙解析结果且不可编辑。
+   * 为什么添加：编辑页顶部需要提供统一基础信息区，同时明确保护解析得到的会议日期。
+   */
+  handleBasicInfoInput(event) {
+    const field = event.currentTarget.dataset.field;
+    if (field !== 'meetingNo' && field !== 'theme') {
+      return;
+    }
+    const agenda = agendaUtil.cloneJson(this.data.agenda);
+    agenda.meetingInfo[field] = event.detail.value;
+    this.setAgenda(agenda);
   },
 
   /**
@@ -254,6 +324,20 @@ Page({
     }
     const agenda = agendaUtil.cloneJson(this.data.agenda);
     agenda.meetingInfo[event.currentTarget.dataset.field] = event.detail.value;
+    this.setAgenda(agenda);
+  },
+
+  /**
+   * 方法是什么：修正当前会议使用的模板语言。
+   * 方法作用：允许模拟超管在中文和英文模板文案之间切换并重新计算语言门控模块。
+   * 为什么添加：接龙自动识别可能出错，但普通会员不能修改模板选择。
+   */
+  handleLanguageChange(event) {
+    if (!this.data.isSuperAdmin) {
+      return;
+    }
+    const agenda = agendaUtil.cloneJson(this.data.agenda);
+    agenda.meetingInfo.language = Number(event.detail.value) === 1 ? 'en' : 'zh';
     this.setAgenda(agenda);
   },
 
@@ -333,7 +417,7 @@ Page({
     const row = this.getRowTarget(agenda, event.currentTarget.dataset);
     const person = this.getPersonTarget(agenda, event.currentTarget.dataset);
     const field = event.currentTarget.dataset.field;
-    if (!row || !person || !this.canEditRow(row, field === 'clubZh' ? 'club' : 'person')) {
+    if (!row || !person || !this.canEditRow(row, field === 'clubZh' || field === 'clubEn' ? 'club' : 'person')) {
       return;
     }
     person[field] = event.detail.value;
@@ -399,6 +483,63 @@ Page({
     const agenda = agendaUtil.cloneJson(this.data.agenda);
     const section = agenda.sections.find((item) => item.id === 'preparedSpeech');
     section.children.splice(Number(event.currentTarget.dataset.childIndex), 1);
+    this.setAgenda(agenda);
+  },
+
+  /**
+   * 方法是什么：新增当前议程的动态模块。
+   * 方法作用：按模块菜单选择执行唯一性检查和规定位置插入。
+   * 为什么添加：工作坊、Free Talk 等内容属于每期议程，不能加入全局模板结构。
+   */
+  addDynamicModule(event) {
+    const option = this.data.addModuleOptions[Number(event.detail.value)];
+    if (!option) {
+      return;
+    }
+    this.setAgenda(agendaUtil.addDynamicModule(this.data.agenda, option.kind));
+  },
+
+  /**
+   * 方法是什么：删除动态模块。
+   * 方法作用：支持删除顶层动态模块或会议促进者介绍中的动态破冰。
+   * 为什么添加：动态模块必须可撤销且删除后重新出现在新增菜单中。
+   */
+  deleteDynamicModule(event) {
+    const agenda = agendaUtil.cloneJson(this.data.agenda);
+    const dataset = event.currentTarget.dataset;
+    const section = agenda.sections[Number(dataset.sectionIndex)];
+    if (!section) {
+      return;
+    }
+    if (dataset.childIndex !== undefined && dataset.childIndex !== '') {
+      const child = section.children[Number(dataset.childIndex)];
+      if (child && child.dynamic) {
+        section.children.splice(Number(dataset.childIndex), 1);
+      }
+    } else if (section.dynamic && section.deletable) {
+      agenda.sections.splice(Number(dataset.sectionIndex), 1);
+    }
+    this.setAgenda(agenda);
+  },
+
+  /**
+   * 方法是什么：移动可排序的顶层模块。
+   * 方法作用：允许中场休息及指定动态模块在主流程范围内逐项上移或下移。
+   * 为什么添加：模块位置变化必须直接改变 AgendaV2 顺序并触发时间重算。
+   */
+  moveAgendaSection(event) {
+    const agenda = agendaUtil.cloneJson(this.data.agenda);
+    const index = Number(event.currentTarget.dataset.sectionIndex);
+    const direction = Number(event.currentTarget.dataset.direction);
+    const section = agenda.sections[index];
+    const firstMovableIndex = agenda.sections.findIndex((item) => item.id === 'facilitatorIntroduction') + 1;
+    const endIndex = agenda.sections.findIndex((item) => item.id === 'end');
+    const target = index + direction;
+    const movable = section && (section.id === 'break' || section.dynamic && section.movable);
+    if (!movable || target < firstMovableIndex || target >= endIndex) {
+      return;
+    }
+    agenda.sections = agendaUtil.moveItem(agenda.sections, index, target);
     this.setAgenda(agenda);
   },
 

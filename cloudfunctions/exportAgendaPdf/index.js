@@ -85,7 +85,6 @@ async function main(event) {
     common.initCloud();
     const openid = common.getOpenid();
     const agendaId = event && event.agendaId ? event.agendaId : '';
-    const language = event && event.language === 'en' ? 'en' : 'zh';
     if (!agendaId) {
       return common.fail('EMPTY_AGENDA_ID', '缺少议程 ID');
     }
@@ -99,7 +98,8 @@ async function main(event) {
     if (agenda.ownerOpenid !== openid && !(await common.isAdmin(openid))) {
       return common.fail('FORBIDDEN', '只能导出自己的议程');
     }
-    const template = await common.getAgendaTemplate();
+    const language = common.agendaModel.normalizeLanguage(agenda.meetingInfo && agenda.meetingInfo.language);
+    const template = common.agendaModel.resolveTemplateLocale(await common.getAgendaTemplate(), language);
     await hydrateAssetBuffers(template, agenda);
     const buffer = await common.pdfRenderer.renderAgendaPdf(agenda, language, template);
     const fileID = await uploadPdf(buffer, agenda, language);

@@ -1,5 +1,12 @@
 const TEMPLATE_ID = 'gz-bilingual-v1';
 const AGENDA_SCHEMA_VERSION = 2;
+const DYNAMIC_MODULES = {
+  icebreaker: { titleZh: '破冰', titleEn: 'Icebreaker', duration: 5, placement: 'facilitatorIntroduction' },
+  freeTalk: { titleZh: 'Free Talk', titleEn: 'Free Talk', duration: 10, placement: 'preparedSpeech', languageGate: 'en', movable: true },
+  workshop: { titleZh: '工作坊', titleEn: 'Workshop', duration: 30, placement: 'break', movable: true },
+  educationAward: { titleZh: '教育积分颁奖', titleEn: 'Education Credit Awards', duration: 10, placement: 'vote', movable: true },
+  memberInterview: { titleZh: '新会员面试', titleEn: 'New Member Interview', duration: 3, placement: 'end', postMeeting: true }
+};
 
 /**
  * 方法是什么：复制 JSON 数据。
@@ -75,12 +82,68 @@ function parsePathwayDuration(value, fallback) {
 }
 
 /**
+ * 方法是什么：规范化会议语言。
+ * 方法作用：把所有非英文值收敛为中文，供模板、动态模块和 PDF 使用。
+ * 为什么添加：旧草稿可能没有语言字段，所有入口需要相同的稳定回退值。
+ */
+function normalizeLanguage(value) {
+  return String(value || '').toLowerCase() === 'en' ? 'en' : 'zh';
+}
+
+/**
+ * 方法是什么：创建英文模板文案。
+ * 方法作用：为单模板中的英文视图提供完整页眉、侧栏、计时规则和第二页默认文本。
+ * 为什么添加：英文会议不能继续复用中文模板文案。
+ */
+function createEnglishLocale() {
+  return {
+    fixedContent: {
+      clubTitle: 'GZ Bilingual Toastmasters Club',
+      clubSubtitle: 'A Professional Bilingual Platform for Diverse Growth and Sharing',
+      charter: 'Charter #01540850\nArea N1, Div.N, D118\nFounded in 2010',
+      meetingTime: 'Every Wednesday night 19:30 - 21:30',
+      venue: 'Room 1904-A, West Tower, Xingchen Building, 172 Huasui Road, Tianhe District, Guangzhou',
+      fees: 'Guest Ticket: RMB 29\nMembership Registration Fee: RMB 300\nMembership Renewal Due (6 months): RMB 720',
+      tabooTopics: 'Politics, Religion, Sex, Sales',
+      missionEn: 'Toastmasters International is a nonprofit educational organization that helps members improve communication and leadership skills and gain confidence and friendship through participation and practice.',
+      missionZh: '',
+      values: 'Integrity - Respect - Service - Excellence',
+      clubIntro: 'GZ Bilingual Toastmasters Club is the first club in South China named Bilingual. We help members strengthen the communication and leadership skills needed at work and in life.'
+    },
+    sidebar: { winners: [
+      { label: 'Best Meeting Role', value: 'Derwin' },
+      { label: 'Best Table Topics', value: 'Jeffery' },
+      { label: 'Best Prepared', value: 'Penny' },
+      { label: 'Best Evaluator', value: 'Kathrine' }
+    ] },
+    timerRules: [
+      ['Timing Signal', 'Green', 'Yellow', 'Red', 'Applause'],
+      ['Speech up to 3 min', '1 min left', '30 sec left', 'Time', '15 sec overtime'],
+      ['Speech over 3 min', '2 min left', '1 min left', 'Time', '30 sec overtime']
+    ],
+    page2: {
+      updatesTitle: 'Club Updates',
+      notesTitle: 'Notes',
+      educationTitle: 'Toastmasters Education Program',
+      pathways: ['Dynamic Leadership', 'Engaging Humor', 'Motivational Strategies', 'Persuasive Influence', 'Presentation Mastery', 'Visionary Communication'],
+      goal: 'Ultimate Goal: Distinguished Toastmaster',
+      achievements: ['The first Toastmasters club in Guangzhou named Bilingual', 'Select Distinguished Club 2010-2011', 'Distinguished Club 2013-2014', 'President’s Distinguished Club 2012-2013, 2015-2025', 'A cradle for District leaders', 'Beat the Clock Awards 2013, 2017', 'Smedley Awards 2014, 2016-2020, 2024'],
+      meetingFlow: ['Opening and facilitator introductions', 'Table Topics', 'Prepared speeches', 'Speech evaluations', 'Facilitator reports', 'Awards and role booking'],
+      benefits: ['Follow a proven learning path', 'Learn with members from diverse industries', 'Serve as a club or District officer', 'Receive feedback from mentors and experienced members', 'Learn to give feedback and mentor others', 'Join speech contests', 'Practice different meeting roles', 'Visit other Toastmasters clubs'],
+      joining: 'New member interviews are normally held after the final meeting of each month. Contact the Vice President Membership in advance.\n\nRequirements:\na. Attend at least three bilingual meetings and take different roles in at least two meetings;\nb. Show a strong willingness to learn and participate;\nc. Pass the interview.',
+      resources: 'Resources: www.toastmasters.org    Toastmasters District 118',
+      officers: []
+    }
+  };
+}
+
+/**
  * 方法是什么：创建广州双语默认模板。
  * 方法作用：提供两页固定内容、素材地址、议程规则和默认负责人。
  * 为什么添加：数据库尚未初始化时仍需直接得到可预览和可导出的完整模板。
  */
 function createDefaultTemplate() {
-  return {
+  const template = {
     _id: TEMPLATE_ID,
     templateId: TEMPLATE_ID,
     schemaVersion: AGENDA_SCHEMA_VERSION,
@@ -142,10 +205,12 @@ function createDefaultTemplate() {
     settings: {
       specialSessionEnabled: true,
       evaluationDuration: 3,
-      preparedFallbackDuration: 7
+      preparedFallbackDuration: 7,
+      signInTime: '19:00',
+      mainStartTime: '19:30'
     },
     agendaRules: [
-      { id: 'preparation', titleZh: '会议筹备', duration: 0, memberPersonEditable: true },
+      { id: 'preparation', titleZh: '会议筹备', titleEn: 'Meeting Preparation', duration: 0, memberPersonEditable: true },
       { id: 'signIn', titleZh: '签到、欢迎来宾', duration: 0, memberPersonEditable: true },
       { id: 'venueIntroduction', titleZh: '会场秩序介绍', duration: 2, memberPersonEditable: true },
       { id: 'openingIcebreaker', titleZh: '破冰', duration: 3 },
@@ -174,6 +239,70 @@ function createDefaultTemplate() {
       { id: 'roleBooking', titleZh: '会议角色预定', duration: 1, memberPersonEditable: true }
     ]
   };
+  const titleEnMap = {
+    signIn: 'Registration and Welcome', venueIntroduction: 'Guest SAA Briefing', openingIcebreaker: 'Icebreaker', guestIntroduction: 'Guest Introductions', host: 'Toastmaster of the Evening', photographer: 'Photographer', timerIntro: 'Timer', ahCounterIntro: 'Ah-Counter', grammarianIntro: 'Grammarian', generalEvaluatorIntro: 'General Evaluator', topicExplanation: 'Table Topics Master', tableTopicsSpeech: 'Table Topics Time', topicNote: 'A Different Topic for Each Speaker', topicSummary: 'Summary', tableTopicsEvaluation: 'Table Topics Evaluation', tableTopicsIcebreaker: 'Icebreaker', break: 'Break and Group Photo', specialSession: 'Special Session', grammarianReport: 'Grammarian Report', ahCounterReport: 'Ah-Counter Report', timerReport: 'Timer Report', generalEvaluatorReport: 'General Evaluator Report', vote: 'Best Speaker Voting', feedback: 'Guest and Member Feedback', award: 'Awards', roleBooking: 'Next Meeting Role Booking'
+  };
+  template.agendaRules = template.agendaRules.map((rule) => Object.assign({}, rule, { titleEn: rule.titleEn || titleEnMap[rule.id] || rule.titleZh }));
+  template.locales = {
+    zh: { fixedContent: cloneJson(template.fixedContent), sidebar: cloneJson(template.sidebar), timerRules: cloneJson(template.timerRules), page2: cloneJson(template.page2) },
+    en: createEnglishLocale()
+  };
+  template.locales.en.page2.officers = cloneJson(template.page2.officers);
+  return template;
+}
+
+/**
+ * 方法是什么：升级并补齐单模板双语文案。
+ * 方法作用：把旧模板顶层中文文案迁入 locales.zh，并补上英文默认值和共享配置。
+ * 为什么添加：数据库中的现有模板必须无损升级且继续使用同一模板 ID。
+ */
+function normalizeTemplate(templateValue) {
+  const defaults = createDefaultTemplate();
+  const source = cloneJson(templateValue || {});
+  const hasLocales = source.locales && source.locales.zh;
+  const zhSource = hasLocales ? source.locales.zh : {
+    fixedContent: source.fixedContent,
+    sidebar: source.sidebar,
+    timerRules: source.timerRules,
+    page2: source.page2
+  };
+  const template = Object.assign({}, defaults, source, {
+    templateId: TEMPLATE_ID,
+    settings: Object.assign({}, defaults.settings, source.settings || {}),
+    assets: Object.assign({}, defaults.assets, source.assets || {}),
+    agendaRules: Array.isArray(source.agendaRules) && source.agendaRules.length ? source.agendaRules : defaults.agendaRules
+  });
+  template.agendaRules = template.agendaRules.map((rule) => {
+    const fallback = defaults.agendaRules.find((item) => item.id === rule.id) || {};
+    return Object.assign({}, fallback, rule);
+  });
+  template.locales = {
+    zh: {
+      fixedContent: Object.assign({}, defaults.locales.zh.fixedContent, zhSource && zhSource.fixedContent || {}),
+      sidebar: Object.assign({}, defaults.locales.zh.sidebar, zhSource && zhSource.sidebar || {}),
+      timerRules: Array.isArray(zhSource && zhSource.timerRules) ? zhSource.timerRules : defaults.locales.zh.timerRules,
+      page2: Object.assign({}, defaults.locales.zh.page2, zhSource && zhSource.page2 || {})
+    },
+    en: {
+      fixedContent: Object.assign({}, defaults.locales.en.fixedContent, source.locales && source.locales.en && source.locales.en.fixedContent || {}),
+      sidebar: Object.assign({}, defaults.locales.en.sidebar, source.locales && source.locales.en && source.locales.en.sidebar || {}),
+      timerRules: Array.isArray(source.locales && source.locales.en && source.locales.en.timerRules) ? source.locales.en.timerRules : defaults.locales.en.timerRules,
+      page2: Object.assign({}, defaults.locales.en.page2, source.locales && source.locales.en && source.locales.en.page2 || {})
+    }
+  };
+  return template;
+}
+
+/**
+ * 方法是什么：解析指定语言的模板视图。
+ * 方法作用：保持现有预览和 PDF 字段接口，同时从双语模板中选择正确文案。
+ * 为什么添加：页面无需同时处理两套字段，云端和小程序也能共享选择逻辑。
+ */
+function resolveTemplateLocale(templateValue, languageValue) {
+  const template = normalizeTemplate(templateValue);
+  const language = normalizeLanguage(languageValue);
+  const locale = template.locales[language];
+  return Object.assign({}, template, cloneJson(locale), { activeLanguage: language });
 }
 
 /**
@@ -192,8 +321,9 @@ function getRule(template, id) {
  * 方法作用：从第二页干事表中解析当前会长作为默认人员。
  * 为什么添加：开场白和会议尾声需要随模板干事信息自动更新会长姓名。
  */
-function createPresidentPerson(template) {
-  const officers = template && template.page2 && Array.isArray(template.page2.officers) ? template.page2.officers : [];
+function createPresidentPerson(template, language) {
+  const localized = resolveTemplateLocale(template, language);
+  const officers = localized.page2 && Array.isArray(localized.page2.officers) ? localized.page2.officers : [];
   const president = officers.find((item) => String(item.role || '').includes('会长')) || {};
   const name = String(president.name || '会长').split(/\s+/)[0];
   return createPerson({ rawName: name, displayNameZh: name, clubZh: '广州双语', clubEn: 'Bilingual', inputMode: 'input' });
@@ -260,6 +390,7 @@ function createPreparedBlock(value, index, template) {
     id: source.id || `prepared-${Date.now()}-${index}`,
     type: 'preparedSpeechBlock',
     titleZh: source.titleZh || speech.title || '',
+    titleEn: source.titleEn || speech.titleEn || source.titleZh || speech.title || '',
     duration: Math.max(Number(duration) || template.settings.preparedFallbackDuration, 0),
     speaker: createPerson(source.speaker || speech.speaker || source.person),
     evaluator: createPerson(source.evaluator || speech.evaluator),
@@ -275,19 +406,18 @@ function createPreparedBlock(value, index, template) {
  */
 function createAgendaFromFacts(factsValue, templateValue) {
   const facts = factsValue || {};
-  const template = Object.assign(createDefaultTemplate(), cloneJson(templateValue || {}));
-  template.settings = Object.assign({}, createDefaultTemplate().settings, templateValue && templateValue.settings || {});
-  const president = createPresidentPerson(template);
+  const template = normalizeTemplate(templateValue);
+  const president = createPresidentPerson(template, facts.meetingInfo && facts.meetingInfo.language);
   const ttMaster = rolePerson(facts, 'tableTopicsMaster');
   const sections = [
     { id: 'preparation', type: 'row', anchorTime: '', children: [], row: createRow(template, 'preparation', { person: rolePerson(facts, 'meetingManager'), roleKey: 'meetingManager' }) },
     { id: 'signIn', type: 'row', anchorTime: '19:00', children: [], row: createRow(template, 'signIn', { persons: [rolePerson(facts, 'guestReception'), rolePerson(facts, 'memberReception')], personMode: 'multiple', clubMode: 'manual', memberClubEditable: true }) },
     { id: 'venueIntroduction', type: 'row', anchorTime: '19:30', children: [], row: createRow(template, 'venueIntroduction', { person: rolePerson(facts, 'venueIntroduction') }) },
-    { id: 'opening', type: 'group', titleZh: '开场白', transitionPolicy: 'none', children: [
+    { id: 'opening', type: 'group', titleZh: '开场白', titleEn: 'Opening', transitionPolicy: 'none', children: [
       createRow(template, 'openingIcebreaker', { person: president, personMode: 'fixed' }),
       createRow(template, 'guestIntroduction', { person: createPerson({ rawName: '宾客', clubZh: '宾客', clubEn: 'Guest' }), personMode: 'fixed' })
     ] },
-    { id: 'facilitatorIntroduction', type: 'group', titleZh: '会议促进者介绍', transitionPolicy: 'betweenChildren', children: [
+    { id: 'facilitatorIntroduction', type: 'group', titleZh: '会议促进者介绍', titleEn: 'Meeting Facilitator Introductions', transitionPolicy: 'betweenChildren', children: [
       createRow(template, 'host', { person: rolePerson(facts, 'toastmaster'), roleKey: 'toastmaster' }),
       createRow(template, 'photographer', { person: rolePerson(facts, 'photographer'), roleKey: 'photographer', showDuration: false }),
       createRow(template, 'timerIntro', { person: rolePerson(facts, 'timer'), roleKey: 'timer' }),
@@ -295,7 +425,7 @@ function createAgendaFromFacts(factsValue, templateValue) {
       createRow(template, 'grammarianIntro', { person: rolePerson(facts, 'grammarian'), roleKey: 'grammarian' }),
       createRow(template, 'generalEvaluatorIntro', { person: rolePerson(facts, 'generalEvaluator'), roleKey: 'generalEvaluator' })
     ] },
-    { id: 'tableTopics', type: 'group', titleZh: '即兴演讲环节', transitionPolicy: 'none', children: [
+    { id: 'tableTopics', type: 'group', titleZh: '即兴演讲环节', titleEn: 'Table Topics', transitionPolicy: 'none', children: [
       createRow(template, 'topicExplanation', { person: ttMaster, roleKey: 'tableTopicsMaster' }),
       createRow(template, 'tableTopicsSpeech', { person: createPerson({ rawName: '随机演讲者', clubZh: '全部', clubEn: 'All' }) }),
       createRow(template, 'topicNote', { type: 'note', personMode: 'none', showDuration: false }),
@@ -303,30 +433,30 @@ function createAgendaFromFacts(factsValue, templateValue) {
       createRow(template, 'tableTopicsEvaluation', { person: rolePerson(facts, 'tableTopicsEvaluator'), roleKey: 'tableTopicsEvaluator' }),
       createRow(template, 'tableTopicsIcebreaker', { person: createPerson({ clubZh: '', clubEn: '' }) })
     ] },
-    { id: 'preparedSpeech', type: 'group', titleZh: '有准备的演讲环节', transitionPolicy: 'betweenChildren', children: (facts.preparedSpeeches || []).map((item, index) => createPreparedBlock(item, index, template)) },
+    { id: 'preparedSpeech', type: 'group', titleZh: '有准备的演讲环节', titleEn: 'Prepared Speeches', transitionPolicy: 'betweenChildren', children: (facts.preparedSpeeches || []).map((item, index) => createPreparedBlock(item, index, template)) },
     { id: 'break', type: 'row', children: [], row: createRow(template, 'break', { personMode: 'none', clubMode: 'fixed', clubZh: '全体参会人员欢聚' }) },
     { id: 'specialSession', type: 'row', enabled: template.settings.specialSessionEnabled !== false, children: [], row: createRow(template, 'specialSession', { person: createPerson({ clubZh: '', clubEn: '' }) }) },
-    { id: 'evaluation', type: 'group', titleZh: '备稿演讲点评', transitionPolicy: 'betweenChildren', derived: true, children: [] },
-    { id: 'facilitatorReport', type: 'group', titleZh: '会议促进者报告', transitionPolicy: 'betweenChildren', children: [
+    { id: 'evaluation', type: 'group', titleZh: '备稿演讲点评', titleEn: 'Prepared Speech Evaluations', transitionPolicy: 'betweenChildren', derived: true, children: [] },
+    { id: 'facilitatorReport', type: 'group', titleZh: '会议促进者报告', titleEn: 'Meeting Facilitator Reports', transitionPolicy: 'betweenChildren', children: [
       createRow(template, 'grammarianReport', { person: rolePerson(facts, 'grammarian'), roleKey: 'grammarian' }),
       createRow(template, 'ahCounterReport', { person: rolePerson(facts, 'ahCounter'), roleKey: 'ahCounter' }),
       createRow(template, 'timerReport', { person: rolePerson(facts, 'timer'), roleKey: 'timer' }),
       createRow(template, 'generalEvaluatorReport', { person: rolePerson(facts, 'generalEvaluator'), roleKey: 'generalEvaluator' })
     ] },
     { id: 'vote', type: 'row', children: [], row: createRow(template, 'vote', { person: createPerson({ rawName: '全部', clubZh: '', clubEn: '' }), personMode: 'fixed' }) },
-    { id: 'closing', type: 'group', titleZh: '会议尾声', transitionPolicy: 'none', children: [
+    { id: 'closing', type: 'group', titleZh: '会议尾声', titleEn: 'Closing', transitionPolicy: 'none', children: [
       createRow(template, 'feedback', { person: president }),
       createRow(template, 'award', { person: president }),
       createRow(template, 'roleBooking', { person: rolePerson(facts, 'nextMeetingHost') })
     ] },
-    { id: 'end', type: 'end', titleZh: '会议结束', duration: 0, children: [] }
+    { id: 'end', type: 'end', titleZh: '会议结束', titleEn: 'Meeting Adjourned', duration: 0, children: [] }
   ];
   const agenda = {
     schemaVersion: AGENDA_SCHEMA_VERSION,
     templateId: template.templateId,
     templateUpdatedAt: template.updatedAt || '',
     rawText: facts.rawText || '',
-    meetingInfo: Object.assign({ meetingNo: '', date: '', weekday: '', startTime: '19:30', endTime: '21:30', address: '', theme: '', language: 'zh' }, facts.meetingInfo || {}),
+    meetingInfo: Object.assign({ meetingNo: '', date: '', weekday: '', startTime: template.settings.mainStartTime, endTime: '21:30', address: '', theme: '', language: 'zh' }, facts.meetingInfo || {}),
     sections,
     participants: facts.participants || [],
     warnings: facts.warnings || [],
@@ -391,30 +521,48 @@ function calculateSectionDuration(section) {
  */
 function calculateAgenda(agendaValue, templateValue) {
   const agenda = agendaValue;
-  const template = templateValue || createDefaultTemplate();
+  const template = normalizeTemplate(templateValue);
   syncEvaluationSection(agenda, template);
-  let cursor = parseTime('19:30');
+  const language = normalizeLanguage(agenda.meetingInfo && agenda.meetingInfo.language);
+  const mainStart = parseTime(template.settings.mainStartTime) === null ? parseTime('19:30') : parseTime(template.settings.mainStartTime);
+  const signInTime = parseTime(template.settings.signInTime) === null ? '19:00' : formatTime(parseTime(template.settings.signInTime));
+  let cursor = mainStart;
+  let meetingEndCursor = null;
   (agenda.sections || []).forEach((section) => {
+    const languageVisible = !section.languageGate || section.languageGate === language;
+    if (section.enabled === false || !languageVisible) {
+      section.startTime = '';
+      section.duration = 0;
+      return;
+    }
     if (section.id === 'preparation') {
       section.startTime = '';
       section.duration = 0;
       return;
     }
     if (section.id === 'signIn') {
-      section.startTime = '19:00';
+      section.startTime = signInTime;
       section.duration = 0;
       return;
     }
     if (section.id === 'venueIntroduction') {
-      cursor = parseTime('19:30');
+      cursor = mainStart;
+    }
+    if (section.postMeeting) {
+      const postStart = meetingEndCursor === null ? cursor : meetingEndCursor;
+      section.startTime = formatTime(postStart);
+      section.duration = calculateSectionDuration(section);
+      return;
     }
     section.startTime = formatTime(cursor);
     section.duration = calculateSectionDuration(section);
-    if (section.type !== 'end') {
+    if (section.type === 'end') {
+      meetingEndCursor = cursor;
+    } else {
       cursor += section.duration;
     }
   });
-  agenda.computedEndTime = formatTime(cursor);
+  agenda.computedEndTime = formatTime(meetingEndCursor === null ? cursor : meetingEndCursor);
   agenda.timeMismatch = Boolean(agenda.meetingInfo.endTime && agenda.meetingInfo.endTime !== agenda.computedEndTime);
   return agenda;
 }
@@ -465,6 +613,7 @@ function applyTemplateRules(agenda, template) {
     }
     if (templateChanged && !rule.memberTitleEditable) {
       row.titleZh = rule.titleZh;
+      row.titleEn = rule.titleEn || row.titleEn || rule.titleZh;
     }
     if (templateChanged && !rule.memberDurationEditable) {
       row.duration = Math.max(Number(rule.duration) || 0, 0);
@@ -490,8 +639,7 @@ function applyTemplateRules(agenda, template) {
  * 为什么添加：页面、保存接口和 PDF 入口必须接受同一稳定数据形状。
  */
 function normalizeAgenda(value, templateValue) {
-  const template = Object.assign(createDefaultTemplate(), cloneJson(templateValue || {}));
-  template.settings = Object.assign({}, createDefaultTemplate().settings, templateValue && templateValue.settings || {});
+  const template = normalizeTemplate(templateValue);
   if (!value || Number(value.schemaVersion) !== AGENDA_SCHEMA_VERSION || !Array.isArray(value.sections)) {
     return upgradeLegacyAgenda(value || {}, template);
   }
@@ -533,6 +681,74 @@ function createEmptyAgenda() {
 }
 
 /**
+ * 方法是什么：创建每期动态模块行。
+ * 方法作用：按模块种类生成双语标题、默认时长、人员和完整会员编辑权限。
+ * 为什么添加：动态模块不能污染全局模板规则，但仍需使用标准 AgendaV2 行结构。
+ */
+function createDynamicRow(kind, index) {
+  const spec = DYNAMIC_MODULES[kind];
+  if (!spec) {
+    return null;
+  }
+  return {
+    id: `dynamic-${kind}-${Date.now()}-${index || 0}`,
+    type: 'row',
+    dynamic: true,
+    moduleKind: kind,
+    titleZh: spec.titleZh,
+    titleEn: spec.titleEn,
+    duration: spec.duration,
+    person: createPerson({ clubZh: '', clubEn: '' }),
+    persons: [],
+    personMode: 'editable',
+    clubMode: 'person',
+    clubZh: '',
+    showDuration: true,
+    permissions: { memberTitle: true, memberDuration: true, memberPerson: true, memberClub: true, memberStructure: true }
+  };
+}
+
+/**
+ * 方法是什么：向当前议程添加动态模块。
+ * 方法作用：执行唯一性检查并按产品规定插入子行或顶层位置。
+ * 为什么添加：编辑器、保存和测试需要共享确定性的默认顺序。
+ */
+function addDynamicModule(agendaValue, kind) {
+  const agenda = cloneJson(agendaValue);
+  const spec = DYNAMIC_MODULES[kind];
+  if (!spec) {
+    return agenda;
+  }
+  const exists = (agenda.sections || []).some((section) => section.moduleKind === kind || (section.children || []).some((row) => row.moduleKind === kind));
+  if (exists) {
+    return agenda;
+  }
+  const row = createDynamicRow(kind, agenda.sections.length);
+  if (kind === 'icebreaker') {
+    const parent = agenda.sections.find((section) => section.id === 'facilitatorIntroduction');
+    if (parent) {
+      parent.children.push(row);
+    }
+    return agenda;
+  }
+  const anchorIndex = agenda.sections.findIndex((section) => section.id === spec.placement);
+  const section = {
+    id: row.id,
+    type: 'row',
+    dynamic: true,
+    moduleKind: kind,
+    movable: Boolean(spec.movable),
+    deletable: true,
+    postMeeting: Boolean(spec.postMeeting),
+    languageGate: spec.languageGate || '',
+    children: [],
+    row
+  };
+  agenda.sections.splice(anchorIndex < 0 ? agenda.sections.length : anchorIndex + 1, 0, section);
+  return agenda;
+}
+
+/**
  * 方法是什么：创建空备稿块。
  * 方法作用：为会员新增备稿演讲提供默认标题、人员、项目和七分钟时长。
  * 为什么添加：备稿模块需要支持任意数量的小模块增删排序。
@@ -564,8 +780,9 @@ function moveItem(list, fromIndex, toIndex) {
  */
 function flattenAgendaRows(agendaValue) {
   const rows = [];
+  const language = normalizeLanguage(agendaValue && agendaValue.meetingInfo && agendaValue.meetingInfo.language);
   (agendaValue.sections || []).forEach((section) => {
-    if (section.enabled === false) {
+    if (section.enabled === false || section.languageGate && section.languageGate !== language) {
       return;
     }
     if (section.type === 'row') {
@@ -586,10 +803,15 @@ module.exports = {
   parseTime,
   formatTime,
   parsePathwayDuration,
+  normalizeLanguage,
   createDefaultTemplate,
+  normalizeTemplate,
+  resolveTemplateLocale,
   getRule,
   createAgendaFromFacts,
   createEmptyAgenda,
+  createDynamicRow,
+  addDynamicModule,
   createEmptyPreparedBlock,
   normalizeAgenda,
   calculateAgenda,
@@ -597,5 +819,6 @@ module.exports = {
   syncEvaluationSection,
   applyTemplateRules,
   moveItem,
-  flattenAgendaRows
+  flattenAgendaRows,
+  DYNAMIC_MODULES
 };

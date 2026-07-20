@@ -1,64 +1,80 @@
 <view class="page editor-page" wx:if="{{!loading}}">
+  <view class="panel basic-info-panel">
+    <view class="panel-title">基础信息</view>
+    <view class="basic-info-grid">
+      <label class="field"><text>No.（第几期）</text><input value="{{agenda.meetingInfo.meetingNo}}" data-field="meetingNo" bindinput="handleBasicInfoInput" /></label>
+      <label class="field"><text>日期</text><input disabled value="{{agenda.meetingInfo.date}}" placeholder="从接龙信息读取" /></label>
+      <label class="field"><text>语言</text><input disabled value="{{agenda.meetingInfo.language === 'en' ? 'English' : '中文'}}" /></label>
+      <label class="field"><text>主题</text><input value="{{agenda.meetingInfo.theme}}" placeholder="请输入本期会议主题" data-field="theme" bindinput="handleBasicInfoInput" /></label>
+    </view>
+  </view>
+
   <view class="mode-note {{isSuperAdmin ? 'admin' : ''}}">
     当前身份：{{isSuperAdmin ? '模拟超管' : '普通会员'}}
   </view>
 
   <view wx:if="{{isSuperAdmin}}" class="panel meeting-panel">
-    <view class="panel-title">会议基本信息</view>
+    <view class="panel-title">高级会议信息</view>
     <view class="field-grid">
-      <label class="field"><text>会议编号</text><input disabled="{{!isSuperAdmin}}" value="{{agenda.meetingInfo.meetingNo}}" data-field="meetingNo" bindinput="handleMeetingInput" /></label>
-      <label class="field"><text>日期</text><input disabled="{{!isSuperAdmin}}" value="{{agenda.meetingInfo.date}}" data-field="date" bindinput="handleMeetingInput" /></label>
-      <label class="field"><text>主题</text><input disabled="{{!isSuperAdmin}}" value="{{agenda.meetingInfo.theme}}" data-field="theme" bindinput="handleMeetingInput" /></label>
       <label class="field"><text>开始时间</text><input disabled="{{!isSuperAdmin}}" value="{{agenda.meetingInfo.startTime}}" data-field="startTime" bindinput="handleMeetingInput" /></label>
       <label class="field"><text>页眉结束时间</text><input disabled="{{!isSuperAdmin}}" value="{{agenda.meetingInfo.endTime}}" data-field="endTime" bindinput="handleMeetingInput" /></label>
+      <label class="field"><text>模板语言</text><picker range="{{languageLabels}}" value="{{agenda.meetingInfo.language === 'en' ? 1 : 0}}" bindchange="handleLanguageChange"><view class="picker-value language-picker">{{agenda.meetingInfo.language === 'en' ? 'English' : '中文'}}<text class="picker-arrow">⌄</text></view></picker></label>
       <label class="field full"><text>地址</text><textarea disabled="{{!isSuperAdmin}}" value="{{agenda.meetingInfo.address}}" data-field="address" bindinput="handleMeetingInput" /></label>
     </view>
     <view wx:if="{{agenda.timeMismatch}}" class="time-warning">时间链结束于 {{agenda.computedEndTime}}，与页眉 {{agenda.meetingInfo.endTime}} 不一致</view>
   </view>
 
   <block wx:for="{{agenda.sections}}" wx:for-item="section" wx:for-index="sectionIndex" wx:key="id">
-    <view wx:if="{{section.enabled !== false && section.id !== 'evaluation' && section.id !== 'facilitatorReport' && section.id !== 'vote' && section.id !== 'specialSession'}}" class="panel agenda-section">
+    <view wx:if="{{section.enabled !== false && (!section.languageGate || section.languageGate === agenda.meetingInfo.language) && section.id !== 'evaluation' && section.id !== 'facilitatorReport' && section.id !== 'vote' && section.id !== 'specialSession'}}" class="panel agenda-section {{section.type === 'end' ? 'end-section' : ''}}">
       <view class="section-heading">
         <view>
           <text class="section-time">{{section.startTime}}</text>
-          <text class="section-title">{{section.type === 'row' ? section.row.titleZh : section.titleZh}}</text>
+          <text class="section-title">{{section.type === 'row' ? section.row.displayTitle : section.displayTitle}}</text>
         </view>
         <text wx:if="{{section.type !== 'end' && section.duration}}" class="section-duration">{{section.duration}} 分钟</text>
       </view>
 
       <view wx:if="{{section.type === 'row'}}" class="agenda-row single-row">
-        <label wx:if="{{section.row.canEditTitle}}" class="field"><text>流程</text><input value="{{section.row.titleZh}}" data-scope="section" data-section-index="{{sectionIndex}}" data-field="titleZh" bindinput="handleRowInput" /></label>
+        <label wx:if="{{section.row.canEditTitle}}" class="field"><text>流程</text><input value="{{section.row.displayTitle}}" data-scope="section" data-section-index="{{sectionIndex}}" data-field="{{agenda.meetingInfo.language === 'en' ? 'titleEn' : 'titleZh'}}" bindinput="handleRowInput" /></label>
         <label wx:if="{{section.row.showDuration && section.row.id !== 'preparation' && section.row.id !== 'signIn' && section.row.id !== 'venueIntroduction'}}" class="field compact"><text>限时</text><input type="number" disabled="{{!section.row.canEditDuration}}" value="{{section.row.duration}}" data-scope="section" data-section-index="{{sectionIndex}}" data-field="duration" bindinput="handleRowInput" /></label>
-         <template is="person-editor" wx:if="{{section.row.personMode === 'editable'}}" data="{{row: section.row, person: section.row.person, scope: 'section', sectionIndex: sectionIndex, personField: 'person', memberLabels: memberLabels, memberLoading: memberLoading, memberLoadError: memberLoadError, label: section.row.id === 'venueIntroduction' ? '宾客SAA' : '演讲者'}}" />
+         <template is="person-editor" wx:if="{{section.row.personMode === 'editable'}}" data="{{row: section.row, person: section.row.person, scope: 'section', sectionIndex: sectionIndex, personField: 'person', memberLabels: memberLabels, memberLoading: memberLoading, memberLoadError: memberLoadError, language: agenda.meetingInfo.language, label: section.row.id === 'venueIntroduction' ? '宾客SAA' : '演讲者'}}" />
         <block wx:if="{{section.row.personMode === 'multiple'}}">
            <block wx:for="{{section.row.persons}}" wx:for-item="multiPerson" wx:for-index="personIndex" wx:key="personIndex">
-             <template is="person-editor" wx:if="{{section.row.id !== 'signIn' || personIndex !== 0}}" data="{{row: section.row, person: multiPerson, scope: 'section', sectionIndex: sectionIndex, personField: 'multi', personIndex: personIndex, memberLabels: memberLabels, memberLoading: memberLoading, memberLoadError: memberLoadError, label: '会员SAA'}}" />
+             <template is="person-editor" wx:if="{{section.row.id !== 'signIn' || personIndex !== 0}}" data="{{row: section.row, person: multiPerson, scope: 'section', sectionIndex: sectionIndex, personField: 'multi', personIndex: personIndex, memberLabels: memberLabels, memberLoading: memberLoading, memberLoadError: memberLoadError, language: agenda.meetingInfo.language, label: '会员SAA'}}" />
            </block>
         </block>
-        <view wx:if="{{section.row.personMode === 'fixed' && section.row.person.rawName}}" class="fixed-person">{{section.row.person.displayNameZh || section.row.person.rawName}} · {{section.row.person.clubZh}}</view>
+        <view wx:if="{{section.row.personMode === 'fixed' && section.row.person.rawName}}" class="fixed-person">{{agenda.meetingInfo.language === 'en' ? (section.row.person.displayNameEn || section.row.person.rawName) : (section.row.person.displayNameZh || section.row.person.rawName)}} · {{agenda.meetingInfo.language === 'en' ? section.row.person.clubEn : section.row.person.clubZh}}</view>
         <view wx:if="{{section.row.clubMode === 'fixed' && section.row.id !== 'break'}}" class="fixed-club">{{section.row.clubZh}}</view>
+      </view>
+      <view wx:if="{{section.id === 'break' || section.dynamic}}" class="module-controls">
+        <view wx:if="{{section.id === 'break' || section.movable}}" class="module-actions"><button size="mini" disabled="{{!section.canMoveUp}}" data-section-index="{{sectionIndex}}" data-direction="-1" bindtap="moveAgendaSection">上移</button><button size="mini" disabled="{{!section.canMoveDown}}" data-section-index="{{sectionIndex}}" data-direction="1" bindtap="moveAgendaSection">下移</button></view>
+        <button wx:if="{{section.dynamic && section.deletable}}" class="delete-module" size="mini" type="warn" data-section-index="{{sectionIndex}}" bindtap="deleteDynamicModule">删除</button>
+        <text class="position-note">当前位于：{{section.positionAfterLabel}}之后</text>
       </view>
 
       <block wx:if="{{section.type === 'group'}}" wx:for="{{section.children}}" wx:for-item="row" wx:for-index="childIndex" wx:key="id">
         <view wx:if="{{row.type === 'preparedSpeechBlock'}}" hidden="{{row.id === 'guestIntroduction'}}" class="prepared-block">
-          <view class="block-head"><text>备稿演讲 {{childIndex + 1}}</text><button size="mini" type="warn" data-child-index="{{childIndex}}" bindtap="deletePreparedBlock">删除</button></view>
-          <label class="field"><text>演讲标题</text><input value="{{row.titleZh}}" data-scope="child" data-section-index="{{sectionIndex}}" data-child-index="{{childIndex}}" data-field="titleZh" bindinput="handleRowInput" /></label>
+          <view class="block-head"><text>备稿演讲 {{childIndex + 1}}</text><button class="prepared-delete" size="mini" type="warn" data-child-index="{{childIndex}}" bindtap="deletePreparedBlock">删除</button></view>
+          <label class="field"><text>演讲标题</text><input value="{{agenda.meetingInfo.language === 'en' ? row.titleEn : row.titleZh}}" data-scope="child" data-section-index="{{sectionIndex}}" data-child-index="{{childIndex}}" data-field="{{agenda.meetingInfo.language === 'en' ? 'titleEn' : 'titleZh'}}" bindinput="handleRowInput" /></label>
           <label class="field compact"><text>限时（分钟）</text><input type="number" value="{{row.duration}}" data-scope="child" data-section-index="{{sectionIndex}}" data-child-index="{{childIndex}}" data-field="duration" bindinput="handleRowInput" /></label>
-          <label class="field"><text>Pathways 项目</text><picker range="{{pathwayOptions}}" range-key="label" value="{{row.pathwayIndex}}" data-scope="child" data-section-index="{{sectionIndex}}" data-child-index="{{childIndex}}" bindchange="choosePathway"><view class="picker-value">{{row.pathway.fullLabelZh || '选择项目'}}</view></picker></label>
-           <template is="person-editor" data="{{row: row, person: row.speaker, scope: 'child', sectionIndex: sectionIndex, childIndex: childIndex, personField: 'speaker', memberLabels: memberLabels, memberLoading: memberLoading, memberLoadError: memberLoadError, label: '演讲者'}}" />
-           <template is="person-editor" data="{{row: row, person: row.evaluator, scope: 'child', sectionIndex: sectionIndex, childIndex: childIndex, personField: 'evaluator', memberLabels: memberLabels, memberLoading: memberLoading, memberLoadError: memberLoadError, label: '点评者'}}" />
+          <label class="field"><text>Pathways 项目</text><picker range="{{pathwayOptions}}" range-key="label" value="{{row.pathwayIndex}}" data-scope="child" data-section-index="{{sectionIndex}}" data-child-index="{{childIndex}}" bindchange="choosePathway"><view class="picker-value">{{agenda.meetingInfo.language === 'en' ? (row.pathway.fullLabelEn || row.pathway.fullLabelZh || 'Select a project') : (row.pathway.fullLabelZh || '选择项目')}}</view></picker></label>
+           <template is="person-editor" data="{{row: row, person: row.speaker, scope: 'child', sectionIndex: sectionIndex, childIndex: childIndex, personField: 'speaker', memberLabels: memberLabels, memberLoading: memberLoading, memberLoadError: memberLoadError, language: agenda.meetingInfo.language, label: '演讲者'}}" />
+           <template is="person-editor" data="{{row: row, person: row.evaluator, scope: 'child', sectionIndex: sectionIndex, childIndex: childIndex, personField: 'evaluator', memberLabels: memberLabels, memberLoading: memberLoading, memberLoadError: memberLoadError, language: agenda.meetingInfo.language, label: '点评者'}}" />
           <view class="sort-actions"><button size="mini" data-child-index="{{childIndex}}" data-direction="-1" bindtap="movePreparedBlock">上移</button><button size="mini" data-child-index="{{childIndex}}" data-direction="1" bindtap="movePreparedBlock">下移</button></view>
         </view>
         <view wx:else hidden="{{row.id === 'guestIntroduction' || row.id === 'topicNote' || row.id === 'topicSummary' || row.id === 'tableTopicsIcebreaker' || row.id === 'feedback' || row.id === 'award'}}" class="agenda-row {{row.type === 'note' ? 'note-row' : ''}}">
-          <view class="row-main"><input disabled="{{!row.canEditTitle}}" value="{{row.displayTitle || row.titleZh}}" data-scope="child" data-section-index="{{sectionIndex}}" data-child-index="{{childIndex}}" data-field="titleZh" bindinput="handleRowInput" /><input wx:if="{{row.showDuration}}" class="duration-input" type="number" disabled="{{!row.canEditDuration}}" value="{{row.duration}}" data-scope="child" data-section-index="{{sectionIndex}}" data-child-index="{{childIndex}}" data-field="duration" bindinput="handleRowInput" /><text wx:if="{{row.showDuration}}">分钟</text></view>
-           <template is="person-editor" wx:if="{{(row.personMode === 'editable' && row.id !== 'tableTopicsSpeech') || row.id === 'openingIcebreaker'}}" data="{{row: row, person: row.person, scope: 'child', sectionIndex: sectionIndex, childIndex: childIndex, personField: 'person', memberLabels: memberLabels, memberLoading: memberLoading, memberLoadError: memberLoadError, label: row.id === 'topicExplanation' ? '即兴主持人' : (row.id === 'tableTopicsEvaluation' ? '即兴点评' : '演讲者')}}" />
+          <view class="row-main"><input disabled="{{!row.canEditTitle}}" value="{{row.displayTitle || row.titleZh}}" data-scope="child" data-section-index="{{sectionIndex}}" data-child-index="{{childIndex}}" data-field="{{agenda.meetingInfo.language === 'en' ? 'titleEn' : 'titleZh'}}" bindinput="handleRowInput" /><input wx:if="{{row.showDuration}}" class="duration-input" type="number" disabled="{{!row.canEditDuration}}" value="{{row.duration}}" data-scope="child" data-section-index="{{sectionIndex}}" data-child-index="{{childIndex}}" data-field="duration" bindinput="handleRowInput" /><text wx:if="{{row.showDuration}}">分钟</text></view>
+           <template is="person-editor" wx:if="{{(row.personMode === 'editable' && row.id !== 'tableTopicsSpeech') || row.id === 'openingIcebreaker'}}" data="{{row: row, person: row.person, scope: 'child', sectionIndex: sectionIndex, childIndex: childIndex, personField: 'person', memberLabels: memberLabels, memberLoading: memberLoading, memberLoadError: memberLoadError, language: agenda.meetingInfo.language, label: row.id === 'topicExplanation' ? '即兴主持人' : (row.id === 'tableTopicsEvaluation' ? '即兴点评' : '演讲者')}}" />
           <view wx:if="{{row.personMode === 'fixed' && row.id !== 'openingIcebreaker'}}" class="fixed-person">{{row.person.displayNameZh || row.person.rawName}} · {{row.person.clubZh}}</view>
           <view wx:if="{{row.personMode === 'derived'}}" class="derived-person">{{row.person.displayNameZh || row.person.rawName || '待选择点评者'}} · {{row.person.clubZh}}</view>
+          <view wx:if="{{row.dynamic}}" class="dynamic-child-meta"><button size="mini" type="warn" data-section-index="{{sectionIndex}}" data-child-index="{{childIndex}}" bindtap="deleteDynamicModule">删除</button><text class="position-note">当前位于：{{row.positionAfterLabel}}之后</text></view>
         </view>
       </block>
       <button wx:if="{{section.id === 'preparedSpeech'}}" class="add-button" bindtap="addPreparedBlock">新增备稿演讲</button>
     </view>
   </block>
+
+  <view wx:if="{{addModuleOptions.length}}" class="panel add-module-panel"><text class="panel-title">新增模块</text><picker range="{{addModuleLabels}}" bindchange="addDynamicModule"><view class="add-module-picker">选择要新增的模块<text class="picker-arrow">⌄</text></view></picker></view>
 
   <view class="panel qr-panel"><text class="panel-title">例会群二维码</text><button size="mini" bindtap="chooseMeetingGroupQr">替换图片</button></view>
   <view class="bottom-actions"><button loading="{{saving}}" bindtap="saveAgenda">保存草稿</button><button class="preview-button" loading="{{saving}}" bindtap="goPreview">预览并导出</button></view>
@@ -68,13 +84,13 @@
   <view class="person-editor">
     <view class="person-line">
       <text class="person-label">{{label || '演讲者'}}</text>
-      <picker wx:if="{{person.inputMode === 'select'}}" class="person-control member-picker" disabled="{{!row.canEditPerson || memberLoading || memberLoadError || !memberLabels.length}}" range="{{memberLabels}}" value="{{person.memberIndex}}" data-scope="{{scope}}" data-section-index="{{sectionIndex}}" data-child-index="{{childIndex}}" data-person-field="{{personField}}" data-person-index="{{personIndex}}" bindchange="chooseMember"><view class="picker-value">{{person.displayNameZh || person.rawName || '选择会员'}}</view></picker>
+      <picker wx:if="{{person.inputMode === 'select'}}" class="person-control member-picker" disabled="{{!row.canEditPerson || memberLoading || memberLoadError || !memberLabels.length}}" range="{{memberLabels}}" value="{{person.memberIndex}}" data-scope="{{scope}}" data-section-index="{{sectionIndex}}" data-child-index="{{childIndex}}" data-person-field="{{personField}}" data-person-index="{{personIndex}}" bindchange="chooseMember"><view class="picker-value"><text class="picker-label">{{language === 'en' ? (person.displayNameEn || person.rawName || 'Select a member') : (person.displayNameZh || person.rawName || '选择会员')}}</text><text class="picker-arrow">⌄</text></view></picker>
       <input wx:else class="person-control" disabled="{{!row.canEditPerson}}" value="{{person.rawName}}" placeholder="输入姓名" data-scope="{{scope}}" data-section-index="{{sectionIndex}}" data-child-index="{{childIndex}}" data-person-field="{{personField}}" data-person-index="{{personIndex}}" data-field="rawName" bindinput="handlePersonInput" />
       <button wx:if="{{row.id !== 'openingIcebreaker'}}" class="switch-button" size="mini" disabled="{{!row.canEditPerson}}" data-scope="{{scope}}" data-section-index="{{sectionIndex}}" data-child-index="{{childIndex}}" data-person-field="{{personField}}" data-person-index="{{personIndex}}" bindtap="togglePersonMode">{{person.inputMode === 'select' ? '输入' : '选择'}}</button>
     </view>
     <text wx:if="{{person.inputMode === 'select' && memberLoading}}" class="member-status">会员列表加载中...</text>
     <text wx:if="{{person.inputMode === 'select' && memberLoadError}}" class="member-status error">会员列表加载失败，请稍后重试</text>
     <text wx:if="{{person.inputMode === 'select' && !memberLoading && !memberLoadError && !memberLabels.length}}" class="member-status">暂无可选会员</text>
-    <view wx:if="{{row.id !== 'openingIcebreaker'}}" class="club-line"><text class="club-label">俱乐部</text><input class="club-input" disabled="{{person.memberId || !row.canEditClub}}" value="{{person.clubZh}}" placeholder="俱乐部" data-scope="{{scope}}" data-section-index="{{sectionIndex}}" data-child-index="{{childIndex}}" data-person-field="{{personField}}" data-person-index="{{personIndex}}" data-field="clubZh" bindinput="handlePersonInput" /></view>
+    <view wx:if="{{row.id !== 'openingIcebreaker'}}" class="club-line"><text class="club-label">俱乐部</text><input class="club-input" disabled="{{person.memberId || !row.canEditClub}}" value="{{language === 'en' ? person.clubEn : person.clubZh}}" placeholder="俱乐部" data-scope="{{scope}}" data-section-index="{{sectionIndex}}" data-child-index="{{childIndex}}" data-person-field="{{personField}}" data-person-index="{{personIndex}}" data-field="{{language === 'en' ? 'clubEn' : 'clubZh'}}" bindinput="handlePersonInput" /></view>
   </view>
 </template>

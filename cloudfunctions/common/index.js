@@ -251,7 +251,7 @@ async function getAgendaTemplate() {
   const templateId = agendaModel.TEMPLATE_ID;
   const result = await collection.where({ templateId }).limit(1).get();
   if (result.data && result.data.length) {
-    return Object.assign(agendaModel.createDefaultTemplate(), result.data[0]);
+    return Object.assign(agendaModel.normalizeTemplate(result.data[0]), { _id: result.data[0]._id });
   }
   const template = agendaModel.createDefaultTemplate();
   const addResult = await collection.add({ data: Object.assign({}, template, { createdAt: nowIso(), updatedAt: nowIso() }) });
@@ -267,7 +267,7 @@ async function saveAgendaTemplate(value) {
   const db = getDb();
   const source = value || {};
   const defaults = agendaModel.createDefaultTemplate();
-  const template = Object.assign({}, defaults, source, {
+  const template = agendaModel.normalizeTemplate(Object.assign({}, defaults, source, {
     templateId: agendaModel.TEMPLATE_ID,
     schemaVersion: agendaModel.AGENDA_SCHEMA_VERSION,
     fixedContent: Object.assign({}, defaults.fixedContent, source.fixedContent || {}),
@@ -277,8 +277,10 @@ async function saveAgendaTemplate(value) {
     settings: Object.assign({}, defaults.settings, source.settings || {}),
     agendaRules: Array.isArray(source.agendaRules) && source.agendaRules.length ? source.agendaRules : defaults.agendaRules,
     timerRules: Array.isArray(source.timerRules) && source.timerRules.length ? source.timerRules : defaults.timerRules,
+    locales: source.locales || defaults.locales,
     updatedAt: nowIso()
-  });
+  }));
+  template.updatedAt = nowIso();
   delete template._id;
   const collection = await ensureCollection('agenda_templates');
   const existing = await collection.where({ templateId: agendaModel.TEMPLATE_ID }).limit(1).get();

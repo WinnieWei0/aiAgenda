@@ -67,9 +67,11 @@ function buildAgendaPrompt() {
     '请把用户提供的微信群接龙文本解析成 JSON。',
     '只能输出 JSON，不要输出 Markdown 或解释。',
     'JSON 字段包括 meetingInfo、roles、preparedSpeeches、participants、nextMeeting、confidence。',
+    'meetingInfo.meetingNo 和 meetingInfo.language 必须从开头“第N期中文会议/英文会议”标题提取，language 只能是 zh 或 en。',
     'preparedSpeeches 数组字段包括 index、speakerRawName、projectCode、evaluatorRawName、title。',
     'roles 使用 key 到对象的映射，对象字段包括 key、titleZh、titleEn、rawName。',
     'roles 请优先使用这些 key：meetingManager、guestReception、memberReception、toastmaster、photographer、timer、ahCounter、grammarian、generalEvaluator、tableTopicsMaster、tableTopicsEvaluator。',
+    '角色后只有太阳、玫瑰花、对应表情或空白时表示无人报名，该角色 rawName 必须是空字符串，不能把符号当姓名。',
     '只提取接龙中的事实，不要生成议程环节、开始时间、限时或流程顺序。',
     '不要虚构 Pathways 描述，项目描述会由系统根据 projectCode 再匹配。'
   ].join('\n');

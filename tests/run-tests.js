@@ -138,8 +138,10 @@ function testNameMatching() {
 function testRuleParser() {
   const agenda = parser.validateAgenda(parser.parseAgendaByRules(SAMPLE_TEXT, memberships, pathways));
   assert.strictEqual(agenda.meetingInfo.meetingNo, '760');
+  assert.strictEqual(agenda.meetingInfo.language, 'zh');
   assert.strictEqual(agenda.meetingInfo.date, '2026-07-08');
   assert.strictEqual(agenda.roles.meetingManager.rawName, '马威');
+  assert.strictEqual(agenda.roles.grammarian.rawName, '');
   assert.strictEqual(agenda.preparedSpeeches.length, 2);
   assert.ok(agenda.items.length >= 10, '应生成基础流程项目');
   assert.strictEqual(agenda.participants.length, 3);
@@ -233,10 +235,121 @@ function testTemplateAndLegacyUpgrade() {
   const nextTemplate = agendaUtil.cloneJson(firstTemplate);
   nextTemplate.updatedAt = '2026-07-17T00:00:00.000Z';
   nextTemplate.agendaRules.find(function findVenue(rule) { return rule.id === 'venueIntroduction'; }).duration = 3;
+  nextTemplate.agendaRules.find(function findVenue(rule) { return rule.id === 'venueIntroduction'; }).titleEn = 'Updated Guest SAA Briefing';
   nextTemplate.agendaRules.find(function findSpeechRule(rule) { return rule.id === 'tableTopicsSpeech'; }).duration = 20;
   const refreshed = agendaUtil.normalizeAgenda(currentAgenda, nextTemplate);
   assert.strictEqual(refreshed.sections.find(function findVenueSection(section) { return section.id === 'venueIntroduction'; }).row.duration, 3, '锁定时长应跟随模板更新');
+  assert.strictEqual(refreshed.sections.find(function findVenueTitle(section) { return section.id === 'venueIntroduction'; }).row.titleEn, 'Updated Guest SAA Briefing', '英文锁定标题应跟随模板更新');
   assert.strictEqual(refreshed.sections.find(function findTopicsSection(section) { return section.id === 'tableTopics'; }).children.find(function findMemberSpeech(row) { return row.id === 'tableTopicsSpeech'; }).duration, 18, '会员动态时长不应被模板覆盖');
+}
+
+/**
+ * 方法是什么：测试双语模板迁移和模板时间锚点。
+ * 方法作用：验证旧中文文案进入 locale、英文默认文案可用，且编辑页时间不能覆盖模板锚点。
+ * 为什么添加：模板语言和时间来源是本次重构的核心数据契约。
+ */
+function testLocalizedTemplateAndAnchors() {
+  const migrated = agendaUtil.normalizeTemplate({ fixedContent: { clubTitle: '旧中文模板' } });
+  assert.strictEqual(migrated.locales.zh.fixedContent.clubTitle, '旧中文模板');
+  assert.ok(migrated.locales.en.fixedContent.clubTitle.includes('Bilingual'));
+  const englishView = agendaUtil.resolveTemplateLocale(migrated, 'en');
+  assert.strictEqual(englishView.activeLanguage, 'en');
+  assert.ok(englishView.timerRules[0][0].includes('Timing'));
+
+  const template = agendaUtil.createDefaultTemplate();
+  template.settings.signInTime = '18:45';
+  template.settings.mainStartTime = '20:00';
+  const agenda = agendaUtil.createAgendaFromFacts({ meetingInfo: { startTime: '10:00' } }, template);
+  assert.strictEqual(agenda.sections.find((section) => section.id === 'signIn').startTime, '18:45');
+  assert.strictEqual(agenda.sections.find((section) => section.id === 'venueIntroduction').startTime, '20:00');
+  agenda.sections.forEach((section) => { section.startTime = '01:01'; });
+  const normalized = agendaUtil.normalizeAgenda(agenda, template);
+  assert.strictEqual(normalized.sections.find((section) => section.id === 'venueIntroduction').startTime, '20:00');
+}
+
+/**
+ * 方法是什么：测试动态模块顺序、语言门控和会后计时。
+ * 方法作用：覆盖五类模块默认值、Free Talk 英文显示和面试不改变会议结束时间。
+ * 为什么添加：动态模块必须在保存、预览和 PDF 共用模型中保持确定行为。
+ */
+function testDynamicAgendaModules() {
+  const template = agendaUtil.createDefaultTemplate();
+  let agenda = agendaUtil.createEmptyAgenda();
+  agenda.meetingInfo.language = 'en';
+  agenda = agendaUtil.addDynamicModule(agenda, 'workshop');
+  agenda = agendaUtil.addDynamicModule(agenda, 'freeTalk');
+  agenda = agendaUtil.addDynamicModule(agenda, 'educationAward');
+  agenda = agendaUtil.addDynamicModule(agenda, 'memberInterview');
+  agenda = agendaUtil.addDynamicModule(agenda, 'icebreaker');
+  agenda = agendaUtil.normalizeAgenda(agenda, template);
+  const order = agenda.sections.map((section) => section.moduleKind || section.id);
+  assert.ok(order.indexOf('freeTalk') < order.indexOf('break'));
+  assert.ok(order.indexOf('break') < order.indexOf('workshop'));
+  assert.strictEqual(agenda.sections.find((section) => section.moduleKind === 'freeTalk').row.duration, 10);
+  assert.strictEqual(agenda.sections.find((section) => section.moduleKind === 'workshop').row.duration, 30);
+  assert.strictEqual(agenda.sections.find((section) => section.moduleKind === 'educationAward').row.duration, 10);
+  const facilitator = agenda.sections.find((section) => section.id === 'facilitatorIntroduction');
+  assert.strictEqual(facilitator.children[facilitator.children.length - 1].moduleKind, 'icebreaker');
+  assert.strictEqual(facilitator.children[facilitator.children.length - 1].duration, 5);
+  const end = agenda.sections.find((section) => section.id === 'end');
+  const interview = agenda.sections.find((section) => section.moduleKind === 'memberInterview');
+  assert.strictEqual(interview.row.duration, 3);
+  assert.strictEqual(interview.startTime, end.startTime);
+  assert.strictEqual(agenda.computedEndTime, end.startTime);
+
+  agenda.meetingInfo.language = 'zh';
+  agenda = agendaUtil.normalizeAgenda(agenda, template);
+  const freeTalk = agenda.sections.find((section) => section.moduleKind === 'freeTalk');
+  assert.strictEqual(freeTalk.startTime, '');
+  assert.strictEqual(freeTalk.duration, 0);
+  assert.strictEqual(agendaUtil.flattenAgendaRows(agenda).some((row) => row.moduleKind === 'freeTalk'), false);
+}
+
+/**
+ * 方法是什么：测试接龙会议语言识别。
+ * 方法作用：验证明确英文标志选择英文模板，普通接龙仍回退中文。
+ * 为什么添加：Free Talk 和模板文案选择依赖稳定的语言字段。
+ */
+function testMeetingLanguageDetection() {
+  const english = parser.parseAgendaByRules('广州双语国际演讲俱乐部第800期英文会议，欢迎大家报名角色\n时间：2026年7月8日周三 19:30-21:30', [], []);
+  const chinese = parser.parseAgendaByRules('广州双语国际演讲俱乐部第801期中文会议，欢迎大家报名角色\n时间：2026年7月8日周三 19:30-21:30', [], []);
+  assert.strictEqual(english.meetingInfo.language, 'en');
+  assert.strictEqual(english.meetingInfo.meetingNo, '800');
+  assert.strictEqual(chinese.meetingInfo.language, 'zh');
+  assert.strictEqual(chinese.meetingInfo.meetingNo, '801');
+}
+
+/**
+ * 方法是什么：测试角色报名占位符清洗。
+ * 方法作用：验证太阳、玫瑰和空值不会进入演讲者字段，并覆盖 AI 结果二次清洗。
+ * 为什么添加：接龙使用装饰符号表示角色空缺，误当姓名会污染编辑页和 PDF。
+ */
+function testEmptyRolePlaceholders() {
+  const text = [
+    '广州双语国际演讲俱乐部第802期中文会议，欢迎大家报名角色',
+    '会议经理：☀️',
+    '总主持人：🌞',
+    '时间官：🌹',
+    '摄影师：[sun]',
+    '语法师：[太阳]',
+    '总体点评：玫瑰花',
+    '即兴主持人：'
+  ].join('\n');
+  const agenda = parser.parseAgendaByRules(text, [], []);
+  ['meetingManager', 'toastmaster', 'timer', 'photographer', 'grammarian', 'generalEvaluator', 'tableTopicsMaster'].forEach(function assertEmpty(key) {
+    assert.strictEqual(agenda.roles[key].rawName, '', `${key} 应保持空白`);
+  });
+
+  const aiAgenda = parser.buildAgendaFromAi({
+    meetingInfo: { meetingNo: '802', language: 'zh' },
+    roles: {
+      timer: { key: 'timer', rawName: '🌹' },
+      grammarian: { key: 'grammarian', rawName: '[太阳]' }
+    }
+  }, [], []);
+  assert.strictEqual(aiAgenda.roles.timer.rawName, '');
+  assert.strictEqual(aiAgenda.roles.grammarian.rawName, '');
+  assert.strictEqual(parser.cleanRoleSignupValue('[sun]'), '');
 }
 
 /**
@@ -294,6 +407,11 @@ async function testPdfRenderer(agenda) {
   const buffer = await pdfRenderer.renderAgendaPdf(agenda, 'zh', agendaUtil.createDefaultTemplate());
   assert.ok(buffer.length > 10000, 'PDF 文件大小异常');
   assert.strictEqual(buffer.slice(0, 4).toString(), '%PDF', '应生成 PDF 文件');
+  const englishAgenda = agendaUtil.cloneJson(agenda);
+  englishAgenda.meetingInfo.language = 'en';
+  const englishBuffer = await pdfRenderer.renderAgendaPdf(englishAgenda, 'en', agendaUtil.createDefaultTemplate());
+  assert.ok(englishBuffer.length > 10000, '英文 PDF 文件大小异常');
+  assert.strictEqual(englishBuffer.slice(0, 4).toString(), '%PDF', '应生成英文 PDF 文件');
 }
 
 /**
@@ -331,6 +449,10 @@ async function main() {
   testAgendaModel();
   testPreparedSpeechRules();
   testTemplateAndLegacyUpgrade();
+  testLocalizedTemplateAndAnchors();
+  testDynamicAgendaModules();
+  testMeetingLanguageDetection();
+  testEmptyRolePlaceholders();
   testDraftExpiry();
   testCollectionMissingError();
   testMemberOptionsAndAgendaPayload();

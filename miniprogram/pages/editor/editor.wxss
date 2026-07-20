@@ -3,6 +3,8 @@
 .mode-note.admin { border-color: #b42318; background: #fff1f0; color: #912018; }
 .panel { margin-bottom: 20rpx; padding: 24rpx; border: 1rpx solid #d7dde5; border-radius: 8rpx; background: #ffffff; }
 .panel-title { display: block; margin-bottom: 20rpx; font-size: 32rpx; font-weight: 700; }
+.basic-info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18rpx; }
+.basic-info-grid .full { grid-column: 1 / -1; }
 .field-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18rpx; }
 .field { display: block; min-width: 0; }
 .field.full { grid-column: 1 / -1; }
@@ -16,6 +18,8 @@
 .section-time { display: inline-block; width: 96rpx; font-weight: 700; }
 .section-title { font-size: 30rpx; font-weight: 700; }
 .section-duration { color: #0f172a; font-weight: 700; }
+.end-section { padding-bottom: 0; }
+.end-section .section-heading { margin-bottom: 0; }
 .agenda-row { padding: 18rpx 0; border-bottom: 1rpx solid #e2e8f0; }
 .agenda-row:last-child { border-bottom: 0; }
 .row-main { display: flex; align-items: center; gap: 10rpx; }
@@ -31,7 +35,9 @@
 .person-label { color: #64748b; font-size: 24rpx; }
 .person-control, .club-input { box-sizing: border-box; width: 100%; min-width: 0; height: 64rpx; padding: 0 12rpx; border: 1rpx solid #cbd5e1; }
 .member-picker { height: 64rpx; padding: 0; border: 0; }
-.person-control .picker-value { box-sizing: border-box; min-height: 64rpx; padding: 12rpx; border: 1rpx solid #cbd5e1; background: #ffffff; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.person-control .picker-value { display: flex; box-sizing: border-box; min-height: 64rpx; align-items: center; justify-content: space-between; padding: 12rpx; border: 1rpx solid #cbd5e1; background: #ffffff; overflow: hidden; }
+.picker-label { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.picker-arrow { flex: 0 0 auto; margin-left: 12rpx; color: #64748b; font-size: 30rpx; line-height: 1; }
 .switch-button { width: 112rpx; margin: 0; }
 .club-line { display: grid; grid-template-columns: 100rpx minmax(0, 1fr); gap: 10rpx; align-items: center; margin-top: 10rpx; }
 .club-label { color: #64748b; font-size: 24rpx; }
@@ -41,13 +47,22 @@
 .member-status.error { color: #b42318; }
 .prepared-block { margin: 30rpx 0; padding: 20rpx; border-left: 6rpx solid #0f766e; background: #f8fafc; }
 .block-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16rpx; font-weight: 700; }
-.block-head button { margin-left: auto; }
+.block-head button, .prepared-delete { margin-right: 0; margin-left: auto; }
 .prepared-block > .field { display: grid; grid-template-columns: 170rpx minmax(0, 1fr); gap: 14rpx; align-items: center; margin-top: 14rpx; }
 .prepared-block > .field text { margin: 0; }
 .prepared-block > .field.compact { max-width: none; }
 .objective { margin: 14rpx 0; padding: 16rpx; background: #eef2f6; color: #334155; font-size: 24rpx; line-height: 1.55; }
 .sort-actions { display: flex; justify-content: flex-end; gap: 12rpx; margin-top: 16rpx; }
 .sort-actions button { margin: 0; }
+.module-controls { display: grid; grid-template-columns: 1fr auto; gap: 10rpx; align-items: center; margin-top: 18rpx; padding-top: 14rpx; border-top: 1rpx solid #e2e8f0; }
+.module-actions { display: flex; gap: 10rpx; }
+.module-actions button, .delete-module { margin: 0; }
+.position-note { grid-column: 1 / -1; color: #64748b; font-size: 22rpx; }
+.dynamic-child-meta { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10rpx; margin-top: 12rpx; }
+.dynamic-child-meta button { margin: 0 0 0 auto; }
+.dynamic-child-meta .position-note { width: 100%; }
+.add-module-panel .panel-title { margin-bottom: 14rpx; }
+.add-module-picker, .language-picker { display: flex; box-sizing: border-box; width: 100%; min-height: 72rpx; align-items: center; justify-content: space-between; padding: 14rpx 18rpx; border: 1rpx solid #cbd5e1; background: #ffffff; }
 .add-button { margin-top: 18rpx; border: 1rpx dashed #0f766e; color: #0f766e; background: #ffffff; }
 .qr-panel { display: flex; align-items: center; justify-content: space-between; }
 .qr-panel .panel-title { margin: 0; }

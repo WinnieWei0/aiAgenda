@@ -90,6 +90,11 @@ async function main(event) {
       common.getAgendaTemplate()
     ]);
     const aiResult = await common.deepseek.parseAgendaWithDeepSeek(rawText, { timeoutMs: 15000 });
+    const headerInfo = common.parser.parseMeetingHeader(rawText);
+    aiResult.meetingInfo = Object.assign({}, aiResult.meetingInfo || {}, {
+      meetingNo: headerInfo.meetingNo || (aiResult.meetingInfo && aiResult.meetingInfo.meetingNo) || '',
+      language: headerInfo.language
+    });
     const agenda = common.parser.buildAgendaFromAi(aiResult, memberships, pathways, template);
     const validated = common.parser.validateAgenda(Object.assign({}, agenda, { rawText }));
     const draft = await saveCurrentDraft(common.getDb(), openid, validated);

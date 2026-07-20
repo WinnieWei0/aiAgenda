@@ -191,14 +191,15 @@ function drawImageFit(page, image, x, y, width, height) {
  * 方法作用：兼容普通行、备稿演讲块、多人签到和固定人员。
  * 为什么添加：不同 AgendaV2 节点在同一 PDF 人员列中必须稳定展示。
  */
-function getRowPersonName(row) {
+function getRowPersonName(row, language) {
+  const field = language === 'en' ? 'displayNameEn' : 'displayNameZh';
   if (row.type === 'preparedSpeechBlock') {
-    return row.speaker && (row.speaker.displayNameZh || row.speaker.rawName) || '';
+    return row.speaker && (row.speaker[field] || row.speaker.rawName) || '';
   }
   if (Array.isArray(row.persons) && row.persons.length) {
-    return row.persons.map((person) => person.displayNameZh || person.rawName).filter(Boolean).join(' && ');
+    return row.persons.map((person) => person[field] || person.rawName).filter(Boolean).join(' && ');
   }
-  return row.person && (row.person.displayNameZh || row.person.rawName) || '';
+  return row.person && (row.person[field] || row.person.rawName) || '';
 }
 
 /**
@@ -206,14 +207,15 @@ function getRowPersonName(row) {
  * 方法作用：按行级固定俱乐部、备稿演讲者或普通人员顺序选择显示值。
  * 为什么添加：中场休息、会员选择和手输来宾使用不同俱乐部来源。
  */
-function getRowClub(row) {
-  if (row.clubZh) {
-    return row.clubZh;
+function getRowClub(row, language) {
+  const field = language === 'en' ? 'clubEn' : 'clubZh';
+  if (row[field]) {
+    return row[field];
   }
   if (row.type === 'preparedSpeechBlock') {
-    return row.speaker && row.speaker.clubZh || '';
+    return row.speaker && row.speaker[field] || '';
   }
-  return row.person && row.person.clubZh || '';
+  return row.person && row.person[field] || '';
 }
 
 /**
@@ -221,9 +223,9 @@ function getRowClub(row) {
  * 方法作用：为大模块、说明行、普通行和备稿项目分配不同高度。
  * 为什么添加：固定第一页必须尽量紧凑，同时保证项目描述可读且不重叠。
  */
-function getAgendaRowHeight(row) {
+function getAgendaRowHeight(row, language) {
   if (row.type === 'preparedSpeechBlock') {
-    const objective = row.pathway && row.pathway.objectiveZh || '';
+    const objective = row.pathway && (language === 'en' ? row.pathway.objectiveEn : row.pathway.objectiveZh) || '';
     return objective.length > 42 ? 38 : 31;
   }
   if (row.type === 'note') {
@@ -237,17 +239,17 @@ function getAgendaRowHeight(row) {
  * 方法作用：复刻标题、信息卡、使命文案和每期会议元数据。
  * 为什么添加：源 PDF 的品牌识别和基础信息必须成为固定模板的一部分。
  */
-function drawFirstPageHeader(page, font, template, agenda, images) {
+function drawFirstPageHeader(page, font, template, agenda, images, language) {
   const fixed = template.fixedContent;
   drawText(page, font, fixed.clubTitle, PAGE.margin + 65, 24, { width: 410, height: 22, fontSize: 15, align: 'center' });
   drawText(page, font, fixed.clubSubtitle, PAGE.margin + 80, 48, { width: 380, height: 18, fontSize: 12.5, align: 'center' });
   drawText(page, font, fixed.charter, 493, 25, { width: 72, height: 38, fontSize: 4.8, align: 'right' });
   drawImageFit(page, images.logo, PAGE.margin + 4, 76, 47, 49);
   const cards = [
-    { x: PAGE.margin + 55, w: 100, title: '会议时间 Time', value: fixed.meetingTime },
-    { x: PAGE.margin + 159, w: 132, title: '会议地址 Venue', value: fixed.venue },
-    { x: PAGE.margin + 295, w: 132, title: '费用说明 Fees', value: fixed.fees },
-    { x: PAGE.margin + 431, w: 112, title: '禁忌话题 Taboo Topics', value: fixed.tabooTopics }
+    { x: PAGE.margin + 55, w: 100, title: language === 'en' ? 'Meeting Time' : '会议时间 Time', value: fixed.meetingTime },
+    { x: PAGE.margin + 159, w: 132, title: language === 'en' ? 'Venue' : '会议地址 Venue', value: fixed.venue },
+    { x: PAGE.margin + 295, w: 132, title: language === 'en' ? 'Fees' : '费用说明 Fees', value: fixed.fees },
+    { x: PAGE.margin + 431, w: 112, title: language === 'en' ? 'Taboo Topics' : '禁忌话题 Taboo Topics', value: fixed.tabooTopics }
   ];
   cards.forEach((card) => {
     drawCell(page, font, card.x, 72, card.w, 57, `${card.title}\n${card.value}`, { fill: '#62c4ee', fontSize: 4.5, lineHeight: 5.5 });
@@ -256,8 +258,8 @@ function drawFirstPageHeader(page, font, template, agenda, images) {
   drawText(page, font, fixed.missionZh, PAGE.margin + 62, 150, { width: 416, height: 12, fontSize: 5.6, align: 'center' });
   const info = agenda.meetingInfo || {};
   drawText(page, font, `No. ${info.meetingNo || ''}`, PAGE.margin + 4, 164, { width: 95, height: 10, fontSize: 6.5 });
-  drawText(page, font, `日期：${info.date || ''}`, PAGE.margin + 150, 164, { width: 120, height: 10, fontSize: 6.5 });
-  drawText(page, font, `主题：${info.theme || ''}`, PAGE.margin + 278, 164, { width: 245, height: 10, fontSize: 6.5 });
+  drawText(page, font, `${language === 'en' ? 'Date: ' : '日期：'}${info.date || ''}`, PAGE.margin + 150, 164, { width: 120, height: 10, fontSize: 6.5 });
+  drawText(page, font, `${language === 'en' ? 'Theme: ' : '主题：'}${info.theme || ''}`, PAGE.margin + 278, 164, { width: 245, height: 10, fontSize: 6.5 });
 }
 
 /**
@@ -265,10 +267,10 @@ function drawFirstPageHeader(page, font, template, agenda, images) {
  * 方法作用：输出时间、流程、限时、演讲者和俱乐部五列。
  * 为什么添加：第一页和续页需要复用完全一致的列宽与表头。
  */
-function drawAgendaHeader(page, font, y) {
+function drawAgendaHeader(page, font, y, language) {
   const x = PAGE.margin;
   const widths = [42, 190, 45, 85, 48];
-  const labels = ['时间', '会议促进者', '限时', '演讲者', '俱乐部'];
+  const labels = language === 'en' ? ['Time', 'Agenda', 'Limit', 'Speaker', 'Club'] : ['时间', '会议促进者', '限时', '演讲者', '俱乐部'];
   let cursor = x;
   labels.forEach((label, index) => {
     drawCell(page, font, cursor, y, widths[index], 11, label, { fill: '#9bdcf6', align: 'center', fontSize: 6.2 });
@@ -282,16 +284,16 @@ function drawAgendaHeader(page, font, y) {
  * 方法作用：按节点类型输出标题、项目描述、限时、人员和俱乐部。
  * 为什么添加：预览解析出的连续行必须在 PDF 中保持相同顺序和内容。
  */
-function drawAgendaRow(page, font, row, table, y) {
-  const height = getAgendaRowHeight(row);
+function drawAgendaRow(page, font, row, table, y, language) {
+  const height = getAgendaRowHeight(row, language);
   const fill = row.type === 'note' ? '#d1d5db' : row.isGroup ? '#f3f4f6' : row.type === 'preparedSpeechBlock' ? '#e5e7eb' : '';
-  const duration = row.duration ? `${row.duration} 分钟` : '';
-  let title = row.titleZh || '';
+  const duration = row.duration ? `${row.duration} ${language === 'en' ? 'min' : '分钟'}` : '';
+  let title = language === 'en' ? row.titleEn || row.titleZh || '' : row.titleZh || '';
   if (row.type === 'preparedSpeechBlock') {
     const pathway = row.pathway || {};
-    title = [title, pathway.fullLabelZh, pathway.objectiveZh].filter(Boolean).join('\n');
+    title = [title, language === 'en' ? pathway.fullLabelEn || pathway.fullLabelZh : pathway.fullLabelZh, language === 'en' ? pathway.objectiveEn || pathway.objectiveZh : pathway.objectiveZh].filter(Boolean).join('\n');
   }
-  const values = [row.startTime || '', title, duration, getRowPersonName(row), getRowClub(row)];
+  const values = [row.startTime || '', title, duration, getRowPersonName(row, language), getRowClub(row, language)];
   let cursor = table.x;
   values.forEach((value, index) => {
     drawCell(page, font, cursor, y, table.widths[index], height, value, {
@@ -310,28 +312,28 @@ function drawAgendaRow(page, font, row, table, y) {
  * 方法作用：输出上周最佳、价值观、俱乐部介绍和三个二维码。
  * 为什么添加：截图红框外的侧栏属于固定模板，导出时不能继续缺失。
  */
-function drawSidebar(page, font, template, images, y, height) {
+function drawSidebar(page, font, template, images, y, height, language) {
   const x = PAGE.margin + 410;
   const width = PAGE.width - PAGE.margin - x;
-  drawCell(page, font, x, y, width, 12, '上周最佳演讲者', { fill: '#9bdcf6', align: 'center', fontSize: 6.4 });
+  drawCell(page, font, x, y, width, 12, language === 'en' ? 'Last Meeting Awards' : '上周最佳演讲者', { fill: '#9bdcf6', align: 'center', fontSize: 6.4 });
   let cursorY = y + 12;
   (template.sidebar.winners || []).forEach((winner) => {
     drawText(page, font, winner.label, x + 4, cursorY + 3, { width: 72, height: 13, fontSize: 5.2 });
     drawText(page, font, winner.value, x + 78, cursorY + 3, { width: width - 82, height: 13, fontSize: 5.2 });
     cursorY += 19;
   });
-  drawCell(page, font, x, cursorY, width, 12, '国际演讲会价值观', { fill: '#9bdcf6', align: 'center', fontSize: 6.4 });
+  drawCell(page, font, x, cursorY, width, 12, language === 'en' ? 'Toastmasters Core Values' : '国际演讲会价值观', { fill: '#9bdcf6', align: 'center', fontSize: 6.4 });
   cursorY += 12;
   drawText(page, font, template.fixedContent.values, x + 4, cursorY + 5, { width: width - 8, height: 18, fontSize: 5.5, align: 'center' });
   cursorY += 25;
-  drawCell(page, font, x, cursorY, width, 12, '广州双语国际演讲俱乐部', { fill: '#9bdcf6', align: 'center', fontSize: 6.2 });
+  drawCell(page, font, x, cursorY, width, 12, language === 'en' ? 'GZ Bilingual Toastmasters Club' : '广州双语国际演讲俱乐部', { fill: '#9bdcf6', align: 'center', fontSize: 6.2 });
   cursorY += 14;
   drawText(page, font, template.fixedContent.clubIntro, x + 5, cursorY, { width: width - 10, height: 55, fontSize: 5.5, lineHeight: 6.8, align: 'center' });
   cursorY += 58;
   const qrData = [
-    ['membershipQr', '会员副会长'],
-    ['officialQr', '公众号'],
-    ['meetingGroupQr', '例会群']
+    ['membershipQr', language === 'en' ? 'VP Membership' : '会员副会长'],
+    ['officialQr', language === 'en' ? 'Official Account' : '公众号'],
+    ['meetingGroupQr', language === 'en' ? 'Meeting Group' : '例会群']
   ];
   qrData.forEach((item) => {
     drawImageFit(page, images[item[0]], x + 37, cursorY, 58, 58);
@@ -346,9 +348,9 @@ function drawSidebar(page, font, template, images, y, height) {
  * 方法作用：在议程表下方输出绿卡、黄卡、红卡和鼓掌表格。
  * 为什么添加：计时提示是源模板第一页的固定使用信息。
  */
-function drawTimerRules(page, font, template) {
+function drawTimerRules(page, font, template, language) {
   const titleY = 771;
-  drawText(page, font, '计时规则（请有效利用你在台上有限的时间）', PAGE.margin, titleY, { width: PAGE.width - PAGE.margin * 2, height: 10, fontSize: 6.8, align: 'center' });
+  drawText(page, font, language === 'en' ? 'Timing Rules' : '计时规则（请有效利用你在台上有限的时间）', PAGE.margin, titleY, { width: PAGE.width - PAGE.margin * 2, height: 10, fontSize: 6.8, align: 'center' });
   const rows = template.timerRules || [];
   const widths = [132, 91, 91, 91, 91];
   const colors = ['#e5e7eb', '#b8f5c0', '#fff58a', '#ff7777', '#b5b5b5'];
@@ -367,26 +369,27 @@ function drawTimerRules(page, font, template) {
  * 为什么添加：备稿块可多次添加，不能通过压缩到不可读或覆盖计时区解决溢出。
  */
 function drawAgendaPages(pdfDoc, font, template, agenda, images) {
+  const language = agendaModel.normalizeLanguage(agenda.meetingInfo && agenda.meetingInfo.language);
   const rows = agendaModel.flattenAgendaRows(agenda);
   const firstPage = pdfDoc.addPage([PAGE.width, PAGE.height]);
-  drawFirstPageHeader(firstPage, font, template, agenda, images);
+  drawFirstPageHeader(firstPage, font, template, agenda, images, language);
   let page = firstPage;
   let y = 176;
-  let table = drawAgendaHeader(page, font, y);
+  let table = drawAgendaHeader(page, font, y, language);
   y += table.height;
-  drawSidebar(firstPage, font, template, images, 176, 575);
+  drawSidebar(firstPage, font, template, images, 176, 575, language);
   for (let index = 0; index < rows.length; index += 1) {
-    const height = getAgendaRowHeight(rows[index]);
+    const height = getAgendaRowHeight(rows[index], language);
     if (y + height > 751) {
       page = pdfDoc.addPage([PAGE.width, PAGE.height]);
-      drawText(page, font, `${template.fixedContent.clubTitle} - 议程续页`, PAGE.margin, 22, { width: PAGE.width - PAGE.margin * 2, height: 18, fontSize: 11, align: 'center' });
+      drawText(page, font, `${template.fixedContent.clubTitle} - ${language === 'en' ? 'Agenda Continued' : '议程续页'}`, PAGE.margin, 22, { width: PAGE.width - PAGE.margin * 2, height: 18, fontSize: 11, align: 'center' });
       y = 48;
-      table = drawAgendaHeader(page, font, y);
+      table = drawAgendaHeader(page, font, y, language);
       y += table.height;
     }
-    y += drawAgendaRow(page, font, rows[index], table, y);
+    y += drawAgendaRow(page, font, rows[index], table, y, language);
   }
-  drawTimerRules(firstPage, font, template);
+  drawTimerRules(firstPage, font, template, language);
 }
 
 /**
@@ -395,6 +398,7 @@ function drawAgendaPages(pdfDoc, font, template, agenda, images) {
  * 为什么添加：原模板第二页属于完整 PDF 交付物且全部由超管维护。
  */
 function drawClubInfoPage(pdfDoc, font, template, images) {
+  const language = template.activeLanguage === 'en' ? 'en' : 'zh';
   const page = pdfDoc.addPage([PAGE.width, PAGE.height]);
   const leftX = PAGE.margin;
   const leftW = 185;
@@ -412,22 +416,22 @@ function drawClubInfoPage(pdfDoc, font, template, images) {
   drawCell(page, font, rightX, educationY + 92, rightW, 13, template.page2.goal, { fill: '#e5e1f0', align: 'center', fontSize: 6.5 });
   const half = rightW / 2;
   let y = educationY + 105;
-  drawCell(page, font, rightX, y, half, 13, '双语成就', { fill: '#d1d5db', align: 'center', fontSize: 6.5 });
-  drawCell(page, font, rightX + half, y, half, 13, '会议流程', { fill: '#d1d5db', align: 'center', fontSize: 6.5 });
+  drawCell(page, font, rightX, y, half, 13, language === 'en' ? 'Club Achievements' : '双语成就', { fill: '#d1d5db', align: 'center', fontSize: 6.5 });
+  drawCell(page, font, rightX + half, y, half, 13, language === 'en' ? 'Meeting Flow' : '会议流程', { fill: '#d1d5db', align: 'center', fontSize: 6.5 });
   y += 13;
   drawCell(page, font, rightX, y, half, 105, (template.page2.achievements || []).join('\n'), { align: 'center', fontSize: 5.7, lineHeight: 8 });
   drawCell(page, font, rightX + half, y, half, 105, (template.page2.meetingFlow || []).join('\n'), { align: 'center', fontSize: 5.7, lineHeight: 9 });
   y += 105;
-  drawCell(page, font, rightX, y, half, 13, '我们在头马可以收获什么？', { fill: '#d1d5db', align: 'center', fontSize: 6.2 });
-  drawCell(page, font, rightX + half, y, half, 13, '如何加入我们', { fill: '#d1d5db', align: 'center', fontSize: 6.2 });
+  drawCell(page, font, rightX, y, half, 13, language === 'en' ? 'What You Can Gain' : '我们在头马可以收获什么？', { fill: '#d1d5db', align: 'center', fontSize: 6.2 });
+  drawCell(page, font, rightX + half, y, half, 13, language === 'en' ? 'How to Join' : '如何加入我们', { fill: '#d1d5db', align: 'center', fontSize: 6.2 });
   y += 13;
   drawCell(page, font, rightX, y, half, 128, (template.page2.benefits || []).join('\n'), { align: 'center', fontSize: 5.5, lineHeight: 9 });
   drawCell(page, font, rightX + half, y, half, 128, template.page2.joining, { fontSize: 5.2, lineHeight: 7.5 });
   y += 128;
-  drawCell(page, font, rightX, y, rightW, 14, '2026年（上）俱乐部干事 Club Officer Team', { fill: '#9bdcf6', align: 'center', fontSize: 6.5 });
+  drawCell(page, font, rightX, y, rightW, 14, language === 'en' ? '2026 Club Officer Team' : '2026年（上）俱乐部干事 Club Officer Team', { fill: '#9bdcf6', align: 'center', fontSize: 6.5 });
   y += 14;
   const officerWidths = [rightW * 0.47, rightW * 0.25, rightW * 0.28];
-  ['干事 Officer', '电话 Phone', '微信 WeChat'].forEach((label, index) => {
+  (language === 'en' ? ['Officer', 'Phone', 'WeChat'] : ['干事 Officer', '电话 Phone', '微信 WeChat']).forEach((label, index) => {
     const x = rightX + officerWidths.slice(0, index).reduce((sum, value) => sum + value, 0);
     drawCell(page, font, x, y, officerWidths[index], 12, label, { fill: '#e2e8f0', align: 'center', fontSize: 5.5 });
   });
@@ -449,10 +453,10 @@ function drawClubInfoPage(pdfDoc, font, template, images) {
  * 为什么添加：导出必须由当前全局模板驱动并确保任意备稿数量不会裁切。
  */
 async function renderAgendaPdf(agendaValue, language, templateValue) {
-  const template = Object.assign(agendaModel.createDefaultTemplate(), templateValue || {});
-  template.fixedContent = Object.assign({}, agendaModel.createDefaultTemplate().fixedContent, templateValue && templateValue.fixedContent || {});
-  template.page2 = Object.assign({}, agendaModel.createDefaultTemplate().page2, templateValue && templateValue.page2 || {});
-  const agenda = agendaModel.normalizeAgenda(agendaValue, template);
+  const agendaLanguage = agendaModel.normalizeLanguage(language || agendaValue && agendaValue.meetingInfo && agendaValue.meetingInfo.language);
+  const fullTemplate = agendaModel.normalizeTemplate(templateValue);
+  const template = agendaModel.resolveTemplateLocale(fullTemplate, agendaLanguage);
+  const agenda = agendaModel.normalizeAgenda(agendaValue, fullTemplate);
   const pdfDoc = await PDFDocument.create();
   const font = await embedAgendaFont(pdfDoc);
   const images = await embedTemplateImages(pdfDoc, template, agenda);

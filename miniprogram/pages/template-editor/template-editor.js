@@ -7,6 +7,7 @@ Page({
     loading: true,
     saving: false,
     tab: 'page1',
+    activeLocale: 'zh',
     template: agendaUtil.createDefaultTemplate(),
     textFields: {}
   },
@@ -24,8 +25,8 @@ Page({
     }
     try {
       const data = await cloud.callCloud('agendaTemplate', { action: 'get' });
-      const template = Object.assign(agendaUtil.createDefaultTemplate(), data.template || {});
-      this.setData({ template, textFields: this.buildTextFields(template), loading: false });
+      const template = agendaUtil.normalizeTemplate(data.template);
+      this.setData({ template, textFields: this.buildTextFields(template, 'zh'), loading: false });
     } catch (error) {
       this.setData({ loading: false });
       cloud.showError(error);
@@ -37,14 +38,15 @@ Page({
    * 方法作用：把列表和计时表转换成 textarea 可编辑的换行文本。
    * 为什么添加：小程序原生表单不适合逐项维护大量固定文案。
    */
-  buildTextFields(template) {
+  buildTextFields(template, localeKey) {
+    const locale = template.locales[localeKey || this.data.activeLocale || 'zh'];
     return {
-      winners: (template.sidebar.winners || []).map((item) => `${item.label}|${item.value}`).join('\n'),
-      timerRules: (template.timerRules || []).map((row) => row.join('|')).join('\n'),
-      pathways: (template.page2.pathways || []).join('\n'),
-      achievements: (template.page2.achievements || []).join('\n'),
-      meetingFlow: (template.page2.meetingFlow || []).join('\n'),
-      benefits: (template.page2.benefits || []).join('\n')
+      winners: (locale.sidebar.winners || []).map((item) => `${item.label}|${item.value}`).join('\n'),
+      timerRules: (locale.timerRules || []).map((row) => row.join('|')).join('\n'),
+      pathways: (locale.page2.pathways || []).join('\n'),
+      achievements: (locale.page2.achievements || []).join('\n'),
+      meetingFlow: (locale.page2.meetingFlow || []).join('\n'),
+      benefits: (locale.page2.benefits || []).join('\n')
     };
   },
 
@@ -58,6 +60,16 @@ Page({
   },
 
   /**
+   * 方法是什么：切换模板文案语言。
+   * 方法作用：在同一模板记录的中文和英文 locale 之间切换编辑状态。
+   * 为什么添加：两套文案共用规则和素材，但必须能够分别维护。
+   */
+  switchLocale(event) {
+    const activeLocale = event.currentTarget.dataset.locale === 'en' ? 'en' : 'zh';
+    this.setData({ activeLocale, textFields: this.buildTextFields(this.data.template, activeLocale) });
+  },
+
+  /**
    * 方法是什么：修改模板对象字段。
    * 方法作用：按 group 和 field 更新固定文案、设置或第二页字符串。
    * 为什么添加：大量文本输入可以共用安全的嵌套对象更新逻辑。
@@ -66,8 +78,22 @@ Page({
     const template = agendaUtil.cloneJson(this.data.template);
     const group = event.currentTarget.dataset.group;
     const field = event.currentTarget.dataset.field;
+    const locale = template.locales[this.data.activeLocale];
+    locale[group] = locale[group] || {};
+    locale[group][field] = event.detail.value;
+    this.setData({ template });
+  },
+
+  /**
+   * 方法是什么：修改模板共享设置。
+   * 方法作用：更新中英文模板共同使用的签到和主流程时间锚点。
+   * 为什么添加：时间规则不属于任一语言文案，不能写入 locale。
+   */
+  handleSharedTemplateInput(event) {
+    const template = agendaUtil.cloneJson(this.data.template);
+    const group = event.currentTarget.dataset.group;
     template[group] = template[group] || {};
-    template[group][field] = event.detail.value;
+    template[group][event.currentTarget.dataset.field] = event.detail.value;
     this.setData({ template });
   },
 
@@ -82,14 +108,14 @@ Page({
     const template = agendaUtil.cloneJson(this.data.template);
     const lines = event.detail.value.split(/\r?\n/).map((item) => item.trim()).filter(Boolean);
     if (key === 'winners') {
-      template.sidebar.winners = lines.map((line) => {
+      template.locales[this.data.activeLocale].sidebar.winners = lines.map((line) => {
         const parts = line.split('|');
         return { label: parts[0] || '', value: parts.slice(1).join('|') || '' };
       });
     } else if (key === 'timerRules') {
-      template.timerRules = lines.map((line) => line.split('|'));
+      template.locales[this.data.activeLocale].timerRules = lines.map((line) => line.split('|'));
     } else {
-      template.page2[key] = lines;
+      template.locales[this.data.activeLocale].page2[key] = lines;
     }
     this.setData({ textFields, template });
   },
@@ -131,7 +157,7 @@ Page({
    */
   handleOfficerInput(event) {
     const template = agendaUtil.cloneJson(this.data.template);
-    const officer = template.page2.officers[Number(event.currentTarget.dataset.index)];
+    const officer = template.locales[this.data.activeLocale].page2.officers[Number(event.currentTarget.dataset.index)];
     officer[event.currentTarget.dataset.field] = event.detail.value;
     this.setData({ template });
   },
@@ -170,7 +196,8 @@ Page({
     this.setData({ saving: true });
     try {
       const data = await cloud.callCloud('agendaTemplate', { action: 'save', template: this.data.template });
-      this.setData({ template: data.template, textFields: this.buildTextFields(data.template) });
+      const template = agendaUtil.normalizeTemplate(data.template);
+      this.setData({ template, textFields: this.buildTextFields(template, this.data.activeLocale) });
       cloud.showSuccess('模板已保存');
       return true;
     } catch (error) {
