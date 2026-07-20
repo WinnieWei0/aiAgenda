@@ -19,12 +19,12 @@
       <view class="page-one-body">
         <view class="agenda-table">
           <view class="table-row table-head"><text class="facilitator-head">{{agenda.meetingInfo.language === 'en' ? 'Agenda' : '会议促进者'}}</text><text class="duration-cell">{{agenda.meetingInfo.language === 'en' ? 'Limit' : '限时'}}</text><text class="person-cell">{{agenda.meetingInfo.language === 'en' ? 'Speaker' : '演讲者'}}</text><text class="club-cell">{{agenda.meetingInfo.language === 'en' ? 'Club' : '俱乐部'}}</text></view>
-          <view wx:for="{{rows}}" wx:for-item="row" wx:key="id" class="table-row {{row.isGroup ? 'group-row' : ''}} {{row.type === 'note' ? 'note-row' : ''}}">
+          <view wx:for="{{rows}}" wx:for-item="row" wx:key="id" class="table-row {{row.previewSectionStart ? 'section-start-row' : ''}} {{row.isGroup ? 'group-row' : ''}} {{row.type === 'note' ? 'note-row' : ''}} {{row.type === 'preparedSpeechBlock' ? 'prepared-row' : ''}}">
             <text class="time-cell">{{row.startTime}}</text>
             <view class="title-cell">
-              <text>{{row.titleDisplay}}</text>
-              <text wx:if="{{row.type === 'preparedSpeechBlock' && (agenda.meetingInfo.language === 'en' ? row.pathway.fullLabelEn : row.pathway.fullLabelZh)}}" class="project-line">{{agenda.meetingInfo.language === 'en' ? row.pathway.fullLabelEn : row.pathway.fullLabelZh}}</text>
-              <text wx:if="{{row.type === 'preparedSpeechBlock' && (agenda.meetingInfo.language === 'en' ? row.pathway.objectiveEn : row.pathway.objectiveZh)}}" class="objective-line">{{agenda.meetingInfo.language === 'en' ? row.pathway.objectiveEn : row.pathway.objectiveZh}}</text>
+              <text class="prepared-title-line">{{row.titleDisplay}}</text>
+              <text wx:if="{{row.type === 'preparedSpeechBlock' && row.showProjectLine}}" class="project-line">{{row.projectDisplay}}</text>
+              <text wx:if="{{row.type === 'preparedSpeechBlock' && row.objectiveDisplay}}" class="objective-line">{{row.objectiveDisplay}}</text>
             </view>
             <text class="duration-cell">{{row.durationDisplay}}</text>
             <text class="person-cell">{{row.personDisplay || ''}}</text>

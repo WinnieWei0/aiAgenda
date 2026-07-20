@@ -30,8 +30,9 @@ async function callCloud(name, data) {
 function showError(error) {
   const rawMessage = error && error.message ? error.message : '操作失败';
   const isDeploymentError = /-504002|FUNCTIONS_EXECUTE_FAIL|SyntaxError: Invalid or unexpected token/i.test(rawMessage);
+  const isFunctionTimeout = /-504003|FUNCTIONS_TIME_LIMIT_EXCEEDED|timed out after 3 seconds/i.test(rawMessage);
   wx.showToast({
-    title: isDeploymentError ? '云函数部署异常，请重新部署' : rawMessage,
+    title: isFunctionTimeout ? 'PDF云函数超时，请将超时时间设为60秒' : isDeploymentError ? '云函数部署异常，请重新部署' : rawMessage,
     icon: 'none',
     duration: 2600
   });

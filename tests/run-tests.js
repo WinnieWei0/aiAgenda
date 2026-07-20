@@ -231,7 +231,7 @@ function testAgendaPreviewValidation() {
     preparedSpeeches: [{
       titleZh: '测试演讲',
       duration: 7,
-      pathway: { code: 'L1P1', fullLabelZh: 'L1P1 破冰演讲' },
+      pathway: { code: 'L1P1', fullLabelZh: 'L1P1 破冰演讲', objectiveZh: '介绍自己并完成一篇破冰演讲。' },
       speaker: { rawName: '演讲者' },
       evaluator: { rawName: '点评者' }
     }]
@@ -341,7 +341,11 @@ function testDynamicAgendaModules() {
   const freeTalk = agenda.sections.find((section) => section.moduleKind === 'freeTalk');
   assert.strictEqual(freeTalk.startTime, '');
   assert.strictEqual(freeTalk.duration, 0);
-  assert.strictEqual(agendaUtil.flattenAgendaRows(agenda).some((row) => row.moduleKind === 'freeTalk'), false);
+  const flattened = agendaUtil.flattenAgendaRows(agenda);
+  assert.strictEqual(flattened.some((row) => row.moduleKind === 'freeTalk'), false);
+  assert.strictEqual(flattened.some((row) => row.id === 'openingIcebreaker'), false);
+  assert.strictEqual(flattened.some((row) => row.id === 'specialSession'), false);
+  assert.strictEqual(flattened.some((row) => row.moduleKind === 'icebreaker'), true);
 }
 
 /**
@@ -455,8 +459,8 @@ async function testPdfRenderer(agenda) {
 
 /**
  * 方法是什么：测试 PDF 议程区域的分隔线绘制规则。
- * 方法作用：确认表头和数据行没有单元格边框，且只有顶层模块行会额外绘制横线。
- * 为什么添加：导出样式要求取消竖线及小模块横线，需要防止后续表格重构恢复默认边框。
+ * 方法作用：确认表头和数据行只保留俱乐部右边界，并仅在大模块开始处绘制横线。
+ * 为什么添加：导出样式要求移除四个内部竖线及小模块之间的横线。
  */
 function testPdfAgendaLineStyle() {
   const rectangles = [];
@@ -471,20 +475,23 @@ function testPdfAgendaLineStyle() {
   };
   const table = pdfRenderer.drawAgendaHeader(page, font, 100, 'zh');
   assert.strictEqual(rectangles.length, 5);
-  assert.ok(rectangles.every((rectangle) => rectangle.borderWidth === 0), '议程表头不应绘制竖线');
-  assert.strictEqual(lines.length, 1, '议程表头只应绘制底部横线');
+  assert.ok(rectangles.every((rectangle) => rectangle.borderWidth === 0), '议程表头应由独立线条绘制边界');
+  assert.strictEqual(lines.filter((line) => line.start.x === line.end.x).length, 1, '议程表头只应绘制俱乐部右边界');
+  assert.strictEqual(lines.filter((line) => line.start.y === line.end.y).length, 1, '议程表头应绘制一条浅色底线');
 
   rectangles.length = 0;
   lines.length = 0;
   pdfRenderer.drawAgendaRow(page, font, { id: 'opening', titleZh: '开场白', pdfSectionStart: true }, table, 111, 'zh');
   assert.ok(rectangles.every((rectangle) => rectangle.borderWidth === 0), '大模块行不应绘制单元格边框');
-  assert.strictEqual(lines.length, 1, '大模块开始处应绘制一条横线');
+  assert.strictEqual(lines.filter((line) => line.start.x === line.end.x).length, 1, '大模块行只应绘制俱乐部右边界');
+  assert.strictEqual(lines.filter((line) => line.start.y === line.end.y).length, 1, '大模块行只应绘制起始横线');
 
   rectangles.length = 0;
   lines.length = 0;
   pdfRenderer.drawAgendaRow(page, font, { id: 'icebreaker', titleZh: '破冰', pdfSectionStart: false }, table, 121, 'zh');
   assert.ok(rectangles.every((rectangle) => rectangle.borderWidth === 0), '小模块行不应绘制单元格边框');
-  assert.strictEqual(lines.length, 0, '小模块之间不应绘制横线');
+  assert.strictEqual(lines.filter((line) => line.start.x === line.end.x).length, 1, '小模块行只应绘制俱乐部右边界');
+  assert.strictEqual(lines.filter((line) => line.start.y === line.end.y).length, 0, '小模块之间不应绘制横线');
 }
 
 /**

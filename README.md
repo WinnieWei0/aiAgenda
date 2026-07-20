@@ -33,6 +33,7 @@
 2. 将 `project.config.json` 里的 `appid` 替换为真实小程序 AppID。
 3. 在 `miniprogram/app.js` 中替换 `CLOUDBASE_ENV_ID`。
 4. 执行 `npm run install:cloudfunctions` 安装所有云函数依赖。该脚本会使用 `--install-links`，避免本地公共包以 Windows 链接形式上传后导致云端运行时报 `Invalid or unexpected token`。
+5. 在云开发控制台打开 `exportAgendaPdf` 的函数配置，将超时时间设置为 60 秒、内存设置为 512 MB。普通云函数默认只有 3 秒，无法稳定完成字体嵌入、图片下载、PDF 生成和云存储上传。
 5. 上传并部署云函数。
 6. 执行一次性 Membership 和 Pathways 导入脚本。脚本默认读取 `E:\小程序\广州双语议程表.xlsx`，也可以通过命令行参数传入其他文件路径。
 

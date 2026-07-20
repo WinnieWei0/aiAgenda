@@ -782,7 +782,7 @@ function flattenAgendaRows(agendaValue) {
   const rows = [];
   const language = normalizeLanguage(agendaValue && agendaValue.meetingInfo && agendaValue.meetingInfo.language);
   (agendaValue.sections || []).forEach((section) => {
-    if (section.enabled === false || section.languageGate && section.languageGate !== language) {
+    if (section.enabled === false || section.languageGate && section.languageGate !== language || section.id === 'specialSession' && !section.dynamic) {
       return;
     }
     if (section.type === 'row') {
@@ -790,7 +790,11 @@ function flattenAgendaRows(agendaValue) {
       return;
     }
     rows.push({ id: section.id, type: section.type, titleZh: section.titleZh, startTime: section.startTime, duration: section.duration, isGroup: true, personMode: 'none' });
-    (section.children || []).forEach((child) => rows.push(Object.assign({}, child, { startTime: '', isGroup: false })));
+    (section.children || []).forEach((child) => {
+      if (child.id !== 'openingIcebreaker' || child.dynamic) {
+        rows.push(Object.assign({}, child, { startTime: '', isGroup: false }));
+      }
+    });
   });
   return rows;
 }
@@ -838,6 +842,7 @@ function validateAgendaForPreview(agendaValue) {
     addDurationError(label, row.duration);
     const pathway = row.pathway || {};
     addTextError(`${label} Pathways项目`, localizedText(pathway, 'fullLabelZh', 'fullLabelEn') || pathway.code);
+    addTextError(`${label}项目描述`, localizedText(pathway, 'objectiveZh', 'objectiveEn'));
     validatePerson(row.speaker, `${label}演讲者`, true);
     validatePerson(row.evaluator, `${label}点评者`, true);
   };

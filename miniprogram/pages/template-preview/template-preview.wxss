@@ -15,9 +15,11 @@
 .meeting-meta { display: grid; grid-template-columns: 1fr 1fr 2fr; padding: 4rpx 10rpx; font-family: serif; font-size: 17rpx; font-weight: 700; }
 .page-one-body { display: grid; grid-template-columns: 76% 24%; border-top: 1rpx solid #111827; border-left: 1rpx solid #111827; }
 .agenda-table { min-width: 0; }
-.table-row { display: grid; grid-template-columns: 72rpx minmax(0,1fr) 74rpx 180rpx 120rpx; min-height: 26rpx; border-bottom: 1rpx solid #111827; font-family: serif; font-size: 17rpx; }
-.table-row > text, .title-cell { padding: 3rpx 5rpx; border-right: 1rpx solid #111827; }
-.table-head { min-height: 30rpx; background: #9bdcf6; font-weight: 700; text-align: center; }
+.table-row { display: grid; grid-template-columns: 72rpx minmax(0,1fr) 74rpx 180rpx 120rpx; min-height: 26rpx; font-family: serif; font-size: 17rpx; }
+.table-row > text, .title-cell { padding: 3rpx 5rpx; }
+.table-head { min-height: 30rpx; border-bottom: 1rpx solid #d7dde5; background: #9bdcf6; font-weight: 700; text-align: center; }
+.section-start-row { border-top: 1rpx solid #d7dde5; }
+.club-cell { border-right: 1rpx solid #111827; }
 .facilitator-head { grid-column: 1 / 3; }
 .group-row { font-weight: 700; }
 .note-row { background: #d1d5db; font-style: italic; }

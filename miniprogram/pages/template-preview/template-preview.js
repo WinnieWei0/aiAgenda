@@ -30,7 +30,7 @@ Page({
       this.setData({
         template: resolved.template,
         agenda: resolved.agenda,
-        rows: this.decorateRows(resolved.rows || [], resolved.agenda && resolved.agenda.meetingInfo && resolved.agenda.meetingInfo.language),
+        rows: this.decorateRows(resolved.rows || [], resolved.agenda && resolved.agenda.meetingInfo && resolved.agenda.meetingInfo.language, resolved.agenda),
         loading: false
       });
     } catch (error) {
@@ -44,14 +44,21 @@ Page({
    * 方法作用：提前生成限时、人员和俱乐部显示文本并兼容所有节点类型。
    * 为什么添加：WXML 中直接访问可选的普通人员、多人签到和备稿人员容易产生空路径。
    */
-  decorateRows(rows, languageValue) {
+  decorateRows(rows, languageValue, agendaValue) {
     const language = languageValue === 'en' ? 'en' : 'zh';
+    const sectionStartIds = new Set(((agendaValue && agendaValue.sections) || []).map((section) => section.type === 'row' && section.row ? section.row.id : section.id));
     return rows.map((row) => {
       const next = Object.assign({}, row);
+      next.previewSectionStart = sectionStartIds.has(row.id);
       next.titleDisplay = language === 'en' ? (row.titleEn || row.titleZh) : row.titleZh;
       if (row.type === 'preparedSpeechBlock') {
+        const pathway = row.pathway || {};
+        const isOtherPathway = Boolean(pathway.isOther || pathway.code === 'OTHER');
         next.personDisplay = row.speaker && (language === 'en' ? row.speaker.displayNameEn : row.speaker.displayNameZh) || row.speaker && row.speaker.rawName || '';
         next.clubDisplay = row.speaker && (language === 'en' ? row.speaker.clubEn : row.speaker.clubZh) || '';
+        next.projectDisplay = language === 'en' ? pathway.fullLabelEn || pathway.fullLabelZh : pathway.fullLabelZh;
+        next.objectiveDisplay = language === 'en' ? pathway.objectiveEn || pathway.objectiveZh : pathway.objectiveZh;
+        next.showProjectLine = Boolean(!isOtherPathway && next.projectDisplay);
       } else if (Array.isArray(row.persons) && row.persons.length) {
         next.personDisplay = row.persons.map((person) => language === 'en' ? person.displayNameEn || person.rawName : person.displayNameZh || person.rawName).filter(Boolean).join(' && ');
         next.clubDisplay = language === 'en' ? row.clubEn || row.persons.map((person) => person.clubEn).filter(Boolean).join(' && ') : row.clubZh || row.persons.map((person) => person.clubZh).filter(Boolean).join(' && ');
@@ -103,7 +110,7 @@ Page({
     this.setData({ exporting: true });
     try {
       const data = await cloud.callCloud('exportAgendaPdf', { agendaId: this.data.agendaId });
-      const download = await wx.downloadFile({ url: data.tempFileURL });
+      const download = await wx.cloud.downloadFile({ fileID: data.fileID });
       await wx.openDocument({ filePath: download.tempFilePath, fileType: 'pdf', showMenu: true });
     } catch (error) {
       cloud.showError(error);

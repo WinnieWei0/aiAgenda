@@ -104,8 +104,7 @@ async function main(event) {
     const buffer = await common.pdfRenderer.renderAgendaPdf(agenda, language, template);
     const fileID = await uploadPdf(buffer, agenda, language);
     const exportId = await saveExportRecord(agendaId, language, fileID, openid);
-    const temp = await common.cloud.getTempFileURL({ fileList: [fileID] });
-    return common.ok({ exportId, fileID, tempFileURL: temp.fileList && temp.fileList[0] ? temp.fileList[0].tempFileURL : '' });
+    return common.ok({ exportId, fileID });
   } catch (error) {
     return common.handleError(error);
   }

@@ -105,6 +105,17 @@ Page({
         label: pathway.fullLabelZh || pathway.code,
         pathway
       }));
+      pathwayOptions.push({
+        label: '其他',
+        pathway: {
+          code: 'OTHER',
+          fullLabelZh: '其他',
+          fullLabelEn: 'Other',
+          objectiveZh: '',
+          objectiveEn: '',
+          isOther: true
+        }
+      });
       this.setData({ pathwayOptions });
     } catch (error) {
       cloud.showError(error);
@@ -449,6 +460,22 @@ Page({
     }
     block.pathway = agendaUtil.cloneJson(option.pathway);
     block.duration = agendaUtil.parsePathwayDuration(block.pathway.objectiveZh || block.pathway.fullLabelZh, this.data.template.settings.preparedFallbackDuration);
+    this.setAgenda(agenda);
+  },
+
+  /**
+   * 方法是什么：填写“其他”Pathways 的自定义项目描述。
+   * 方法作用：按当前会议语言更新备稿块的目标描述并保留其他项目标识。
+   * 为什么添加：选择其他项目时没有数据库项目名称，模板只需显示用户填写的描述。
+   */
+  handleOtherPathwayInput(event) {
+    const agenda = agendaUtil.cloneJson(this.data.agenda);
+    const block = this.getRowTarget(agenda, event.currentTarget.dataset);
+    if (!block || !block.pathway || !(block.pathway.isOther || block.pathway.code === 'OTHER')) {
+      return;
+    }
+    const field = agenda.meetingInfo.language === 'en' ? 'objectiveEn' : 'objectiveZh';
+    block.pathway[field] = event.detail.value;
     this.setAgenda(agenda);
   },
 

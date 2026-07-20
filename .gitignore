@@ -9,3 +9,4 @@ assets/fonts/*.ttf
 assets/fonts/*.otf
 assets/fonts/*.ttc
 cloudfunctions/**/node_modules/
+output/

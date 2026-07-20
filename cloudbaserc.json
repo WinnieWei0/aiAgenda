@@ -1,5 +1,16 @@
 {
   "envId": "{{CLOUDBASE_ENV_ID}}",
+  "functionRoot": "./cloudfunctions",
+  "functions": [
+    {
+      "name": "exportAgendaPdf",
+      "dir": "exportAgendaPdf",
+      "handler": "index.main",
+      "timeout": 60,
+      "memorySize": 512,
+      "installDependency": true
+    }
+  ],
   "framework": {
     "name": "ai-agenda-miniprogram",
     "plugins": {
