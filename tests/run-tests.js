@@ -164,19 +164,19 @@ function testAgendaModel() {
   }));
   assert.strictEqual(agenda.schemaVersion, 2, '应升级为 AgendaV2');
   assert.deepStrictEqual(timeMap.venueIntroduction, ['19:30', 2]);
-  assert.deepStrictEqual(timeMap.opening, ['19:32', 5]);
-  assert.deepStrictEqual(timeMap.facilitatorIntroduction, ['19:37', 12]);
-  assert.deepStrictEqual(timeMap.tableTopics, ['19:49', 25]);
-  assert.deepStrictEqual(timeMap.preparedSpeech, ['20:14', 14]);
-  assert.deepStrictEqual(timeMap.break, ['20:28', 5]);
-  assert.deepStrictEqual(timeMap.specialSession, ['20:33', 25]);
-  assert.deepStrictEqual(timeMap.evaluation, ['20:58', 7]);
-  assert.deepStrictEqual(timeMap.facilitatorReport, ['21:05', 17]);
-  assert.deepStrictEqual(timeMap.vote, ['21:22', 1]);
-  assert.deepStrictEqual(timeMap.closing, ['21:23', 7]);
-  assert.deepStrictEqual(timeMap.end, ['21:30', 0]);
-  assert.strictEqual(agenda.computedEndTime, '21:30');
-  assert.strictEqual(agenda.timeMismatch, false);
+  assert.deepStrictEqual(timeMap.opening, ['19:32', 2]);
+  assert.deepStrictEqual(timeMap.facilitatorIntroduction, ['19:34', 11]);
+  assert.deepStrictEqual(timeMap.tableTopics, ['19:45', 25]);
+  assert.deepStrictEqual(timeMap.preparedSpeech, ['20:10', 14]);
+  assert.deepStrictEqual(timeMap.break, ['20:24', 5]);
+  assert.deepStrictEqual(timeMap.specialSession, ['', 0]);
+  assert.deepStrictEqual(timeMap.evaluation, ['20:29', 7]);
+  assert.deepStrictEqual(timeMap.facilitatorReport, ['20:36', 17]);
+  assert.deepStrictEqual(timeMap.vote, ['20:53', 1]);
+  assert.deepStrictEqual(timeMap.closing, ['20:54', 7]);
+  assert.deepStrictEqual(timeMap.end, ['21:01', 0]);
+  assert.strictEqual(agenda.computedEndTime, '21:01');
+  assert.strictEqual(agenda.timeMismatch, true);
 }
 
 /**
@@ -251,11 +251,19 @@ function testAgendaPreviewValidation() {
  */
 function testTemplateAndLegacyUpgrade() {
   const template = agendaUtil.createDefaultTemplate();
+  assert.strictEqual(template.settings.specialSessionEnabled, false);
   template.settings.specialSessionEnabled = false;
   const normalized = agendaUtil.createAgendaFromFacts({ preparedSpeeches: [{ duration: 6 }, { duration: 7 }] }, template);
   const special = normalized.sections.find(function findSpecial(section) { return section.id === 'specialSession'; });
   assert.strictEqual(special.enabled, false);
-  assert.strictEqual(normalized.computedEndTime, '21:05');
+  assert.strictEqual(normalized.computedEndTime, '21:01');
+  const oldDraft = agendaUtil.createAgendaFromFacts({}, template);
+  oldDraft.sections.find((section) => section.id === 'opening').children.unshift({ id: 'openingIcebreaker', duration: 3 });
+  const oldPhotographer = oldDraft.sections.find((section) => section.id === 'facilitatorIntroduction').children.find((row) => row.id === 'photographer');
+  delete oldPhotographer.transitionExempt;
+  const upgradedDraft = agendaUtil.normalizeAgenda(oldDraft, template);
+  assert.strictEqual(upgradedDraft.sections.find((section) => section.id === 'opening').children.some((row) => row.id === 'openingIcebreaker'), false);
+  assert.strictEqual(upgradedDraft.sections.find((section) => section.id === 'facilitatorIntroduction').duration, 11);
   const legacy = agendaUtil.normalizeAgenda({
     meetingInfo: { meetingNo: '700', startTime: '19:30', endTime: '21:30' },
     items: [
@@ -328,8 +336,12 @@ function testDynamicAgendaModules() {
   assert.strictEqual(agenda.sections.find((section) => section.moduleKind === 'workshop').row.duration, 30);
   assert.strictEqual(agenda.sections.find((section) => section.moduleKind === 'educationAward').row.duration, 10);
   const facilitator = agenda.sections.find((section) => section.id === 'facilitatorIntroduction');
+  const photographer = facilitator.children.find((row) => row.id === 'photographer');
+  assert.strictEqual(photographer.duration, 0);
+  assert.strictEqual(photographer.transitionExempt, true);
   assert.strictEqual(facilitator.children[facilitator.children.length - 1].moduleKind, 'icebreaker');
   assert.strictEqual(facilitator.children[facilitator.children.length - 1].duration, 5);
+  assert.strictEqual(facilitator.duration, 17);
   const end = agenda.sections.find((section) => section.id === 'end');
   const interview = agenda.sections.find((section) => section.moduleKind === 'memberInterview');
   assert.strictEqual(interview.row.duration, 3);
@@ -474,6 +486,7 @@ function testPdfAgendaLineStyle() {
     widthOfTextAtSize(text, size) { return String(text).length * size; }
   };
   const table = pdfRenderer.drawAgendaHeader(page, font, 100, 'zh');
+  assert.deepStrictEqual(table.widths, [42, 143, 60, 88, 67], '议程列宽应加宽限时列并保持俱乐部列宽度');
   assert.strictEqual(rectangles.length, 5);
   assert.ok(rectangles.every((rectangle) => rectangle.borderWidth === 0), '议程表头应由独立线条绘制边界');
   assert.strictEqual(lines.filter((line) => line.start.x === line.end.x).length, 1, '议程表头只应绘制俱乐部右边界');
@@ -492,6 +505,12 @@ function testPdfAgendaLineStyle() {
   assert.ok(rectangles.every((rectangle) => rectangle.borderWidth === 0), '小模块行不应绘制单元格边框');
   assert.strictEqual(lines.filter((line) => line.start.x === line.end.x).length, 1, '小模块行只应绘制俱乐部右边界');
   assert.strictEqual(lines.filter((line) => line.start.y === line.end.y).length, 0, '小模块之间不应绘制横线');
+
+  rectangles.length = 0;
+  lines.length = 0;
+  pdfRenderer.drawAgendaRow(page, font, { id: 'end', titleZh: '会议结束', pdfSectionStart: false }, table, 131, 'zh');
+  assert.strictEqual(lines.filter((line) => line.start.x === line.end.x).length, 1, '会议结束行应保留俱乐部右边界');
+  assert.strictEqual(lines.filter((line) => line.start.y === line.end.y).length, 1, '会议结束下方应绘制底线');
 }
 
 /**

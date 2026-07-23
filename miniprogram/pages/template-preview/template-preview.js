@@ -20,6 +20,19 @@ Page({
     const agendaId = options && options.id ? options.id : '';
     this.setData({ agendaId });
     try {
+      const previewPayload = app.globalData.previewPayload;
+      if (previewPayload && previewPayload.agendaId === agendaId) {
+        delete app.globalData.previewPayload;
+        const resolved = {
+          template: previewPayload.template,
+          agenda: previewPayload.agenda,
+          rows: previewPayload.rows
+        };
+        this.renderResolved(resolved);
+        await this.resolveCloudImages(resolved);
+        this.setData({ template: resolved.template });
+        return;
+      }
       let agenda = app.globalData.currentAgenda;
       if (agendaId) {
         const data = await cloud.callCloud('agendaQuery', { action: 'get', id: agendaId });
@@ -27,16 +40,25 @@ Page({
       }
       const resolved = await cloud.callCloud('agendaTemplate', { action: 'resolve', agenda });
       await this.resolveCloudImages(resolved);
-      this.setData({
-        template: resolved.template,
-        agenda: resolved.agenda,
-        rows: this.decorateRows(resolved.rows || [], resolved.agenda && resolved.agenda.meetingInfo && resolved.agenda.meetingInfo.language, resolved.agenda),
-        loading: false
-      });
+      this.renderResolved(resolved);
     } catch (error) {
       this.setData({ loading: false });
       cloud.showError(error);
     }
+  },
+
+  /**
+   * 方法是什么：把已解析的模板数据一次性渲染到预览页。
+   * 方法作用：复用编辑页刚保存的议程，避免进入页面后重复等待云端查询产生白屏闪烁。
+   * 为什么添加：预览首屏应保持连续，云图片地址可以在页面显示后单独刷新。
+   */
+  renderResolved(resolved) {
+    this.setData({
+      template: resolved.template,
+      agenda: resolved.agenda,
+      rows: this.decorateRows(resolved.rows || [], resolved.agenda && resolved.agenda.meetingInfo && resolved.agenda.meetingInfo.language, resolved.agenda),
+      loading: false
+    });
   },
 
   /**

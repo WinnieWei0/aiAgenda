@@ -53,23 +53,6 @@ function topY(y, height) {
 }
 
 /**
- * 方法是什么：绘制 PDF 页面外边框。
- * 方法作用：在每一页内容安全区外侧增加完整矩形边界。
- * 为什么添加：模板预览和导出 PDF 都需要明确、连续的页面外框。
- */
-function drawPageBorder(page) {
-  const inset = 18;
-  page.drawRectangle({
-    x: inset,
-    y: inset,
-    width: PAGE.width - inset * 2,
-    height: PAGE.height - inset * 2,
-    borderColor: BORDER,
-    borderWidth: 0.8
-  });
-}
-
-/**
  * 方法是什么：按可用宽度拆分文字。
  * 方法作用：使用真实字体宽度把中英文内容切成可绘制行。
  * 为什么添加：固定卡片、项目目标和第二页说明不能溢出边框。
@@ -244,7 +227,7 @@ function getRowClub(row, language) {
 function getAgendaRowHeight(row, language) {
   if (row.type === 'preparedSpeechBlock') {
     const objective = row.pathway && (language === 'en' ? row.pathway.objectiveEn : row.pathway.objectiveZh) || '';
-    return objective.length > 42 ? 38 : 31;
+    return objective.length > 90 ? 38 : 31;
   }
   if (row.type === 'note') {
     return 11;
@@ -287,7 +270,7 @@ function drawFirstPageHeader(page, font, template, agenda, images, language) {
  */
 function drawAgendaHeader(page, font, y, language) {
   const x = PAGE.margin;
-  const widths = [42, 178, 50, 92, 48];
+  const widths = [42, 143, 60, 88, 67];
   const labels = language === 'en' ? ['Time', 'Agenda', 'Limit', 'Speaker', 'Club'] : ['时间', '会议促进者', '限时', '演讲者', '俱乐部'];
   let cursor = x;
   labels.forEach((label, index) => {
@@ -315,13 +298,15 @@ function drawAgendaRow(page, font, row, table, y, language, forcedHeight) {
   const fill = row.type === 'note' ? '#d1d5db' : row.isGroup ? '#f3f4f6' : row.type === 'preparedSpeechBlock' ? '#e5e7eb' : '';
   const duration = row.duration ? `${row.duration} ${language === 'en' ? 'min' : '分钟'}` : '';
   let title = language === 'en' ? row.titleEn || row.titleZh || '' : row.titleZh || '';
+  let projectName = '';
+  let objective = '';
   if (row.type === 'preparedSpeechBlock') {
     const pathway = row.pathway || {};
     const isOtherPathway = Boolean(pathway.isOther || pathway.code === 'OTHER');
-    const projectName = isOtherPathway ? '' : language === 'en' ? pathway.fullLabelEn || pathway.fullLabelZh : pathway.fullLabelZh;
-    title = [title, projectName, language === 'en' ? pathway.objectiveEn || pathway.objectiveZh : pathway.objectiveZh].filter(Boolean).join('\n');
+    projectName = isOtherPathway ? '' : language === 'en' ? pathway.fullLabelEn || pathway.fullLabelZh : pathway.fullLabelZh;
+    objective = language === 'en' ? pathway.objectiveEn || pathway.objectiveZh : pathway.objectiveZh;
   }
-  const values = [row.startTime || '', title, duration, getRowPersonName(row, language), getRowClub(row, language)];
+  const values = [row.startTime || '', [title, projectName].filter(Boolean).join('\n'), duration, getRowPersonName(row, language), getRowClub(row, language)];
   if (row.pdfSectionStart) {
     const tableWidth = table.widths.reduce((total, width) => total + width, 0);
     page.drawLine({
@@ -336,13 +321,33 @@ function drawAgendaRow(page, font, row, table, y, language, forcedHeight) {
     drawCell(page, font, cursor, y, table.widths[index], height, value, {
       fill,
       border: false,
-      fontSize: row.type === 'preparedSpeechBlock' && index === 1 ? 5.4 : 5.8,
+      fontSize: 5.8,
       lineHeight: 6.4,
       align: index === 2 ? 'right' : 'left'
     });
     cursor += table.widths[index];
   });
+  if (row.type === 'preparedSpeechBlock' && objective) {
+    const objectiveY = y + (projectName ? 16 : 10);
+    const objectiveX = table.x + table.widths[0];
+    const objectiveWidth = table.widths.slice(1, 4).reduce((total, width) => total + width, 0);
+    drawCell(page, font, objectiveX, objectiveY, objectiveWidth, height - (objectiveY - y), objective, {
+      fill,
+      border: false,
+      fontSize: 5.8,
+      lineHeight: 6.4,
+      align: 'left'
+    });
+  }
   const tableWidth = table.widths.reduce((total, width) => total + width, 0);
+  if (row.id === 'end') {
+    page.drawLine({
+      start: { x: table.x, y: topY(y + height, 0) },
+      end: { x: table.x + tableWidth, y: topY(y + height, 0) },
+      thickness: 0.45,
+      color: LIGHT_BORDER
+    });
+  }
   const boundaryX = table.x + tableWidth;
   page.drawLine({ start: { x: boundaryX, y: topY(y, height) }, end: { x: boundaryX, y: topY(y, 0) }, thickness: 0.5, color: BORDER });
   return height;
@@ -416,7 +421,6 @@ function drawAgendaPages(pdfDoc, font, template, agenda, images) {
     pdfSectionStart: sectionStartIds.has(row.id)
   }));
   const firstPage = pdfDoc.addPage([PAGE.width, PAGE.height]);
-  drawPageBorder(firstPage);
   drawFirstPageHeader(firstPage, font, template, agenda, images, language);
   let page = firstPage;
   let y = 176;
@@ -434,7 +438,6 @@ function drawAgendaPages(pdfDoc, font, template, agenda, images) {
     const height = baseHeights[index] + stretchPerRow;
     if (y + height > 751.01) {
       page = pdfDoc.addPage([PAGE.width, PAGE.height]);
-      drawPageBorder(page);
       drawText(page, font, `${template.fixedContent.clubTitle} - ${language === 'en' ? 'Agenda Continued' : '议程续页'}`, PAGE.margin, 22, { width: PAGE.width - PAGE.margin * 2, height: 18, fontSize: 11, align: 'center' });
       y = 48;
       table = drawAgendaHeader(page, font, y, language);
@@ -453,7 +456,6 @@ function drawAgendaPages(pdfDoc, font, template, agenda, images) {
 function drawClubInfoPage(pdfDoc, font, template, images) {
   const language = template.activeLanguage === 'en' ? 'en' : 'zh';
   const page = pdfDoc.addPage([PAGE.width, PAGE.height]);
-  drawPageBorder(page);
   const leftX = PAGE.margin;
   const leftW = 185;
   const rightX = leftX + leftW;
@@ -530,7 +532,6 @@ module.exports = {
   resolveFontPath,
   embedAgendaFont,
   topY,
-  drawPageBorder,
   wrapText,
   drawText,
   drawCell,

@@ -19,16 +19,16 @@
       <view class="page-one-body">
         <view class="agenda-table">
           <view class="table-row table-head"><text class="facilitator-head">{{agenda.meetingInfo.language === 'en' ? 'Agenda' : '会议促进者'}}</text><text class="duration-cell">{{agenda.meetingInfo.language === 'en' ? 'Limit' : '限时'}}</text><text class="person-cell">{{agenda.meetingInfo.language === 'en' ? 'Speaker' : '演讲者'}}</text><text class="club-cell">{{agenda.meetingInfo.language === 'en' ? 'Club' : '俱乐部'}}</text></view>
-          <view wx:for="{{rows}}" wx:for-item="row" wx:key="id" class="table-row {{row.previewSectionStart ? 'section-start-row' : ''}} {{row.isGroup ? 'group-row' : ''}} {{row.type === 'note' ? 'note-row' : ''}} {{row.type === 'preparedSpeechBlock' ? 'prepared-row' : ''}}">
+          <view wx:for="{{rows}}" wx:for-item="row" wx:key="id" class="table-row {{row.previewSectionStart ? 'section-start-row' : ''}} {{row.isGroup ? 'group-row' : ''}} {{row.type === 'note' ? 'note-row' : ''}} {{row.type === 'preparedSpeechBlock' ? 'prepared-row' : ''}} {{row.id === 'end' ? 'end-row' : ''}}">
             <text class="time-cell">{{row.startTime}}</text>
-            <view class="title-cell">
+            <view class="title-cell {{row.type === 'preparedSpeechBlock' ? 'prepared-title-cell' : ''}}">
               <text class="prepared-title-line">{{row.titleDisplay}}</text>
               <text wx:if="{{row.type === 'preparedSpeechBlock' && row.showProjectLine}}" class="project-line">{{row.projectDisplay}}</text>
-              <text wx:if="{{row.type === 'preparedSpeechBlock' && row.objectiveDisplay}}" class="objective-line">{{row.objectiveDisplay}}</text>
             </view>
             <text class="duration-cell">{{row.durationDisplay}}</text>
             <text class="person-cell">{{row.personDisplay || ''}}</text>
             <text class="club-cell">{{row.clubDisplay || ''}}</text>
+            <text wx:if="{{row.type === 'preparedSpeechBlock' && row.objectiveDisplay}}" class="objective-line prepared-objective-line">{{row.objectiveDisplay}}</text>
           </view>
         </view>
         <view class="sidebar">

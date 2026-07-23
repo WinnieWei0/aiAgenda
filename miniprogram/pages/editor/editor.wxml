@@ -78,7 +78,7 @@
   <view wx:if="{{addModuleOptions.length}}" class="panel add-module-panel"><text class="panel-title">新增模块</text><picker range="{{addModuleLabels}}" bindchange="addDynamicModule"><view class="add-module-picker">选择要新增的模块<text class="picker-arrow">⌄</text></view></picker></view>
 
   <view class="panel qr-panel"><text class="panel-title">例会群二维码</text><button size="mini" bindtap="chooseMeetingGroupQr">替换图片</button></view>
-  <view class="bottom-actions"><button loading="{{saving}}" bindtap="saveAgenda">保存草稿</button><button class="preview-button" loading="{{saving}}" bindtap="goPreview">预览并导出</button></view>
+  <view class="bottom-actions"><button loading="{{saving}}" bindtap="saveAgenda">保存草稿</button><button class="preview-button" disabled="{{saving || previewing}}" bindtap="goPreview">{{previewing ? '正在打开预览...' : '预览并导出'}}</button></view>
 
   <view wx:if="{{validationDialogVisible}}" class="validation-mask">
     <view class="validation-dialog">

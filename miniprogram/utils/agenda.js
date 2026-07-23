@@ -203,7 +203,7 @@ function createDefaultTemplate() {
       ]
     },
     settings: {
-      specialSessionEnabled: true,
+      specialSessionEnabled: false,
       evaluationDuration: 3,
       preparedFallbackDuration: 7,
       signInTime: '19:00',
@@ -355,7 +355,8 @@ function createRow(template, id, options) {
       memberPerson: Boolean(rule.memberPersonEditable),
       memberClub: Boolean(rule.memberPersonEditable || opts.memberClubEditable)
     },
-    roleKey: opts.roleKey || ''
+    roleKey: opts.roleKey || '',
+    transitionExempt: Boolean(opts.transitionExempt)
   };
 }
 
@@ -414,12 +415,11 @@ function createAgendaFromFacts(factsValue, templateValue) {
     { id: 'signIn', type: 'row', anchorTime: '19:00', children: [], row: createRow(template, 'signIn', { persons: [rolePerson(facts, 'guestReception'), rolePerson(facts, 'memberReception')], personMode: 'multiple', clubMode: 'manual', memberClubEditable: true }) },
     { id: 'venueIntroduction', type: 'row', anchorTime: '19:30', children: [], row: createRow(template, 'venueIntroduction', { person: rolePerson(facts, 'venueIntroduction') }) },
     { id: 'opening', type: 'group', titleZh: '开场白', titleEn: 'Opening', transitionPolicy: 'none', children: [
-      createRow(template, 'openingIcebreaker', { person: president, personMode: 'fixed' }),
       createRow(template, 'guestIntroduction', { person: createPerson({ rawName: '宾客', clubZh: '宾客', clubEn: 'Guest' }), personMode: 'fixed' })
     ] },
     { id: 'facilitatorIntroduction', type: 'group', titleZh: '会议促进者介绍', titleEn: 'Meeting Facilitator Introductions', transitionPolicy: 'betweenChildren', children: [
       createRow(template, 'host', { person: rolePerson(facts, 'toastmaster'), roleKey: 'toastmaster' }),
-      createRow(template, 'photographer', { person: rolePerson(facts, 'photographer'), roleKey: 'photographer', showDuration: false }),
+      createRow(template, 'photographer', { person: rolePerson(facts, 'photographer'), roleKey: 'photographer', showDuration: false, transitionExempt: true }),
       createRow(template, 'timerIntro', { person: rolePerson(facts, 'timer'), roleKey: 'timer' }),
       createRow(template, 'ahCounterIntro', { person: rolePerson(facts, 'ahCounter'), roleKey: 'ahCounter' }),
       createRow(template, 'grammarianIntro', { person: rolePerson(facts, 'grammarian'), roleKey: 'grammarian' }),
@@ -510,7 +510,8 @@ function calculateSectionDuration(section) {
   }
   const children = section.children || [];
   const total = children.reduce((sum, child) => sum + Math.max(Number(child.duration) || 0, 0), 0);
-  const transitions = section.transitionPolicy === 'betweenChildren' ? Math.max(children.length - 1, 0) : 0;
+  const transitionChildren = children.filter((child) => !child.transitionExempt);
+  const transitions = section.transitionPolicy === 'betweenChildren' ? Math.max(transitionChildren.length - 1, 0) : 0;
   return total + transitions;
 }
 
@@ -661,6 +662,17 @@ function normalizeAgenda(value, templateValue) {
         person: createPerson(row.person),
         persons: Array.isArray(row.persons) ? row.persons.map(createPerson) : []
       }));
+    }
+    if (section.id === 'opening') {
+      section.children = (section.children || []).filter((row) => row.id !== 'openingIcebreaker' || row.dynamic);
+    }
+    if (section.id === 'facilitatorIntroduction') {
+      const photographer = (section.children || []).find((row) => row.id === 'photographer');
+      if (photographer) {
+        photographer.duration = 0;
+        photographer.showDuration = false;
+        photographer.transitionExempt = true;
+      }
     }
   });
   const special = agenda.sections.find((section) => section.id === 'specialSession');

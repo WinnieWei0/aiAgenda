@@ -9,6 +9,7 @@ Page({
     isSuperAdmin: false,
     loading: true,
     saving: false,
+    previewing: false,
     memberLoading: false,
     memberLoadError: false,
     memberOptions: [],
@@ -46,6 +47,9 @@ Page({
    * 为什么添加：页面栈保留期间全局模拟身份可能发生变化。
    */
   onShow() {
+    if (this.data.previewing) {
+      this.setData({ previewing: false });
+    }
     const isSuperAdmin = app.isSuperAdminMode();
     if (isSuperAdmin !== this.data.isSuperAdmin) {
       this.setData({ isSuperAdmin });
@@ -603,7 +607,10 @@ Page({
    * 为什么添加：预览和 PDF 必须使用数据库中的最新议程。
    */
   async saveAgenda(options) {
-    this.setData({ saving: true });
+    const manageSaving = !(options && options.manageSaving === false);
+    if (manageSaving) {
+      this.setData({ saving: true });
+    }
     try {
       const data = await cloud.callCloud('saveAgenda', { agenda: this.data.agenda });
       this.setAgenda(data.agenda);
@@ -615,7 +622,9 @@ Page({
       cloud.showError(error);
       return null;
     } finally {
-      this.setData({ saving: false });
+      if (manageSaving) {
+        this.setData({ saving: false });
+      }
     }
   },
 
@@ -625,7 +634,7 @@ Page({
    * 为什么添加：新的编辑流程要求在导出前先确认完整两页版式。
    */
   async goPreview() {
-    if (this.data.saving) {
+    if (this.data.saving || this.data.previewing) {
       return;
     }
     const validationErrors = agendaUtil.validateAgendaForPreview(this.data.agenda);
@@ -639,9 +648,18 @@ Page({
       });
       return;
     }
-    const agenda = await this.saveAgenda({ silent: true });
+    this.setData({ previewing: true });
+    const agenda = await this.saveAgenda({ silent: true, manageSaving: false });
     if (agenda && agenda._id) {
+      app.globalData.previewPayload = {
+        agendaId: agenda._id,
+        agenda,
+        template: agendaUtil.resolveTemplateLocale(this.data.template, agenda.meetingInfo && agenda.meetingInfo.language),
+        rows: agendaUtil.flattenAgendaRows(agenda)
+      };
       wx.navigateTo({ url: `/pages/template-preview/template-preview?id=${agenda._id}` });
+    } else {
+      this.setData({ previewing: false });
     }
   },
 
