@@ -35,19 +35,44 @@ async function uploadPdf(buffer, agenda, language) {
  * 方法作用：把 agendaId、语言、fileID 和导出人写入 `pdf_exports`。
  * 为什么添加：历史议程页需要展示最近导出的文件，也方便后续审计和重新下载。
  */
-async function saveExportRecord(agendaId, language, fileID, openid) {
-  const db = common.getDb();
-  const res = await db.collection('pdf_exports').add({
-    data: {
-      agendaId,
-      language,
-      fileID,
-      ownerOpenid: openid,
-      createdAt: common.nowIso(),
-      updatedAt: common.nowIso()
+async function saveExportRecord(agendaId, language, fileID, openid, ensureCollectionValue, waitValue) {
+  const ensureCollection = ensureCollectionValue || common.ensureCollection;
+  const wait = waitValue || ((milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds)));
+  let collection;
+  try {
+    collection = await ensureCollection('pdf_exports');
+  } catch (error) {
+    if (common.isCollectionMissingError(error)) {
+      console.warn('pdf_exports collection is not ready; export history was skipped');
+      return '';
     }
-  });
-  return res._id;
+    throw error;
+  }
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    try {
+      const res = await collection.add({
+        data: {
+          agendaId,
+          language,
+          fileID,
+          ownerOpenid: openid,
+          createdAt: common.nowIso(),
+          updatedAt: common.nowIso()
+        }
+      });
+      return res._id;
+    } catch (error) {
+      if (!common.isCollectionMissingError(error)) {
+        throw error;
+      }
+      if (attempt === 2) {
+        console.warn('pdf_exports collection remained unavailable; export history was skipped');
+        return '';
+      }
+      await wait(attempt === 0 ? 250 : 750);
+    }
+  }
+  return '';
 }
 
 /**
@@ -111,3 +136,4 @@ async function main(event) {
 }
 
 exports.main = main;
+exports.saveExportRecord = saveExportRecord;

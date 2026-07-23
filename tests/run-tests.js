@@ -10,6 +10,7 @@ const agendaQuery = require('../cloudfunctions/agendaQuery');
 const common = require('../cloudfunctions/common');
 const lookupOptions = require('../cloudfunctions/lookupOptions');
 const saveAgenda = require('../cloudfunctions/saveAgenda');
+const exportAgendaPdf = require('../cloudfunctions/exportAgendaPdf');
 const { PDFDocument } = require('../cloudfunctions/common/node_modules/pdf-lib');
 
 let memberships = [];
@@ -431,6 +432,41 @@ function testCollectionMissingError() {
 }
 
 /**
+ * 方法是什么：测试首次导出 PDF 时自动初始化导出记录集合。
+ * 方法作用：确认 exportAgendaPdf 不会直接向不存在的 pdf_exports 集合写入。
+ * 为什么添加：新环境没有手工创建该集合时，导出 PDF 仍必须成功。
+ */
+async function testExportRecordCollectionInitialization() {
+  let requestedCollection = '';
+  let attempts = 0;
+  const ensureCollection = async function ensureCollection(name) {
+    requestedCollection = name;
+    return {
+      async add() {
+        attempts += 1;
+        if (attempts < 3) {
+          const error = new Error('database collection not exists');
+          error.errCode = -502005;
+          throw error;
+        }
+        return { _id: 'export-1' };
+      }
+    };
+  };
+  const exportId = await exportAgendaPdf.saveExportRecord('agenda-1', 'zh', 'cloud://pdf', 'openid-1', ensureCollection, async function wait() {});
+  assert.strictEqual(requestedCollection, 'pdf_exports');
+  assert.strictEqual(attempts, 3);
+  assert.strictEqual(exportId, 'export-1');
+
+  const missingExportId = await exportAgendaPdf.saveExportRecord('agenda-1', 'zh', 'cloud://pdf', 'openid-1', async function missingCollection() {
+    const error = new Error('database collection not exists');
+    error.errCode = -502005;
+    throw error;
+  });
+  assert.strictEqual(missingExportId, '');
+}
+
+/**
  * 方法是什么：测试会员选择候选排序和议程保存载荷。
  * 方法作用：覆盖会员 picker 的稳定顺序以及 JSON 草稿的规范化存储形状。
  * 为什么添加：会员查询不能依赖数据库排序索引，保存结果也必须保持完整 AgendaV2。
@@ -557,6 +593,7 @@ async function main() {
   testCollectionMissingError();
   testMemberOptionsAndAgendaPayload();
   testPdfAgendaLineStyle();
+  await testExportRecordCollectionInitialization();
   await testPdfRenderer(agenda);
   await testPdfOverflow();
   console.log('核心测试通过。');
