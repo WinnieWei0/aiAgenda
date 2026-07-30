@@ -24,7 +24,8 @@ function cloneJson(value) {
  */
 function createPerson(value) {
   const source = value || {};
-  const rawName = source.rawName || source.displayNameZh || source.displayNameEn || '';
+  const sourceName = source.rawName || source.displayNameZh || source.displayNameEn || '';
+  const rawName = /^(?:\[(?:太阳|玫瑰花?|庆祝|sun|rose)\]|太阳|玫瑰花?|sun|rose|[☀🌞🌹🥀\uFE0F])$/i.test(String(sourceName).trim()) ? '' : sourceName;
   return {
     rawName,
     memberId: source.memberId || '',
@@ -330,6 +331,23 @@ function createPresidentPerson(template, language) {
 }
 
 /**
+ * 方法是什么：创建开场白负责人行。
+ * 方法作用：使用模板中的当前会长作为默认人员，并开放会员下拉选择。
+ * 为什么添加：开场白需要显示独立负责人控件，同时不能改变原有两分钟时间链。
+ */
+function createOpeningRemarksRow(template, language) {
+  const row = createRow(template, 'openingRemarks', {
+    titleZh: '开场白',
+    titleEn: 'Opening',
+    duration: 0,
+    person: createPresidentPerson(template, language),
+    showDuration: false
+  });
+  row.permissions.memberPerson = true;
+  return row;
+}
+
+/**
  * 方法是什么：创建议程普通行。
  * 方法作用：把模板规则、人员、显示模式和会员权限组合成稳定节点。
  * 为什么添加：固定议程包含大量相同行结构，集中创建可以避免规则遗漏。
@@ -415,6 +433,7 @@ function createAgendaFromFacts(factsValue, templateValue) {
     { id: 'signIn', type: 'row', anchorTime: '19:00', children: [], row: createRow(template, 'signIn', { persons: [rolePerson(facts, 'guestReception'), rolePerson(facts, 'memberReception')], personMode: 'multiple', clubMode: 'manual', memberClubEditable: true }) },
     { id: 'venueIntroduction', type: 'row', anchorTime: '19:30', children: [], row: createRow(template, 'venueIntroduction', { person: rolePerson(facts, 'venueIntroduction') }) },
     { id: 'opening', type: 'group', titleZh: '开场白', titleEn: 'Opening', transitionPolicy: 'none', children: [
+      createOpeningRemarksRow(template, facts.meetingInfo && facts.meetingInfo.language),
       createRow(template, 'guestIntroduction', { person: createPerson({ rawName: '宾客', clubZh: '宾客', clubEn: 'Guest' }), personMode: 'fixed' })
     ] },
     { id: 'facilitatorIntroduction', type: 'group', titleZh: '会议促进者介绍', titleEn: 'Meeting Facilitator Introductions', transitionPolicy: 'betweenChildren', children: [
@@ -647,6 +666,10 @@ function normalizeAgenda(value, templateValue) {
   const agenda = cloneJson(value);
   agenda.templateId = agenda.templateId || template.templateId;
   agenda.meetingInfo = Object.assign({}, createAgendaFromFacts({}, template).meetingInfo, agenda.meetingInfo || {});
+  if (!agenda.meetingInfo.meetingNo) {
+    const meetingNoMatch = String(agenda.rawText || '').match(/第\s*(\d+)\s*期/);
+    agenda.meetingInfo.meetingNo = meetingNoMatch ? meetingNoMatch[1] : '';
+  }
   agenda.assets = Object.assign({ meetingGroupQr: template.assets.meetingGroupQr }, agenda.assets || {});
   agenda.warnings = Array.isArray(agenda.warnings) ? agenda.warnings : [];
   agenda.sections.forEach((section) => {
@@ -665,6 +688,9 @@ function normalizeAgenda(value, templateValue) {
     }
     if (section.id === 'opening') {
       section.children = (section.children || []).filter((row) => row.id !== 'openingIcebreaker' || row.dynamic);
+      if (!section.children.some((row) => row.id === 'openingRemarks')) {
+        section.children.unshift(createOpeningRemarksRow(template, agenda.meetingInfo.language));
+      }
     }
     if (section.id === 'facilitatorIntroduction') {
       const photographer = (section.children || []).find((row) => row.id === 'photographer');

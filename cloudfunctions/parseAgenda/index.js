@@ -90,6 +90,7 @@ async function main(event) {
       common.getAgendaTemplate()
     ]);
     const aiResult = await common.deepseek.parseAgendaWithDeepSeek(rawText, { timeoutMs: 15000 });
+    aiResult.rawText = rawText;
     const headerInfo = common.parser.parseMeetingHeader(rawText);
     aiResult.meetingInfo = Object.assign({}, aiResult.meetingInfo || {}, {
       meetingNo: headerInfo.meetingNo || (aiResult.meetingInfo && aiResult.meetingInfo.meetingNo) || '',

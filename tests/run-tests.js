@@ -373,6 +373,18 @@ function testMeetingLanguageDetection() {
   assert.strictEqual(english.meetingInfo.meetingNo, '800');
   assert.strictEqual(chinese.meetingInfo.language, 'zh');
   assert.strictEqual(chinese.meetingInfo.meetingNo, '801');
+
+  const aiAgenda = parser.buildAgendaFromAi({
+    rawText: '#接龙\n【广州双语国际演讲俱乐部第760期中文会议】',
+    meetingInfo: { meetingNo: '', language: 'en' }
+  }, [], []);
+  assert.strictEqual(aiAgenda.meetingInfo.meetingNo, '760');
+  assert.strictEqual(aiAgenda.meetingInfo.language, 'zh');
+
+  const restored = agendaUtil.normalizeAgenda(Object.assign({}, aiAgenda, {
+    meetingInfo: Object.assign({}, aiAgenda.meetingInfo, { meetingNo: '' })
+  }));
+  assert.strictEqual(restored.meetingInfo.meetingNo, '760');
 }
 
 /**
@@ -406,6 +418,18 @@ function testEmptyRolePlaceholders() {
   assert.strictEqual(aiAgenda.roles.timer.rawName, '');
   assert.strictEqual(aiAgenda.roles.grammarian.rawName, '');
   assert.strictEqual(parser.cleanRoleSignupValue('[sun]'), '');
+
+  const preparedAgenda = parser.buildAgendaFromAi({
+    meetingInfo: { meetingNo: '802', language: 'zh' },
+    preparedSpeeches: [{ speakerRawName: '[sun]', evaluatorRawName: '🌹', projectCode: 'L1P1' }]
+  }, [], []);
+  const preparedBlock = preparedAgenda.sections.find((section) => section.id === 'preparedSpeech').children[0];
+  assert.strictEqual(preparedBlock.speaker.rawName, '');
+  assert.strictEqual(preparedBlock.evaluator.rawName, '');
+
+  const openingRow = aiAgenda.sections.find((section) => section.id === 'opening').children.find((row) => row.id === 'openingRemarks');
+  assert.strictEqual(openingRow.person.rawName, '白俊杰');
+  assert.strictEqual(openingRow.permissions.memberPerson, true);
 }
 
 /**

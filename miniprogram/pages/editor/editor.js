@@ -197,6 +197,10 @@ Page({
         row.canEditPerson = true;
         row.person.inputMode = 'select';
       }
+      if (row.id === 'openingRemarks') {
+        row.canEditPerson = true;
+        row.person.inputMode = 'select';
+      }
       row.persons = (row.persons || []).map((person) => this.decoratePerson(person));
       if (row.type === 'preparedSpeechBlock') {
         row.speaker = this.decoratePerson(row.speaker);

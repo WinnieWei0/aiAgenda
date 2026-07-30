@@ -343,8 +343,8 @@ function buildPerson(rawName, memberships) {
 function enrichPreparedSpeeches(speeches, memberships, pathways) {
   const enriched = [];
   for (const speech of speeches || []) {
-    const speaker = buildPerson(speech.speakerRawName, memberships);
-    const evaluator = buildPerson(speech.evaluatorRawName, memberships);
+    const speaker = buildPerson(cleanRoleSignupValue(speech.speakerRawName), memberships);
+    const evaluator = buildPerson(cleanRoleSignupValue(speech.evaluatorRawName), memberships);
     const pathway = findPathway(speech.projectCode, pathways);
     enriched.push({
       index: speech.index,
@@ -599,8 +599,13 @@ function buildAgendaFromAi(aiResult, memberships, pathways, template) {
     error.code = 'DEEPSEEK_EMPTY_RESULT';
     throw error;
   }
+  const headerInfo = parseMeetingHeader(aiResult.rawText || '');
   const agenda = {
-    meetingInfo: aiResult.meetingInfo || {},
+    rawText: aiResult.rawText || '',
+    meetingInfo: Object.assign({}, aiResult.meetingInfo || {}, headerInfo.meetingNo ? {
+      meetingNo: headerInfo.meetingNo,
+      language: headerInfo.language
+    } : {}),
     roles: aiResult.roles || {},
     preparedSpeeches: Array.isArray(aiResult.preparedSpeeches) ? aiResult.preparedSpeeches : [],
     participants: Array.isArray(aiResult.participants) ? aiResult.participants : [],
