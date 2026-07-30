@@ -617,11 +617,16 @@ Page({
     }
     try {
       const data = await cloud.callCloud('saveAgenda', { agenda: this.data.agenda });
-      this.setAgenda(data.agenda);
+      const savedAgenda = data.agenda;
+      app.setCurrentAgenda(savedAgenda);
+      this.setData({
+        'agenda._id': savedAgenda._id || '',
+        'agenda.expiresAt': savedAgenda.expiresAt || ''
+      });
       if (!(options && options.silent)) {
         cloud.showSuccess('已保存');
       }
-      return data.agenda;
+      return savedAgenda;
     } catch (error) {
       cloud.showError(error);
       return null;

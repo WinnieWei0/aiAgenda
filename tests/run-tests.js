@@ -238,8 +238,14 @@ function testAgendaPreviewValidation() {
     }]
   }, template);
   assert.deepStrictEqual(agendaUtil.validateAgendaForPreview(agenda), []);
+  const preparedBlock = agenda.sections.find((section) => section.id === 'preparedSpeech').children[0];
+  preparedBlock.pathway.objectiveZh = '';
+  assert.deepStrictEqual(agendaUtil.validateAgendaForPreview(agenda), []);
+  preparedBlock.pathway = { code: 'OTHER', fullLabelZh: '其他', objectiveZh: '', isOther: true };
+  assert.ok(agendaUtil.validateAgendaForPreview(agenda).some((message) => message.includes('项目描述不能为空')));
+  preparedBlock.pathway = { code: 'L1P1', fullLabelZh: 'L1P1 破冰演讲', objectiveZh: '' };
   agenda.meetingInfo.theme = '';
-  agenda.sections.find((section) => section.id === 'preparedSpeech').children[0].speaker.clubZh = '';
+  preparedBlock.speaker.clubZh = '';
   const errors = agendaUtil.validateAgendaForPreview(agenda);
   assert.ok(errors.includes('会议主题不能为空'));
   assert.ok(errors.some((message) => message.includes('演讲者俱乐部不能为空')));

@@ -880,7 +880,9 @@ function validateAgendaForPreview(agendaValue) {
     addDurationError(label, row.duration);
     const pathway = row.pathway || {};
     addTextError(`${label} Pathways项目`, localizedText(pathway, 'fullLabelZh', 'fullLabelEn') || pathway.code);
-    addTextError(`${label}项目描述`, localizedText(pathway, 'objectiveZh', 'objectiveEn'));
+    if (pathway.isOther || String(pathway.code || '').toUpperCase() === 'OTHER') {
+      addTextError(`${label}项目描述`, localizedText(pathway, 'objectiveZh', 'objectiveEn'));
+    }
     validatePerson(row.speaker, `${label}演讲者`, true);
     validatePerson(row.evaluator, `${label}点评者`, true);
   };
