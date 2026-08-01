@@ -25,7 +25,12 @@ function hexToRgb(hex) {
  * 为什么添加：云函数系统字体不稳定，中文导出必须嵌入确定字体。
  */
 function resolveFontPath() {
-  const candidates = [process.env.PDF_FONT_PATH, path.join(__dirname, 'fonts', 'NotoSerifSC-Medium.ttf')];
+  const candidates = [
+    process.env.PDF_FONT_PATH,
+    path.join(__dirname, 'fonts', 'HYShuSongErKW.ttf'),
+    path.join(__dirname, 'fonts', 'HYShuSongErKW.otf'),
+    path.join(__dirname, 'fonts', 'NotoSerifSC-Medium.ttf')
+  ];
   return candidates.find((candidate) => candidate && fs.existsSync(candidate)) || '';
 }
 
@@ -139,23 +144,51 @@ function drawCell(page, font, x, y, width, height, text, options) {
 function drawRoundedCell(page, font, x, y, width, height, text, options) {
   const opts = options || {};
   const radius = Math.min(opts.radius || 8, width / 2, height / 2);
-  const drawShape = (shapeX, shapeY, shapeWidth, shapeHeight, shapeRadius, color) => {
-    const bottom = topY(shapeY, shapeHeight);
-    page.drawRectangle({ x: shapeX + shapeRadius, y: bottom, width: shapeWidth - shapeRadius * 2, height: shapeHeight, color });
-    page.drawRectangle({ x: shapeX, y: bottom + shapeRadius, width: shapeWidth, height: shapeHeight - shapeRadius * 2, color });
-    [[shapeX + shapeRadius, bottom + shapeRadius], [shapeX + shapeWidth - shapeRadius, bottom + shapeRadius], [shapeX + shapeRadius, bottom + shapeHeight - shapeRadius], [shapeX + shapeWidth - shapeRadius, bottom + shapeHeight - shapeRadius]].forEach((center) => {
-      page.drawEllipse({ x: center[0], y: center[1], xScale: shapeRadius, yScale: shapeRadius, color });
-    });
-  };
-  drawShape(x, y, width, height, radius, BORDER);
-  drawShape(x + 0.65, y + 0.65, width - 1.3, height - 1.3, radius - 0.65, opts.fill ? hexToRgb(opts.fill) : rgb(1, 1, 1));
-  drawText(page, font, text, x + 5, y + 5, {
-    width: width - 10,
-    height: height - 10,
-    fontSize: opts.fontSize || 5,
-    lineHeight: opts.lineHeight || 6,
-    color: BLACK
+  const control = radius * 0.55228475;
+  const roundedPath = [
+    `M ${radius} 0`,
+    `L ${width - radius} 0`,
+    `C ${width - radius + control} 0 ${width} ${radius - control} ${width} ${radius}`,
+    `L ${width} ${height - radius}`,
+    `C ${width} ${height - radius + control} ${width - radius + control} ${height} ${width - radius} ${height}`,
+    `L ${radius} ${height}`,
+    `C ${radius - control} ${height} 0 ${height - radius + control} 0 ${height - radius}`,
+    `L 0 ${radius}`,
+    `C 0 ${radius - control} ${radius - control} 0 ${radius} 0`,
+    'Z'
+  ].join(' ');
+  page.drawSvgPath(roundedPath, {
+    x,
+    y: PAGE.height - y,
+    color: opts.fill ? hexToRgb(opts.fill) : rgb(1, 1, 1),
+    borderColor: BORDER,
+    borderWidth: 0.65
   });
+  if (opts.title !== undefined) {
+    drawText(page, font, opts.title, x + 5, y + 4, {
+      width: width - 10,
+      height: 8,
+      fontSize: opts.titleFontSize || 5.3,
+      lineHeight: opts.titleLineHeight || 6.3,
+      color: BLACK,
+      bold: true
+    });
+    drawText(page, font, opts.value || '', x + 5, y + 12, {
+      width: width - 10,
+      height: height - 16,
+      fontSize: opts.fontSize || 5,
+      lineHeight: opts.lineHeight || 6.2,
+      color: BLACK
+    });
+  } else {
+    drawText(page, font, text, x + 5, y + 5, {
+      width: width - 10,
+      height: height - 10,
+      fontSize: opts.fontSize || 5,
+      lineHeight: opts.lineHeight || 6,
+      color: BLACK
+    });
+  }
 }
 
 /**
@@ -274,39 +307,64 @@ function getAgendaRowHeight(row, language) {
  */
 function drawFirstPageHeader(page, font, template, agenda, images, language) {
   const fixed = template.fixedContent;
-  drawText(page, font, fixed.clubTitle, PAGE.margin + 65, 101, { width: 410, height: 22, fontSize: 15, align: 'center', bold: true });
-  drawText(page, font, fixed.clubSubtitle, PAGE.margin + 80, 124, { width: 380, height: 18, fontSize: 12.5, align: 'center', bold: true });
-  drawText(page, font, fixed.charter, 493, 104, { width: 72, height: 38, fontSize: 4.8, align: 'right' });
-  drawImageFit(page, images.logo, PAGE.margin + 4, 158, 47, 49);
+  drawText(page, font, fixed.clubTitle, PAGE.margin + 65, 46, { width: 410, height: 22, fontSize: 15, align: 'center', bold: true });
+  drawText(page, font, fixed.clubSubtitle, PAGE.margin + 80, 69, { width: 380, height: 18, fontSize: 12.5, align: 'center', bold: true });
+  drawText(page, font, fixed.charter, 487, 49, { width: 72, height: 38, fontSize: 4.8, align: 'right' });
+  drawImageFit(page, images.logo, PAGE.margin + 4, 103, 47, 49);
   const cards = [
     { x: PAGE.margin + 55, w: 100, title: language === 'en' ? 'Meeting Time' : '会议时间 Time', value: fixed.meetingTime },
     { x: PAGE.margin + 159, w: 132, title: language === 'en' ? 'Venue' : '会议地址 Venue', value: fixed.venue },
-    { x: PAGE.margin + 295, w: 132, title: language === 'en' ? 'Fees' : '费用说明 Fees', value: fixed.fees },
-    { x: PAGE.margin + 431, w: 112, title: language === 'en' ? 'Taboo Topics' : '禁忌话题 Taboo Topics', value: fixed.tabooTopics }
+    { x: PAGE.margin + 295, w: 148, title: language === 'en' ? 'Fees' : '费用说明 Fees', value: fixed.fees },
+    { x: PAGE.margin + 447, w: 88, title: language === 'en' ? 'Taboo Topics' : '禁忌话题 Taboo Topics', value: fixed.tabooTopics }
   ];
   cards.forEach((card) => {
-    drawRoundedCell(page, font, card.x, 154, card.w, 55, `${card.title}\n${card.value}`, { fill: '#62c4ee', fontSize: 4.5, lineHeight: 5.5 });
+    drawRoundedCell(page, font, card.x, 99, card.w, 55, '', {
+      fill: '#62c4ee',
+      title: card.title,
+      value: card.value,
+      titleFontSize: 5.3,
+      fontSize: 5,
+      lineHeight: 6.2
+    });
   });
-  drawText(page, font, fixed.missionEn, PAGE.margin + 65, 211, { width: 410, height: 16, fontSize: 5.6, align: 'center' });
-  drawText(page, font, fixed.missionZh, PAGE.margin + 62, 228, { width: 416, height: 12, fontSize: 5.6, align: 'center' });
+  drawText(page, font, fixed.missionEn, PAGE.margin + 65, 156, { width: 410, height: 16, fontSize: 5.6, align: 'center' });
+  drawText(page, font, fixed.missionZh, PAGE.margin + 62, 173, { width: 416, height: 12, fontSize: 5.6, align: 'center' });
   const info = agenda.meetingInfo || {};
-  drawText(page, font, `No. ${info.meetingNo || ''}`, PAGE.margin + 4, 240, { width: 95, height: 10, fontSize: 6.5 });
-  drawText(page, font, `${language === 'en' ? 'Date: ' : '日期：'}${info.date || ''}`, PAGE.margin + 150, 240, { width: 120, height: 10, fontSize: 6.5 });
-  drawText(page, font, `${language === 'en' ? 'Theme: ' : '主题：'}${info.theme || ''}`, PAGE.margin + 278, 240, { width: 245, height: 10, fontSize: 6.5 });
+  drawText(page, font, `No. ${info.meetingNo || ''}`, PAGE.margin + 4, 185, { width: 95, height: 10, fontSize: 6.5 });
+  drawText(page, font, `${language === 'en' ? 'Date: ' : '日期：'}${info.date || ''}`, PAGE.margin + 150, 185, { width: 120, height: 10, fontSize: 6.5 });
+  drawText(page, font, `${language === 'en' ? 'Theme: ' : '主题：'}${info.theme || ''}`, PAGE.margin + 278, 185, { width: 245, height: 10, fontSize: 6.5 });
+}
+
+/**
+ * 方法是什么：绘制第一页页眉区域外边框。
+ * 方法作用：包围俱乐部标题、信息卡、使命文案和会议元数据，并与议程表左右边界对齐。
+ * 为什么添加：导出 PDF 的页眉区域需要形成完整线框，明确区分固定信息与下方议程表。
+ */
+function drawFirstPageHeaderFrame(page, agendaTop) {
+  const top = 20;
+  const bottom = Number(agendaTop) || 250;
+  page.drawRectangle({
+    x: PAGE.margin,
+    y: topY(top, bottom - top),
+    width: PAGE.width - PAGE.margin * 2,
+    height: bottom - top,
+    borderColor: BORDER,
+    borderWidth: 0.6
+  });
 }
 
 /**
  * 方法是什么：绘制议程表头。
- * 方法作用：输出时间、流程、限时、演讲者和俱乐部五列。
+ * 方法作用：保留时间数据列但隐藏时间表头，并输出流程、限时、演讲者和俱乐部标题。
  * 为什么添加：第一页和续页需要复用完全一致的列宽与表头。
  */
 function drawAgendaHeader(page, font, y, language) {
   const x = PAGE.margin;
   const widths = [42, 143, 60, 88, 67];
-  const labels = language === 'en' ? ['Time', 'Agenda', 'Limit', 'Speaker', 'Club'] : ['时间', '会议促进者', '限时', '演讲者', '俱乐部'];
+  const labels = language === 'en' ? ['', 'Agenda', 'Limit', 'Speaker', 'Club'] : ['', '会议促进者', '限时', '演讲者', '俱乐部'];
   let cursor = x;
   labels.forEach((label, index) => {
-    drawCell(page, font, cursor, y, widths[index], 11, label, { fill: '#9bdcf6', align: 'left', fontSize: 6.2, border: false, bold: true });
+    drawCell(page, font, cursor, y, widths[index], 11, label, { fill: '#9bdcf6', align: index === 2 ? 'right' : 'left', fontSize: 6.2, border: false, bold: true });
     cursor += widths[index];
   });
   page.drawLine({
@@ -344,8 +402,8 @@ function drawAgendaRow(page, font, row, table, y, language, forcedHeight) {
     page.drawLine({
       start: { x: table.x, y: topY(y, 0) },
       end: { x: table.x + tableWidth, y: topY(y, 0) },
-      thickness: 0.35,
-      color: LIGHT_BORDER
+      thickness: 0.45,
+      color: BORDER
     });
   }
   let cursor = table.x;
@@ -353,8 +411,8 @@ function drawAgendaRow(page, font, row, table, y, language, forcedHeight) {
     drawCell(page, font, cursor, y, table.widths[index], height, value, {
       fill,
       border: false,
-      fontSize: 5.8,
-      lineHeight: 6.4,
+      fontSize: 6.3,
+      lineHeight: 6.9,
       align: index === 2 ? 'right' : 'left',
       bold: row.isGroup
     });
@@ -367,18 +425,18 @@ function drawAgendaRow(page, font, row, table, y, language, forcedHeight) {
     drawCell(page, font, objectiveX, objectiveY, objectiveWidth, height - (objectiveY - y), objective, {
       fill,
       border: false,
-      fontSize: 5.8,
-      lineHeight: 6.4,
+      fontSize: 6.3,
+      lineHeight: 6.9,
       align: 'left'
     });
   }
   const tableWidth = table.widths.reduce((total, width) => total + width, 0);
-  if (row.id === 'end') {
+  if (row.pdfSectionStart || row.id === 'end') {
     page.drawLine({
       start: { x: table.x, y: topY(y + height, 0) },
       end: { x: table.x + tableWidth, y: topY(y + height, 0) },
       thickness: 0.45,
-      color: LIGHT_BORDER
+      color: BORDER
     });
   }
   const boundaryX = table.x + tableWidth;
@@ -456,8 +514,9 @@ function drawAgendaPages(pdfDoc, font, template, agenda, images) {
   const firstPage = pdfDoc.addPage([PAGE.width, PAGE.height]);
   drawFirstPageHeader(firstPage, font, template, agenda, images, language);
   let page = firstPage;
-  const agendaTop = 250;
+  const agendaTop = 195;
   const agendaBottom = 697;
+  drawFirstPageHeaderFrame(firstPage, agendaTop);
   let y = agendaTop;
   let table = drawAgendaHeader(page, font, y, language);
   y += table.height;
@@ -572,6 +631,7 @@ module.exports = {
   getAssetBytes,
   embedTemplateImages,
   drawImageFit,
+  drawFirstPageHeaderFrame,
   getRowPersonName,
   getRowClub,
   getAgendaRowHeight,

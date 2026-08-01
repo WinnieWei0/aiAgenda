@@ -1,67 +1,20 @@
-<view class="preview-page" wx:if="{{!loading && agenda && template}}">
-  <scroll-view class="paper-scroll" scroll-x="true" enhanced="true" show-scrollbar="false">
-    <view class="paper page-one">
-      <view class="brand-header">
-        <view class="brand-title">{{template.fixedContent.clubTitle}}</view>
-        <view class="brand-subtitle">{{template.fixedContent.clubSubtitle}}</view>
-        <view class="charter">{{template.fixedContent.charter}}</view>
-      </view>
-      <view class="info-strip">
-        <image class="club-logo" src="{{template.previewAssets.logo || template.assets.logo}}" mode="aspectFit" />
-        <view class="info-card"><text class="info-title">会议时间 Time</text><text>{{template.fixedContent.meetingTime}}</text></view>
-        <view class="info-card wide"><text class="info-title">会议地址 Venue</text><text>{{template.fixedContent.venue}}</text></view>
-        <view class="info-card wide"><text class="info-title">费用说明 Fees</text><text>{{template.fixedContent.fees}}</text></view>
-        <view class="info-card"><text class="info-title">禁忌话题 Taboo Topics</text><text>{{template.fixedContent.tabooTopics}}</text></view>
-      </view>
-      <view class="mission"><text class="mission-en">{{template.fixedContent.missionEn}}</text><text>{{template.fixedContent.missionZh}}</text></view>
-      <view class="meeting-meta"><text>No. {{agenda.meetingInfo.meetingNo}}</text><text>{{agenda.meetingInfo.language === 'en' ? 'Date: ' : '日期：'}}{{agenda.meetingInfo.date}}</text><text>{{agenda.meetingInfo.language === 'en' ? 'Theme: ' : '主题：'}}{{agenda.meetingInfo.theme}}</text></view>
+<view class="snapshot-page">
+  <view wx:if="{{loading}}" class="snapshot-status">
+    <view class="status-title">正在生成 PDF 预览</view>
+    <view class="status-copy">生成完成后将自动打开</view>
+  </view>
 
-      <view class="page-one-body">
-        <view class="agenda-table">
-          <view class="table-row table-head"><text class="facilitator-head">{{agenda.meetingInfo.language === 'en' ? 'Agenda' : '会议促进者'}}</text><text class="duration-cell">{{agenda.meetingInfo.language === 'en' ? 'Limit' : '限时'}}</text><text class="person-cell">{{agenda.meetingInfo.language === 'en' ? 'Speaker' : '演讲者'}}</text><text class="club-cell">{{agenda.meetingInfo.language === 'en' ? 'Club' : '俱乐部'}}</text></view>
-          <view wx:for="{{rows}}" wx:for-item="row" wx:key="id" class="table-row {{row.previewSectionStart ? 'section-start-row' : ''}} {{row.isGroup ? 'group-row' : ''}} {{row.type === 'note' ? 'note-row' : ''}} {{row.type === 'preparedSpeechBlock' ? 'prepared-row' : ''}} {{row.id === 'end' ? 'end-row' : ''}}">
-            <text class="time-cell">{{row.startTime}}</text>
-            <view class="title-cell {{row.type === 'preparedSpeechBlock' ? 'prepared-title-cell' : ''}}">
-              <text class="prepared-title-line">{{row.titleDisplay}}</text>
-              <text wx:if="{{row.type === 'preparedSpeechBlock' && row.showProjectLine}}" class="project-line">{{row.projectDisplay}}</text>
-            </view>
-            <text class="duration-cell">{{row.durationDisplay}}</text>
-            <text class="person-cell">{{row.personDisplay || ''}}</text>
-            <text class="club-cell">{{row.clubDisplay || ''}}</text>
-            <text wx:if="{{row.type === 'preparedSpeechBlock' && row.objectiveDisplay}}" class="objective-line prepared-objective-line">{{row.objectiveDisplay}}</text>
-          </view>
-        </view>
-        <view class="sidebar">
-          <view class="side-title">{{agenda.meetingInfo.language === 'en' ? 'Last Meeting Awards' : '上周最佳演讲者'}}</view>
-          <view wx:for="{{template.sidebar.winners}}" wx:key="label" class="winner"><text>{{item.label}}</text><text>{{item.value}}</text></view>
-          <view class="side-title">{{agenda.meetingInfo.language === 'en' ? 'Toastmasters Core Values' : '国际演讲会价值观'}}</view><view class="side-copy centered">{{template.fixedContent.values}}</view>
-          <view class="side-title">{{agenda.meetingInfo.language === 'en' ? 'GZ Bilingual Toastmasters Club' : '广州双语国际演讲俱乐部'}}</view><view class="side-copy">{{template.fixedContent.clubIntro}}</view>
-          <image class="side-qr" src="{{template.previewAssets.membershipQr || template.assets.membershipQr}}" mode="aspectFit" /><text class="qr-label">{{agenda.meetingInfo.language === 'en' ? 'VP Membership' : '会员副会长'}}</text>
-          <image class="side-qr" src="{{template.previewAssets.officialQr || template.assets.officialQr}}" mode="aspectFit" /><text class="qr-label">{{agenda.meetingInfo.language === 'en' ? 'Official Account' : '公众号'}}</text>
-          <image class="side-qr" src="{{template.previewAssets.meetingGroupQr || agenda.assets.meetingGroupQr}}" mode="aspectFit" /><text class="qr-label">{{agenda.meetingInfo.language === 'en' ? 'Meeting Group' : '例会群'}}</text>
-        </view>
-      </view>
-      <view class="timing-title">{{agenda.meetingInfo.language === 'en' ? 'Timing Rules' : '计时规则（请有效利用你在台上有限的时间）'}}</view>
-      <view class="timing-table"><view wx:for="{{template.timerRules}}" wx:for-item="timerRow" wx:key="index" class="timing-row"><text wx:for="{{timerRow}}" wx:key="index" class="timing-cell timing-{{index}}">{{item}}</text></view></view>
-    </view>
+  <view wx:elif="{{loadFailed}}" class="snapshot-status">
+    <view class="status-title">PDF 预览生成失败</view>
+    <button class="retry-button" bindtap="createSnapshot">重新生成</button>
+  </view>
 
-    <view class="paper page-two">
-      <view class="page-two-grid">
-        <view class="notes-column"><view class="cyan-title">{{template.page2.updatesTitle}}</view><view class="updates-space"></view><view class="cyan-title">{{template.page2.notesTitle}}</view></view>
-        <view class="club-column">
-          <view class="cyan-title">{{template.page2.educationTitle}}</view>
-          <view class="education-block"><view class="pathway-list"><text wx:for="{{template.page2.pathways}}" wx:key="*this">{{index + 1}}. {{item}}</text></view><image src="{{template.previewAssets.educationSystem || template.assets.educationSystem}}" mode="aspectFit" /></view>
-          <view class="goal">{{template.page2.goal}}</view>
-          <view class="two-columns"><view><view class="gray-title">{{agenda.meetingInfo.language === 'en' ? 'Club Achievements' : '双语成就'}}</view><text wx:for="{{template.page2.achievements}}" wx:key="*this">{{item}}</text></view><view><view class="gray-title">{{agenda.meetingInfo.language === 'en' ? 'Meeting Flow' : '会议流程'}}</view><text wx:for="{{template.page2.meetingFlow}}" wx:key="*this">{{item}}</text></view></view>
-          <view class="two-columns tall"><view><view class="gray-title">{{agenda.meetingInfo.language === 'en' ? 'What You Can Gain' : '我们在头马可以收获什么？'}}</view><text wx:for="{{template.page2.benefits}}" wx:key="*this">{{item}}</text></view><view><view class="gray-title">{{agenda.meetingInfo.language === 'en' ? 'How to Join' : '如何加入我们'}}</view><text class="joining">{{template.page2.joining}}</text></view></view>
-          <view class="cyan-title">{{agenda.meetingInfo.language === 'en' ? '2026 Club Officer Team' : '2026年（上）俱乐部干事 Club Officer Team'}}</view>
-          <view class="officer-head"><text>{{agenda.meetingInfo.language === 'en' ? 'Officer' : '干事 Officer'}}</text><text>{{agenda.meetingInfo.language === 'en' ? 'Phone' : '电话 Phone'}}</text><text>{{agenda.meetingInfo.language === 'en' ? 'WeChat' : '微信 WeChat'}}</text></view>
-          <view wx:for="{{template.page2.officers}}" wx:key="role" class="officer-row"><text>{{item.role}} · {{item.name}}</text><text>{{item.phone}}</text><text>{{item.wechat}}</text></view>
-        </view>
-      </view>
-      <view class="resources">{{template.page2.resources}}</view>
+  <view wx:else class="snapshot-status ready-status">
+    <view class="status-title">PDF 预览已生成</view>
+    <view class="status-copy">预览和导出将使用同一个文件</view>
+    <view class="snapshot-actions">
+      <button disabled="{{opening || exporting}}" bindtap="previewPdf">{{opening ? '正在打开...' : '重新预览'}}</button>
+      <button class="export-button" type="primary" disabled="{{opening || exporting}}" bindtap="exportPdf">{{exporting ? '正在打开...' : '导出 PDF'}}</button>
     </view>
-  </scroll-view>
-  <view class="export-bar"><button type="primary" disabled="{{exporting}}" bindtap="exportPdf">{{exporting ? '正在生成 PDF...' : '导出 PDF'}}</button></view>
+  </view>
 </view>
-<view wx:if="{{loading}}" class="loading">正在生成模板预览...</view>

@@ -537,7 +537,7 @@ async function testPdfRenderer(agenda) {
 
 /**
  * 方法是什么：测试 PDF 议程区域的分隔线绘制规则。
- * 方法作用：确认表头和数据行只保留俱乐部右边界，并仅在大模块开始处绘制横线。
+ * 方法作用：确认表头和数据行只保留俱乐部右边界，并在每个大模块上下绘制横线。
  * 为什么添加：导出样式要求移除四个内部竖线及小模块之间的横线。
  */
 function testPdfAgendaLineStyle() {
@@ -563,7 +563,7 @@ function testPdfAgendaLineStyle() {
   pdfRenderer.drawAgendaRow(page, font, { id: 'opening', titleZh: '开场白', pdfSectionStart: true }, table, 111, 'zh');
   assert.ok(rectangles.every((rectangle) => rectangle.borderWidth === 0), '大模块行不应绘制单元格边框');
   assert.strictEqual(lines.filter((line) => line.start.x === line.end.x).length, 1, '大模块行只应绘制俱乐部右边界');
-  assert.strictEqual(lines.filter((line) => line.start.y === line.end.y).length, 1, '大模块行只应绘制起始横线');
+  assert.strictEqual(lines.filter((line) => line.start.y === line.end.y).length, 2, '大模块行上下都应绘制横线');
 
   rectangles.length = 0;
   lines.length = 0;
@@ -577,6 +577,32 @@ function testPdfAgendaLineStyle() {
   pdfRenderer.drawAgendaRow(page, font, { id: 'end', titleZh: '会议结束', pdfSectionStart: false }, table, 131, 'zh');
   assert.strictEqual(lines.filter((line) => line.start.x === line.end.x).length, 1, '会议结束行应保留俱乐部右边界');
   assert.strictEqual(lines.filter((line) => line.start.y === line.end.y).length, 1, '会议结束下方应绘制底线');
+}
+
+/**
+ * 方法是什么：测试 PDF 第一页页眉外边框。
+ * 方法作用：确认页眉线框与页面边距和议程表顶部精确对齐。
+ * 为什么添加：顶部品牌信息区必须显示截图红框所示的完整外边界。
+ */
+function testPdfHeaderFrame() {
+  const rectangles = [];
+  pdfRenderer.drawFirstPageHeaderFrame({
+    drawRectangle(options) { rectangles.push(options); }
+  }, 195);
+  assert.strictEqual(rectangles.length, 1);
+  assert.strictEqual(rectangles[0].x, 26);
+  assert.strictEqual(rectangles[0].width, 595.28 - 52);
+  assert.strictEqual(rectangles[0].height, 175);
+  assert.strictEqual(rectangles[0].borderWidth, 0.6);
+}
+
+/**
+ * 方法是什么：测试 PDF 字体文件优先级。
+ * 方法作用：确认缺少汉仪书宋二KW文件时仍能回退到项目内置中文字体。
+ * 为什么添加：云函数必须在字体文件尚未提供时继续稳定导出 PDF。
+ */
+function testPdfFontFallback() {
+  assert.ok(pdfRenderer.resolveFontPath().endsWith('NotoSerifSC-Medium.ttf'));
 }
 
 /**
@@ -623,6 +649,8 @@ async function main() {
   testCollectionMissingError();
   testMemberOptionsAndAgendaPayload();
   testPdfAgendaLineStyle();
+  testPdfHeaderFrame();
+  testPdfFontFallback();
   await testExportRecordCollectionInitialization();
   await testPdfRenderer(agenda);
   await testPdfOverflow();

@@ -660,12 +660,6 @@ Page({
     this.setData({ previewing: true });
     const agenda = await this.saveAgenda({ silent: true, manageSaving: false });
     if (agenda && agenda._id) {
-      app.globalData.previewPayload = {
-        agendaId: agenda._id,
-        agenda,
-        template: agendaUtil.resolveTemplateLocale(this.data.template, agenda.meetingInfo && agenda.meetingInfo.language),
-        rows: agendaUtil.flattenAgendaRows(agenda)
-      };
       wx.navigateTo({ url: `/pages/template-preview/template-preview?id=${agenda._id}` });
     } else {
       this.setData({ previewing: false });
