@@ -462,6 +462,15 @@ function testCollectionMissingError() {
 }
 
 /**
+ * 方法是什么：测试 PDF 导出文件名。
+ * 方法作用：确认云函数按北京时间输出固定的日期格式和 PDF 扩展名。
+ * 为什么添加：手机文档页和云存储必须显示用户指定的 Bilingual-Aganda 文件名。
+ */
+function testPdfExportFileName() {
+  assert.strictEqual(exportAgendaPdf.buildPdfFileName(Date.UTC(2026, 7, 4, 16, 0, 0)), 'Bilingual-Aganda-20260805.pdf');
+}
+
+/**
  * 方法是什么：测试首次导出 PDF 时自动初始化导出记录集合。
  * 方法作用：确认 exportAgendaPdf 不会直接向不存在的 pdf_exports 集合写入。
  * 为什么添加：新环境没有手工创建该集合时，导出 PDF 仍必须成功。
@@ -664,6 +673,7 @@ async function main() {
   testEmptyRolePlaceholders();
   testDraftExpiry();
   testCollectionMissingError();
+  testPdfExportFileName();
   testMemberOptionsAndAgendaPayload();
   testPdfAgendaLineStyle();
   testPdfHeaderFrame();

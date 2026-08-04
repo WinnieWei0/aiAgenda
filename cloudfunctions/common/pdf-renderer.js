@@ -317,7 +317,7 @@ function drawFirstPageHeader(page, font, template, agenda, images, language) {
   const fixed = template.fixedContent;
   drawText(page, font, fixed.clubTitle, PAGE.margin + 65, 46, { width: 410, height: 22, fontSize: 15, align: 'center', bold: true });
   drawText(page, font, fixed.clubSubtitle, PAGE.margin + 80, 69, { width: 380, height: 18, fontSize: 12.5, align: 'center', bold: true });
-  drawText(page, font, fixed.charter, 487, 49, { width: 72, height: 38, fontSize: 4.8, align: 'right' });
+  drawText(page, font, fixed.charter, 487, 70, { width: 72, height: 24, fontSize: 4.8, align: 'right' });
   drawImageFit(page, images.logo, PAGE.margin + 4, 103, 47, 49);
   const cards = [
     { x: PAGE.margin + 55, w: 100, title: language === 'en' ? 'Meeting Time' : '会议时间 Time', value: fixed.meetingTime },
@@ -617,7 +617,7 @@ function drawEducationPathDiagram(page, font, x, y) {
     drawText(page, font, box.text, x + box.x + 2, y + box.y + 1, { width: box.w - 4, height: box.h - 2, fontSize: 3.9, lineHeight: 4.5, align: 'center', color: white, verticalAlign: 'middle' });
   });
   page.drawSvgPath('M 0 0 L 19 7 L 19 29 L 0 36 Z', { x: x + 153, y: PAGE.height - y - 17, color: purple });
-  drawText(page, font, '杰出会员\n项目 DTM', x + 153, y + 23, { width: 18, height: 24, fontSize: 3.9, lineHeight: 4.6, align: 'center', color: white, verticalAlign: 'middle' });
+  drawText(page, font, '杰出会员项目\nDTM Project', x + 153, y + 23, { width: 18, height: 24, fontSize: 3.9, lineHeight: 4.6, align: 'center', color: white, verticalAlign: 'middle' });
   page.drawEllipse({ x: x + 184, y: PAGE.height - y - 36, xScale: 12, yScale: 12, color: purple });
   drawText(page, font, '杰出会员\nDTM', x + 172, y + 26, { width: 24, height: 20, fontSize: 4.3, lineHeight: 5.1, align: 'center', color: white, verticalAlign: 'middle' });
 }
@@ -656,6 +656,8 @@ function drawClubInfoPage(pdfDoc, font, template, images) {
   drawPage2Cell(rightX, top, rightW, 16, template.page2.educationTitle, { fill: '#c9fbff', align: 'center', fontSize: 7.8 });
   drawPage2Cell(leftX, top + 16, leftW, 34, '', {});
   drawPage2Cell(leftX, top + 50, leftW, 16, template.page2.notesTitle, { fill: '#c9fbff', align: 'center', fontSize: 7.8 });
+  page.drawLine({ start: { x: rightX, y: topY(top, 0) }, end: { x: rightX, y: topY(top + 16, 0) }, thickness: 0.45, color: BORDER });
+  page.drawLine({ start: { x: leftX, y: topY(top + 50, 0) }, end: { x: rightX, y: topY(top + 50, 0) }, thickness: 0.45, color: BORDER });
   page.drawLine({ start: { x: leftX, y: topY(bodyBottom, 0) }, end: { x: leftX, y: topY(top + 66, 0) }, thickness: 0.45, color: BORDER });
   drawPage2Cell(rightX, top + 16, rightW, 14, language === 'en' ? 'Education Path' : '教育路径', { fill: '#d1d5db', align: 'center', fontSize: 6.8 });
   const educationY = top + 30;
@@ -686,19 +688,19 @@ function drawClubInfoPage(pdfDoc, font, template, images) {
   const officerWidths = [rightW * 0.47, rightW * 0.25, rightW * 0.28];
   (language === 'en' ? ['Officer', 'Phone', 'WeChat'] : ['干事 Officer', '电话 Phone', '微信 WeChat']).forEach((label, index) => {
     const x = rightX + officerWidths.slice(0, index).reduce((sum, value) => sum + value, 0);
-    drawPage2Cell(x, y, officerWidths[index], 12, label, { fill: '#e2e8f0', align: 'center', fontSize: 5.9 });
+    drawPage2Cell(x, y, officerWidths[index], 12, label, { fill: '#e2e8f0', align: index === 0 ? 'left' : 'center', fontSize: 5.9, paddingLeft: index === 0 ? 35 : 2.5 });
   });
   y += 12;
   const officerHeaderBottom = y;
   (template.page2.officers || []).forEach((officer, officerIndex) => {
-    drawPage2Cell(rightX, y, rightW, 10, expandOfficerRole(officer.role), { fill: '#d7ffff', fontSize: 6.1, verticalAlign: 'middle' });
-    y += 10;
+    drawPage2Cell(rightX, y, rightW, 15.625, expandOfficerRole(officer.role), { fill: '#d7ffff', fontSize: 6.4, verticalAlign: 'middle' });
+    y += 15.625;
     const values = [officer.name, officer.phone, officer.wechat];
     values.forEach((value, index) => {
       const x = rightX + officerWidths.slice(0, index).reduce((sum, width) => sum + width, 0);
-      drawPage2Cell(x, y, officerWidths[index], 21.25, value, { fill: '#ffffff', fontSize: 6.4, align: index === 0 ? 'center' : 'left', verticalAlign: 'middle' });
+      drawPage2Cell(x, y, officerWidths[index], 15.625, value, { fill: '#ffffff', fontSize: 6.4, align: index === 0 ? 'left' : 'center', paddingLeft: index === 0 ? 35 : 2.5, verticalAlign: 'middle' });
     });
-    y += 21.25;
+    y += 15.625;
     page.drawLine({ start: { x: rightX, y: topY(y, 0) }, end: { x: rightX + rightW, y: topY(y, 0) }, thickness: 0.45, color: BORDER });
   });
   const officerBottom = y;

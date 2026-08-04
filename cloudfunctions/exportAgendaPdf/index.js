@@ -21,13 +21,22 @@ async function loadAgenda(agendaId) {
  * 方法作用：把生成的 PDF 存到 `agenda-pdfs/` 路径并返回 fileID。
  * 为什么添加：小程序预览和分享 PDF 都需要先把文件保存到云存储。
  */
-async function uploadPdf(buffer, agenda, language) {
+async function uploadPdf(buffer, fileName) {
   const cloud = common.initCloud();
-  const info = agenda.meetingInfo || {};
-  const meetingNo = info.meetingNo || agenda._id || Date.now();
-  const cloudPath = `agenda-pdfs/${meetingNo}-${language}-${Date.now()}.pdf`;
+  const cloudPath = `agenda-pdfs/${fileName}`;
   const res = await cloud.uploadFile({ cloudPath, fileContent: buffer });
   return res.fileID;
+}
+
+/**
+ * 方法是什么：生成议程 PDF 的固定文件名。
+ * 方法作用：按北京时间把生成日期格式化为 `Bilingual-Aganda-YYYYMMDD.pdf`。
+ * 为什么添加：云存储和手机文档页必须显示同一个可识别文件名，不能使用随机时间戳。
+ */
+function buildPdfFileName(timestamp) {
+  const chinaTime = new Date((timestamp === undefined ? Date.now() : Number(timestamp)) + 8 * 60 * 60 * 1000);
+  const date = chinaTime.toISOString().slice(0, 10).replace(/-/g, '');
+  return `Bilingual-Aganda-${date}.pdf`;
 }
 
 /**
@@ -127,9 +136,10 @@ async function main(event) {
     const template = common.agendaModel.resolveTemplateLocale(await common.getAgendaTemplate(), language);
     await hydrateAssetBuffers(template, agenda);
     const buffer = await common.pdfRenderer.renderAgendaPdf(agenda, language, template);
-    const fileID = await uploadPdf(buffer, agenda, language);
+    const fileName = buildPdfFileName();
+    const fileID = await uploadPdf(buffer, fileName);
     const exportId = await saveExportRecord(agendaId, language, fileID, openid);
-    return common.ok({ exportId, fileID });
+    return common.ok({ exportId, fileID, fileName });
   } catch (error) {
     return common.handleError(error);
   }
@@ -137,3 +147,4 @@ async function main(event) {
 
 exports.main = main;
 exports.saveExportRecord = saveExportRecord;
+exports.buildPdfFileName = buildPdfFileName;

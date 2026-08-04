@@ -28,7 +28,7 @@ async function callCloud(name, data) {
  * 为什么添加：用户操作失败时需要得到明确反馈，而不是只在控制台报错。
  */
 function showError(error) {
-  const rawMessage = error && error.message ? error.message : '操作失败';
+  const rawMessage = error && (error.message || error.errMsg) ? error.message || error.errMsg : '操作失败';
   const isDeploymentError = /-504002|FUNCTIONS_EXECUTE_FAIL|SyntaxError: Invalid or unexpected token/i.test(rawMessage);
   const isFunctionTimeout = /-504003|FUNCTIONS_TIME_LIMIT_EXCEEDED|timed out after 3 seconds/i.test(rawMessage);
   wx.showToast({

@@ -665,8 +665,30 @@ Page({
       }
       const data = await cloud.callCloud('exportAgendaPdf', { agendaId: agenda._id });
       const download = await wx.cloud.downloadFile({ fileID: data.fileID });
+      let filePath = download.tempFilePath;
+      if (data.fileName && wx.env && wx.env.USER_DATA_PATH) {
+        const fileSystem = wx.getFileSystemManager();
+        const previewDirectory = `${wx.env.USER_DATA_PATH}/agenda-preview-${Date.now()}`;
+        await new Promise((resolve, reject) => {
+          fileSystem.mkdir({
+            dirPath: previewDirectory,
+            recursive: true,
+            success: resolve,
+            fail: reject
+          });
+        });
+        filePath = `${previewDirectory}/${data.fileName}`;
+        await new Promise((resolve, reject) => {
+          fileSystem.copyFile({
+            srcPath: download.tempFilePath,
+            destPath: filePath,
+            success: resolve,
+            fail: reject
+          });
+        });
+      }
       await wx.openDocument({
-        filePath: download.tempFilePath,
+        filePath,
         fileType: 'pdf',
         showMenu: true
       });
