@@ -34,11 +34,11 @@
 .person-line { display: grid; grid-template-columns: 100rpx minmax(0, 1fr) 112rpx; gap: 10rpx; align-items: center; }
 .person-label { color: #64748b; font-size: 24rpx; }
 .person-control, .club-input { box-sizing: border-box; width: 100%; min-width: 0; height: 64rpx; padding: 0 12rpx; border: 1rpx solid #cbd5e1; }
-.member-picker { height: 64rpx; padding: 0; border: 0; }
+.member-picker { width: 100%; min-width: 0; height: 64rpx; padding: 0; overflow: hidden; border: 0; }
 .person-control .picker-value { display: flex; box-sizing: border-box; min-height: 64rpx; align-items: center; justify-content: space-between; padding: 12rpx; border: 1rpx solid #cbd5e1; background: #ffffff; overflow: hidden; }
 .picker-label { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .picker-arrow { flex: 0 0 auto; margin-left: 12rpx; color: #64748b; font-size: 30rpx; line-height: 1; }
-.switch-button { width: 112rpx; margin: 0; }
+.switch-button { box-sizing: border-box; width: 112rpx; min-width: 112rpx; max-width: 112rpx; height: 64rpx; margin: 0; padding: 0 8rpx; font-size: 24rpx; line-height: 64rpx; white-space: nowrap; }
 .club-line { display: grid; grid-template-columns: 100rpx minmax(0, 1fr); gap: 10rpx; align-items: center; margin-top: 10rpx; }
 .club-label { color: #64748b; font-size: 24rpx; }
 .club-input[disabled] { color: #475569; background: #f1f5f9; }
@@ -68,8 +68,8 @@
 .qr-panel .panel-title { margin: 0; }
 .muted { display: block; margin-top: 6rpx; color: #64748b; font-size: 24rpx; }
 .bottom-actions { position: fixed; right: 0; bottom: 0; left: 0; z-index: 10; display: grid; grid-template-columns: 1fr 1fr; gap: 16rpx; padding: 18rpx 24rpx calc(18rpx + env(safe-area-inset-bottom)); border-top: 1rpx solid #d7dde5; background: #ffffff; }
-.bottom-actions button { width: 100%; margin: 0; }
-.preview-button { color: #ffffff; background: #0f766e; }
+.bottom-actions button { box-sizing: border-box; width: 100%; min-width: 0; margin: 0; white-space: nowrap; }
+.preview-button { overflow: hidden; color: #ffffff; background: #0f766e; text-overflow: clip; }
 .validation-mask { position: fixed; top: 0; right: 0; bottom: 0; left: 0; z-index: 100; display: flex; align-items: center; justify-content: center; padding: 28rpx; background: rgba(0, 0, 0, 0.55); }
 .validation-dialog { box-sizing: border-box; width: 100%; max-width: 680rpx; overflow: hidden; border-radius: 8rpx; background: #ffffff; }
 .validation-title { display: block; padding: 34rpx 32rpx 22rpx; color: #111827; font-size: 34rpx; font-weight: 700; text-align: center; }
@@ -78,4 +78,4 @@
 .validation-more { color: #9a3412; }
 .validation-confirm { width: 100%; margin: 0; border-top: 1rpx solid #e2e8f0; border-radius: 0; color: #49678f; background: #ffffff; font-weight: 700; }
 .validation-confirm::after { border: 0; }
-@media (max-width: 360px) { .field-grid { grid-template-columns: 1fr; } .field.full { grid-column: auto; } .person-line { grid-template-columns: 84rpx minmax(0, 1fr) 96rpx; } .club-line { grid-template-columns: 84rpx minmax(0, 1fr); } }
+@media (max-width: 420px) { .field-grid { grid-template-columns: 1fr; } .field.full { grid-column: auto; } .person-line { grid-template-columns: 84rpx minmax(0, 1fr) 112rpx; gap: 8rpx; } .person-label { font-size: 22rpx; } .club-line { grid-template-columns: 84rpx minmax(0, 1fr); gap: 8rpx; } .club-label { font-size: 22rpx; } .bottom-actions { gap: 12rpx; padding-right: 18rpx; padding-left: 18rpx; } .preview-button { padding-right: 8rpx; padding-left: 8rpx; } }

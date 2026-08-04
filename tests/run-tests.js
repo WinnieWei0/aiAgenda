@@ -552,7 +552,7 @@ function testPdfAgendaLineStyle() {
     widthOfTextAtSize(text, size) { return String(text).length * size; }
   };
   const table = pdfRenderer.drawAgendaHeader(page, font, 100, 'zh');
-  assert.deepStrictEqual(table.widths, [42, 143, 60, 88, 67], '议程列宽应加宽限时列并保持俱乐部列宽度');
+  assert.deepStrictEqual(table.widths, [26, 153, 68, 98, 75], '时间列应缩窄，限时列应左移并与演讲者增加间距');
   assert.strictEqual(rectangles.length, 5);
   assert.ok(rectangles.every((rectangle) => rectangle.borderWidth === 0), '议程表头应由独立线条绘制边界');
   assert.strictEqual(lines.filter((line) => line.start.x === line.end.x).length, 1, '议程表头只应绘制俱乐部右边界');
@@ -569,8 +569,25 @@ function testPdfAgendaLineStyle() {
   lines.length = 0;
   pdfRenderer.drawAgendaRow(page, font, { id: 'icebreaker', titleZh: '破冰', pdfSectionStart: false }, table, 121, 'zh');
   assert.ok(rectangles.every((rectangle) => rectangle.borderWidth === 0), '小模块行不应绘制单元格边框');
+  assert.ok(rectangles.every((rectangle) => rectangle.color === undefined), '普通内容行不应显示背景色');
   assert.strictEqual(lines.filter((line) => line.start.x === line.end.x).length, 1, '小模块行只应绘制俱乐部右边界');
   assert.strictEqual(lines.filter((line) => line.start.y === line.end.y).length, 0, '小模块之间不应绘制横线');
+
+  rectangles.length = 0;
+  lines.length = 0;
+  pdfRenderer.drawAgendaRow(page, font, { id: 'tableTopics', titleZh: '即兴演讲环节', pdfSectionStart: true }, table, 126, 'zh');
+  assert.strictEqual(rectangles.filter((rectangle) => rectangle.color !== undefined).length, 0, '即兴演讲环节应保持白色背景');
+
+  rectangles.length = 0;
+  lines.length = 0;
+  pdfRenderer.drawAgendaRow(page, font, { id: 'topicNote', type: 'note', titleZh: '给每位演讲者一个不同的主题' }, table, 127, 'zh');
+  assert.strictEqual(rectangles.filter((rectangle) => rectangle.color !== undefined).length, 5, '即兴演讲说明整行应显示灰色背景');
+
+  rectangles.length = 0;
+  lines.length = 0;
+  pdfRenderer.drawAgendaRow(page, font, { id: 'prepared-1', type: 'preparedSpeechBlock', titleZh: '备稿演讲标题', pathway: {} }, table, 128, 'zh', 30);
+  assert.strictEqual(rectangles.filter((rectangle) => rectangle.color !== undefined).length, 1, '备稿演讲只应在标题区域显示灰色背景');
+  assert.strictEqual(rectangles.find((rectangle) => rectangle.color !== undefined).height, 10, '备稿演讲标题背景高度应固定为 10pt');
 
   rectangles.length = 0;
   lines.length = 0;

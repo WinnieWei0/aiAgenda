@@ -638,9 +638,9 @@ Page({
   },
 
   /**
-   * 方法是什么：保存后打开 A4 模板预览。
-   * 方法作用：确保预览和 PDF 使用服务端最新 AgendaV2 与全局模板。
-   * 为什么添加：新的编辑流程要求在导出前先确认完整两页版式。
+   * 方法是什么：保存后直接执行 PDF 导出流程。
+   * 方法作用：调用正式 PDF 云函数、下载结果，并通过微信文档页开放导出菜单。
+   * 为什么添加：预览按钮必须使用正式导出结果，不能再执行旧的自定义预览逻辑。
    */
   async goPreview() {
     if (this.data.saving || this.data.previewing) {
@@ -658,10 +658,21 @@ Page({
       return;
     }
     this.setData({ previewing: true });
-    const agenda = await this.saveAgenda({ silent: true, manageSaving: false });
-    if (agenda && agenda._id) {
-      wx.navigateTo({ url: `/pages/template-preview/template-preview?id=${agenda._id}` });
-    } else {
+    try {
+      const agenda = await this.saveAgenda({ silent: true, manageSaving: false });
+      if (!agenda || !agenda._id) {
+        return;
+      }
+      const data = await cloud.callCloud('exportAgendaPdf', { agendaId: agenda._id });
+      const download = await wx.cloud.downloadFile({ fileID: data.fileID });
+      await wx.openDocument({
+        filePath: download.tempFilePath,
+        fileType: 'pdf',
+        showMenu: true
+      });
+    } catch (error) {
+      cloud.showError(error);
+    } finally {
       this.setData({ previewing: false });
     }
   },

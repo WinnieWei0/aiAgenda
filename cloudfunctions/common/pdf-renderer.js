@@ -92,8 +92,11 @@ function drawText(page, font, text, x, y, options) {
   const width = opts.width || 100;
   const height = opts.height || 12;
   const lineHeight = opts.lineHeight || fontSize + 1.5;
-  const lines = wrapText(text, font, fontSize, width);
-  let cursorY = topY(y, height) + height - fontSize - 1;
+  const maxLines = Math.max(1, Math.floor((height - fontSize) / lineHeight) + 1);
+  const lines = wrapText(text, font, fontSize, width).slice(0, maxLines);
+  const textHeight = fontSize + Math.max(lines.length - 1, 0) * lineHeight;
+  const verticalOffset = opts.verticalAlign === 'middle' ? Math.max((height - textHeight) / 2, 0) : 1;
+  let cursorY = topY(y, height) + height - fontSize - verticalOffset;
   for (const line of lines) {
     if (cursorY < topY(y, height)) {
       break;
@@ -116,23 +119,28 @@ function drawText(page, font, text, x, y, options) {
  */
 function drawCell(page, font, x, y, width, height, text, options) {
   const opts = options || {};
-  page.drawRectangle({
-    x,
-    y: topY(y, height),
-    width,
-    height,
-    color: opts.fill ? hexToRgb(opts.fill) : undefined,
-    borderColor: opts.border === false ? undefined : BORDER,
-    borderWidth: opts.border === false ? 0 : 0.45
-  });
-  drawText(page, font, text, x + 2.5, y + 1, {
-    width: width - 5,
+  const paddingLeft = opts.paddingLeft === undefined ? 2.5 : opts.paddingLeft;
+  const paddingRight = opts.paddingRight === undefined ? 2.5 : opts.paddingRight;
+  if (opts.fill || opts.border !== false) {
+    page.drawRectangle({
+      x,
+      y: topY(y, height),
+      width,
+      height,
+      color: opts.fill ? hexToRgb(opts.fill) : undefined,
+      borderColor: opts.border === false ? undefined : BORDER,
+      borderWidth: opts.border === false ? 0 : 0.45
+    });
+  }
+  drawText(page, font, text, x + paddingLeft, y + 1, {
+    width: width - paddingLeft - paddingRight,
     height: height - 2,
     fontSize: opts.fontSize || 6.5,
     lineHeight: opts.lineHeight,
     align: opts.align || 'left',
     color: opts.color || BLACK,
-    bold: opts.bold
+    bold: opts.bold,
+    verticalAlign: opts.verticalAlign
   });
 }
 
@@ -330,9 +338,9 @@ function drawFirstPageHeader(page, font, template, agenda, images, language) {
   drawText(page, font, fixed.missionEn, PAGE.margin + 65, 156, { width: 410, height: 16, fontSize: 5.6, align: 'center' });
   drawText(page, font, fixed.missionZh, PAGE.margin + 62, 173, { width: 416, height: 12, fontSize: 5.6, align: 'center' });
   const info = agenda.meetingInfo || {};
-  drawText(page, font, `No. ${info.meetingNo || ''}`, PAGE.margin + 4, 185, { width: 95, height: 10, fontSize: 6.5 });
-  drawText(page, font, `${language === 'en' ? 'Date: ' : '日期：'}${info.date || ''}`, PAGE.margin + 150, 185, { width: 120, height: 10, fontSize: 6.5 });
-  drawText(page, font, `${language === 'en' ? 'Theme: ' : '主题：'}${info.theme || ''}`, PAGE.margin + 278, 185, { width: 245, height: 10, fontSize: 6.5 });
+  drawText(page, font, `No. ${info.meetingNo || ''}`, PAGE.margin + 4, 182, { width: 95, height: 10, fontSize: 7.2, bold: true });
+  drawText(page, font, `${language === 'en' ? 'Date: ' : '日期：'}${info.date || ''}`, PAGE.margin + 150, 182, { width: 120, height: 10, fontSize: 7.2, bold: true });
+  drawText(page, font, `${language === 'en' ? 'Theme: ' : '主题：'}${info.theme || ''}`, PAGE.margin + 278, 182, { width: 245, height: 10, fontSize: 7.2, bold: true });
 }
 
 /**
@@ -358,13 +366,13 @@ function drawFirstPageHeaderFrame(page, agendaTop) {
  * 方法作用：保留时间数据列但隐藏时间表头，并输出流程、限时、演讲者和俱乐部标题。
  * 为什么添加：第一页和续页需要复用完全一致的列宽与表头。
  */
-function drawAgendaHeader(page, font, y, language) {
+function drawAgendaHeader(page, font, y, language, drawRightBoundaryValue) {
   const x = PAGE.margin;
-  const widths = [42, 143, 60, 88, 67];
+  const widths = [26, 153, 68, 98, 75];
   const labels = language === 'en' ? ['', 'Agenda', 'Limit', 'Speaker', 'Club'] : ['', '会议促进者', '限时', '演讲者', '俱乐部'];
   let cursor = x;
   labels.forEach((label, index) => {
-    drawCell(page, font, cursor, y, widths[index], 11, label, { fill: '#9bdcf6', align: index === 2 ? 'right' : 'left', fontSize: 6.2, border: false, bold: true });
+    drawCell(page, font, cursor, y, widths[index], 11, label, { fill: '#9bdcf6', align: index === 2 ? 'right' : 'left', fontSize: 6.8, border: false, bold: true, paddingRight: index === 2 ? 10 : 2.5, verticalAlign: 'middle' });
     cursor += widths[index];
   });
   page.drawLine({
@@ -373,9 +381,12 @@ function drawAgendaHeader(page, font, y, language) {
     thickness: 0.35,
     color: LIGHT_BORDER
   });
-  const boundaryX = x + widths.reduce((total, width) => total + width, 0);
-  page.drawLine({ start: { x: boundaryX, y: topY(y, 11) }, end: { x: boundaryX, y: topY(y, 0) }, thickness: 0.45, color: BORDER });
-  return { x, widths, height: 11 };
+  const drawRightBoundary = drawRightBoundaryValue !== false;
+  if (drawRightBoundary) {
+    const boundaryX = x + widths.reduce((total, width) => total + width, 0);
+    page.drawLine({ start: { x: boundaryX, y: topY(y, 11) }, end: { x: boundaryX, y: topY(y, 0) }, thickness: 0.25, color: BORDER });
+  }
+  return { x, widths, height: 11, drawRightBoundary };
 }
 
 /**
@@ -385,7 +396,7 @@ function drawAgendaHeader(page, font, y, language) {
  */
 function drawAgendaRow(page, font, row, table, y, language, forcedHeight) {
   const height = forcedHeight || getAgendaRowHeight(row, language);
-  const fill = row.type === 'note' ? '#d1d5db' : row.isGroup ? '#f3f4f6' : row.type === 'preparedSpeechBlock' ? '#e5e7eb' : '';
+  const fill = row.id === 'topicNote' ? '#d8d8d8' : '';
   const duration = row.duration ? `${row.duration} ${language === 'en' ? 'min' : '分钟'}` : '';
   let title = language === 'en' ? row.titleEn || row.titleZh || '' : row.titleZh || '';
   let projectName = '';
@@ -397,12 +408,28 @@ function drawAgendaRow(page, font, row, table, y, language, forcedHeight) {
     objective = language === 'en' ? pathway.objectiveEn || pathway.objectiveZh : pathway.objectiveZh;
   }
   const values = [row.startTime || '', [title, projectName].filter(Boolean).join('\n'), duration, getRowPersonName(row, language), getRowClub(row, language)];
-  if (row.pdfSectionStart) {
-    const tableWidth = table.widths.reduce((total, width) => total + width, 0);
+  const tableWidth = table.widths.reduce((total, width) => total + width, 0);
+  if (row.type === 'preparedSpeechBlock') {
+    page.drawRectangle({
+      x: table.x,
+      y: topY(y, 10),
+      width: tableWidth,
+      height: 10,
+      color: hexToRgb('#d8d8d8'),
+      borderWidth: 0
+    });
     page.drawLine({
       start: { x: table.x, y: topY(y, 0) },
       end: { x: table.x + tableWidth, y: topY(y, 0) },
-      thickness: 0.45,
+      thickness: 0.25,
+      color: BORDER
+    });
+  }
+  if (row.pdfSectionStart) {
+    page.drawLine({
+      start: { x: table.x, y: topY(y, 0) },
+      end: { x: table.x + tableWidth, y: topY(y, 0) },
+      thickness: 0.25,
       color: BORDER
     });
   }
@@ -411,10 +438,12 @@ function drawAgendaRow(page, font, row, table, y, language, forcedHeight) {
     drawCell(page, font, cursor, y, table.widths[index], height, value, {
       fill,
       border: false,
-      fontSize: 6.3,
-      lineHeight: 6.9,
+      fontSize: 7.2,
+      lineHeight: 8,
       align: index === 2 ? 'right' : 'left',
-      bold: row.isGroup
+      bold: row.isGroup,
+      paddingRight: index === 2 ? 10 : 2.5,
+      verticalAlign: row.type === 'preparedSpeechBlock' ? undefined : 'middle'
     });
     cursor += table.widths[index];
   });
@@ -425,22 +454,24 @@ function drawAgendaRow(page, font, row, table, y, language, forcedHeight) {
     drawCell(page, font, objectiveX, objectiveY, objectiveWidth, height - (objectiveY - y), objective, {
       fill,
       border: false,
-      fontSize: 6.3,
-      lineHeight: 6.9,
-      align: 'left'
+      fontSize: 7.2,
+      lineHeight: 8,
+      align: 'left',
+      verticalAlign: 'middle'
     });
   }
-  const tableWidth = table.widths.reduce((total, width) => total + width, 0);
   if (row.pdfSectionStart || row.id === 'end') {
     page.drawLine({
       start: { x: table.x, y: topY(y + height, 0) },
       end: { x: table.x + tableWidth, y: topY(y + height, 0) },
-      thickness: 0.45,
+      thickness: 0.25,
       color: BORDER
     });
   }
-  const boundaryX = table.x + tableWidth;
-  page.drawLine({ start: { x: boundaryX, y: topY(y, height) }, end: { x: boundaryX, y: topY(y, 0) }, thickness: 0.5, color: BORDER });
+  if (table.drawRightBoundary !== false) {
+    const boundaryX = table.x + tableWidth;
+    page.drawLine({ start: { x: boundaryX, y: topY(y, height) }, end: { x: boundaryX, y: topY(y, 0) }, thickness: 0.25, color: BORDER });
+  }
   return height;
 }
 
@@ -450,22 +481,30 @@ function drawAgendaRow(page, font, row, table, y, language, forcedHeight) {
  * 为什么添加：截图红框外的侧栏属于固定模板，导出时不能继续缺失。
  */
 function drawSidebar(page, font, template, images, y, height, language) {
-  const x = PAGE.margin + 410;
+  const x = PAGE.margin + 420;
   const width = PAGE.width - PAGE.margin - x;
-  drawCell(page, font, x, y, width, 12, language === 'en' ? 'Last Meeting Awards' : '上周最佳演讲者', { fill: '#9bdcf6', align: 'center', fontSize: 6.4 });
-  let cursorY = y + 12;
+  const headingHeight = 11;
+  const drawHeading = (headingY, label, fontSize, drawTopLine) => {
+    drawCell(page, font, x, headingY, width, headingHeight, label, { fill: '#9bdcf6', align: 'center', fontSize, bold: true, border: false });
+    if (drawTopLine) {
+      page.drawLine({ start: { x, y: topY(headingY, 0) }, end: { x: x + width, y: topY(headingY, 0) }, thickness: 0.25, color: BORDER });
+    }
+    page.drawLine({ start: { x, y: topY(headingY + headingHeight, 0) }, end: { x: x + width, y: topY(headingY + headingHeight, 0) }, thickness: 0.25, color: BORDER });
+  };
+  drawHeading(y, language === 'en' ? 'Last Meeting Awards' : '上周最佳演讲者', 7, false);
+  let cursorY = y + headingHeight;
   (template.sidebar.winners || []).forEach((winner) => {
-    drawText(page, font, winner.label, x + 4, cursorY + 3, { width: 72, height: 13, fontSize: 5.2 });
-    drawText(page, font, winner.value, x + 78, cursorY + 3, { width: width - 82, height: 13, fontSize: 5.2 });
+    drawText(page, font, winner.label, x + 4, cursorY + 3, { width: 65, height: 13, fontSize: 6.2 });
+    drawText(page, font, winner.value, x + 70, cursorY + 3, { width: width - 74, height: 13, fontSize: 6.2 });
     cursorY += 19;
   });
-  drawCell(page, font, x, cursorY, width, 12, language === 'en' ? 'Toastmasters Core Values' : '国际演讲会价值观', { fill: '#9bdcf6', align: 'center', fontSize: 6.4 });
-  cursorY += 12;
-  drawText(page, font, template.fixedContent.values, x + 4, cursorY + 5, { width: width - 8, height: 18, fontSize: 5.5, align: 'center' });
+  drawHeading(cursorY, language === 'en' ? 'Toastmasters Core Values' : '国际演讲会价值观', 7, true);
+  cursorY += headingHeight;
+  drawText(page, font, template.fixedContent.values, x + 4, cursorY + 5, { width: width - 8, height: 18, fontSize: 6.4, align: 'center' });
   cursorY += 25;
-  drawCell(page, font, x, cursorY, width, 12, language === 'en' ? 'GZ Bilingual Toastmasters Club' : '广州双语国际演讲俱乐部', { fill: '#9bdcf6', align: 'center', fontSize: 6.2 });
-  cursorY += 14;
-  drawText(page, font, template.fixedContent.clubIntro, x + 5, cursorY, { width: width - 10, height: 55, fontSize: 5.5, lineHeight: 6.8, align: 'center' });
+  drawHeading(cursorY, language === 'en' ? 'GZ Bilingual Toastmasters Club' : '广州双语国际演讲俱乐部', 6.8, true);
+  cursorY += 18;
+  drawText(page, font, template.fixedContent.clubIntro, x + 5, cursorY, { width: width - 10, height: 51, fontSize: 6.4, lineHeight: 7.6, align: 'center' });
   cursorY += 58;
   const qrData = [
     ['membershipQr', language === 'en' ? 'VP Membership' : '会员副会长'],
@@ -474,10 +513,9 @@ function drawSidebar(page, font, template, images, y, height, language) {
   ];
   qrData.forEach((item) => {
     drawImageFit(page, images[item[0]], x + 37, cursorY, 58, 58);
-    drawText(page, font, item[1], x + 10, cursorY + 59, { width: width - 20, height: 9, fontSize: 5.5, align: 'center' });
+    drawText(page, font, item[1], x + 10, cursorY + 59, { width: width - 20, height: 9, fontSize: 6.4, align: 'center' });
     cursorY += 79;
   });
-  page.drawRectangle({ x, y: topY(y, height), width, height, borderColor: BORDER, borderWidth: 0.45 });
 }
 
 /**
@@ -487,14 +525,22 @@ function drawSidebar(page, font, template, images, y, height, language) {
  */
 function drawTimerRules(page, font, template, language) {
   const titleY = 711;
-  drawText(page, font, language === 'en' ? 'Timing Rules' : '计时规则（请有效利用你在台上有限的时间）', PAGE.margin, titleY, { width: PAGE.width - PAGE.margin * 2, height: 10, fontSize: 6.8, align: 'center' });
+  drawText(page, font, language === 'en' ? 'Timing Rules' : '计时规则（请有效利用你在台上有限的时间）', PAGE.margin, titleY - 1, { width: PAGE.width - PAGE.margin * 2, height: 11, fontSize: 8.2, align: 'center', bold: true });
   const rows = template.timerRules || [];
   const widths = [132, 91, 91, 91, 91];
-  const colors = ['#e5e7eb', '#b8f5c0', '#fff58a', '#ff7777', '#b5b5b5'];
+  const headerColors = ['#d0d0d0', '#008000', '#ffff00', '#ff0000', '#8c8c8c'];
+  const bodyColors = ['#f2f2f2', '#c4f5c9', '#fffac4', '#ff7b7b', '#c2c2c2'];
   rows.forEach((row, rowIndex) => {
     let x = PAGE.margin + 24;
     row.forEach((cell, index) => {
-      drawCell(page, font, x, titleY + 11 + rowIndex * 11, widths[index], 11, cell, { fill: colors[index], align: 'center', fontSize: 5.6 });
+      drawCell(page, font, x, titleY + 11 + rowIndex * 11, widths[index], 11, cell, {
+        fill: rowIndex === 0 ? headerColors[index] : bodyColors[index],
+        align: 'center',
+        fontSize: 6.2,
+        border: false,
+        bold: rowIndex === 0,
+        color: rowIndex === 0 && (index === 1 || index === 3) ? rgb(1, 1, 1) : BLACK
+      });
       x += widths[index];
     });
   });
@@ -516,12 +562,11 @@ function drawAgendaPages(pdfDoc, font, template, agenda, images) {
   let page = firstPage;
   const agendaTop = 195;
   const agendaBottom = 697;
-  drawFirstPageHeaderFrame(firstPage, agendaTop);
   let y = agendaTop;
-  let table = drawAgendaHeader(page, font, y, language);
+  let table = drawAgendaHeader(page, font, y, language, false);
   y += table.height;
   drawSidebar(firstPage, font, template, images, agendaTop, agendaBottom - agendaTop, language);
-  firstPage.drawRectangle({ x: PAGE.margin, y: topY(agendaTop, agendaBottom - agendaTop), width: PAGE.width - PAGE.margin * 2, height: agendaBottom - agendaTop, borderColor: BORDER, borderWidth: 0.6 });
+  const sharedBoundaryX = PAGE.margin + table.widths.reduce((sum, width) => sum + width, 0);
   const baseHeights = rows.map((row) => getAgendaRowHeight(row, language));
   const availableFirstPageHeight = agendaBottom - y;
   const totalBaseHeight = baseHeights.reduce((sum, height) => sum + height, 0);
@@ -540,6 +585,56 @@ function drawAgendaPages(pdfDoc, font, template, agenda, images) {
     y += drawAgendaRow(page, font, rows[index], table, y, language, height);
   }
   drawTimerRules(firstPage, font, template, language);
+  firstPage.drawLine({ start: { x: PAGE.margin, y: topY(agendaTop, 0) }, end: { x: PAGE.width - PAGE.margin, y: topY(agendaTop, 0) }, thickness: 0.25, color: BORDER });
+  firstPage.drawLine({ start: { x: sharedBoundaryX, y: topY(agendaBottom, 0) }, end: { x: sharedBoundaryX, y: topY(agendaTop, 0) }, thickness: 0.25, color: BORDER });
+  firstPage.drawRectangle({ x: 0, y: 0, width: PAGE.width, height: 70, color: rgb(1, 1, 1), borderWidth: 0 });
+  drawFirstPageHeaderFrame(firstPage, 760);
+}
+
+/**
+ * 方法是什么：用 PDF 基础图形绘制头马教育晋级路径。
+ * 方法作用：直接输出新会员、俱乐部成长、DTM 项目和杰出会员之间的流程关系。
+ * 为什么添加：教育流程需要保持清晰可缩放，不能继续依赖固定截图素材。
+ */
+function drawEducationPathDiagram(page, font, x, y) {
+  const blue = hexToRgb('#4472c4');
+  const purple = hexToRgb('#7030a0');
+  const paleBlue = hexToRgb('#dbe8f5');
+  const paleGray = hexToRgb('#e5e7eb');
+  const white = rgb(1, 1, 1);
+  page.drawRectangle({ x: x + 48, y: topY(y, 68), width: 104, height: 68, color: paleBlue, borderColor: LIGHT_BORDER, borderWidth: 0.25 });
+  page.drawSvgPath('M 0 0 L 35 0 L 44 9 L 35 18 L 0 18 Z', { x, y: PAGE.height - y - 25, color: paleGray, borderColor: LIGHT_BORDER, borderWidth: 0.25 });
+  drawText(page, font, '新会员\nNew Member', x + 2, y + 27, { width: 36, height: 16, fontSize: 4.1, lineHeight: 4.8, align: 'center', verticalAlign: 'middle' });
+  const boxes = [
+    { x: 52, y: 3, w: 46, h: 13, text: '俱乐部官员\nClub Officer' },
+    { x: 102, y: 3, w: 46, h: 13, text: '大区官员\nDistrict Officer' },
+    { x: 52, y: 19, w: 96, h: 12, text: '俱乐部导师 / 俱乐部教练\nClub Mentor / Club Coach' },
+    { x: 52, y: 34, w: 96, h: 18, text: '俱乐部发起人 / 演讲训练营 /\n青年领导项目' },
+    { x: 52, y: 55, w: 96, h: 10, text: '路径1 + 路径2  Pathway 1 + Pathway 2' }
+  ];
+  boxes.forEach((box) => {
+    page.drawRectangle({ x: x + box.x, y: topY(y + box.y, box.h), width: box.w, height: box.h, color: blue });
+    drawText(page, font, box.text, x + box.x + 2, y + box.y + 1, { width: box.w - 4, height: box.h - 2, fontSize: 3.9, lineHeight: 4.5, align: 'center', color: white, verticalAlign: 'middle' });
+  });
+  page.drawSvgPath('M 0 0 L 19 7 L 19 29 L 0 36 Z', { x: x + 153, y: PAGE.height - y - 17, color: purple });
+  drawText(page, font, '杰出会员\n项目 DTM', x + 153, y + 23, { width: 18, height: 24, fontSize: 3.9, lineHeight: 4.6, align: 'center', color: white, verticalAlign: 'middle' });
+  page.drawEllipse({ x: x + 184, y: PAGE.height - y - 36, xScale: 12, yScale: 12, color: purple });
+  drawText(page, font, '杰出会员\nDTM', x + 172, y + 26, { width: 24, height: 20, fontSize: 4.3, lineHeight: 5.1, align: 'center', color: white, verticalAlign: 'middle' });
+}
+
+/**
+ * 方法是什么：补充干事职位的完整英文名称。
+ * 方法作用：在职位独立行中展示缩写和全称，姓名与联系方式留到下一行。
+ * 为什么添加：两行干事表需要比旧版合并字段提供更完整的职位信息。
+ */
+function expandOfficerRole(role) {
+  const expansions = {
+    VPE: 'Vice President Education', VPM: 'Vice President Membership', VPPR: 'Vice President Public Relations',
+    SAA: 'Sergeant At Arms', IPP: 'Immediate Past President'
+  };
+  const value = String(role || '');
+  const key = Object.keys(expansions).find((item) => new RegExp(`\\b${item}\\b`).test(value));
+  return key ? `${value} (${expansions[key]})` : value;
 }
 
 /**
@@ -550,55 +645,71 @@ function drawAgendaPages(pdfDoc, font, template, agenda, images) {
 function drawClubInfoPage(pdfDoc, font, template, images) {
   const language = template.activeLanguage === 'en' ? 'en' : 'zh';
   const page = pdfDoc.addPage([PAGE.width, PAGE.height]);
+  const drawPage2Cell = (x, y, width, height, text, options) => drawCell(page, font, x, y, width, height, text, Object.assign({}, options, { border: false }));
   const leftX = PAGE.margin;
   const leftW = 185;
   const rightX = leftX + leftW;
   const rightW = PAGE.width - PAGE.margin - rightX;
   const top = 120;
   const bodyBottom = 704;
-  drawCell(page, font, leftX, top, leftW, 16, template.page2.updatesTitle, { fill: '#c9fbff', align: 'center', fontSize: 7.5 });
-  drawCell(page, font, rightX, top, rightW, 16, template.page2.educationTitle, { fill: '#c9fbff', align: 'center', fontSize: 7.5 });
-  drawCell(page, font, leftX, top + 16, leftW, 34, '', {});
-  drawCell(page, font, leftX, top + 50, leftW, 16, template.page2.notesTitle, { fill: '#c9fbff', align: 'center', fontSize: 7.5 });
-  page.drawRectangle({ x: leftX, y: topY(top + 66, bodyBottom - top - 66), width: leftW, height: bodyBottom - top - 66, borderColor: BORDER, borderWidth: 0.45 });
-  drawCell(page, font, rightX, top + 16, rightW, 14, language === 'en' ? 'Education Path' : '教育路径', { fill: '#d1d5db', align: 'center', fontSize: 6.5 });
+  drawPage2Cell(leftX, top, leftW, 16, template.page2.updatesTitle, { fill: '#c9fbff', align: 'center', fontSize: 7.8 });
+  drawPage2Cell(rightX, top, rightW, 16, template.page2.educationTitle, { fill: '#c9fbff', align: 'center', fontSize: 7.8 });
+  drawPage2Cell(leftX, top + 16, leftW, 34, '', {});
+  drawPage2Cell(leftX, top + 50, leftW, 16, template.page2.notesTitle, { fill: '#c9fbff', align: 'center', fontSize: 7.8 });
+  page.drawLine({ start: { x: leftX, y: topY(bodyBottom, 0) }, end: { x: leftX, y: topY(top + 66, 0) }, thickness: 0.45, color: BORDER });
+  drawPage2Cell(rightX, top + 16, rightW, 14, language === 'en' ? 'Education Path' : '教育路径', { fill: '#d1d5db', align: 'center', fontSize: 6.8 });
   const educationY = top + 30;
-  drawText(page, font, (template.page2.pathways || []).map((item, index) => `${index + 1}. ${item}`).join('\n'), rightX + 8, educationY + 7, { width: 135, height: 70, fontSize: 6.3, lineHeight: 8.5 });
-  drawImageFit(page, images.educationSystem, rightX + 145, educationY + 2, rightW - 150, 76);
-  drawCell(page, font, rightX, educationY + 82, rightW, 13, template.page2.goal, { fill: '#e5e1f0', align: 'center', fontSize: 6.5 });
+  drawText(page, font, (template.page2.pathways || []).map((item, index) => `${index + 1}. ${item}`).join('\n'), rightX + 8, educationY + 7, { width: 135, height: 70, fontSize: 7.5, lineHeight: 9.7 });
+  drawEducationPathDiagram(page, font, rightX + 153, educationY + 5);
+  drawPage2Cell(rightX, educationY + 82, rightW, 13, template.page2.goal, { fill: '#e5e1f0', align: 'center', fontSize: 6.9 });
+  page.drawLine({ start: { x: rightX, y: topY(educationY + 82, 0) }, end: { x: rightX + rightW, y: topY(educationY + 82, 0) }, thickness: 0.6, color: BORDER });
+  page.drawLine({ start: { x: rightX, y: topY(educationY + 95, 0) }, end: { x: rightX + rightW, y: topY(educationY + 95, 0) }, thickness: 0.6, color: BORDER });
   const half = rightW / 2;
   let y = educationY + 95;
-  drawCell(page, font, rightX, y, half, 13, language === 'en' ? 'Club Achievements' : '双语成就', { fill: '#d1d5db', align: 'center', fontSize: 6.5 });
-  drawCell(page, font, rightX + half, y, half, 13, language === 'en' ? 'Meeting Flow' : '会议流程', { fill: '#d1d5db', align: 'center', fontSize: 6.5 });
+  drawPage2Cell(rightX, y, half, 13, language === 'en' ? 'Club Achievements' : '双语成就', { fill: '#d1d5db', align: 'center', fontSize: 6.8 });
+  drawPage2Cell(rightX + half, y, half, 13, language === 'en' ? 'Meeting Flow' : '会议流程', { fill: '#d1d5db', align: 'center', fontSize: 6.8 });
   y += 13;
-  const achievementsHeight = 90;
-  const benefitsHeight = 160;
-  drawCell(page, font, rightX, y, half, achievementsHeight, (template.page2.achievements || []).join('\n'), { align: 'center', fontSize: 5.7, lineHeight: 8 });
-  drawCell(page, font, rightX + half, y, half, achievementsHeight, (template.page2.meetingFlow || []).join('\n'), { align: 'center', fontSize: 5.7, lineHeight: 9 });
+  const achievementsHeight = 72;
+  const benefitsHeight = 105;
+  drawPage2Cell(rightX, y, half, achievementsHeight, (template.page2.achievements || []).join('\n'), { align: 'center', fontSize: 6.9, lineHeight: 9.3, verticalAlign: 'middle' });
+  drawPage2Cell(rightX + half, y, half, achievementsHeight, (template.page2.meetingFlow || []).join('\n'), { align: 'center', fontSize: 6.9, lineHeight: 9.7, verticalAlign: 'middle' });
   y += achievementsHeight;
-  drawCell(page, font, rightX, y, half, 13, language === 'en' ? 'What You Can Gain' : '我们在头马可以收获什么？', { fill: '#d1d5db', align: 'center', fontSize: 6.2 });
-  drawCell(page, font, rightX + half, y, half, 13, language === 'en' ? 'How to Join' : '如何加入我们', { fill: '#d1d5db', align: 'center', fontSize: 6.2 });
+  drawPage2Cell(rightX, y, half, 13, language === 'en' ? 'What You Can Gain' : '我们在头马可以收获什么？', { fill: '#d1d5db', align: 'center', fontSize: 6.6 });
+  drawPage2Cell(rightX + half, y, half, 13, language === 'en' ? 'How to Join' : '如何加入我们', { fill: '#d1d5db', align: 'center', fontSize: 6.6 });
   y += 13;
-  drawCell(page, font, rightX, y, half, benefitsHeight, (template.page2.benefits || []).join('\n'), { align: 'center', fontSize: 5.5, lineHeight: 9 });
-  drawCell(page, font, rightX + half, y, half, benefitsHeight, template.page2.joining, { fontSize: 5.2, lineHeight: 7.5 });
+  drawPage2Cell(rightX, y, half, benefitsHeight, (template.page2.benefits || []).join('\n'), { align: 'center', fontSize: 6.7, lineHeight: 9.8, verticalAlign: 'middle' });
+  drawPage2Cell(rightX + half, y, half, benefitsHeight, template.page2.joining, { fontSize: 6.4, lineHeight: 8.8, verticalAlign: 'middle' });
   y += benefitsHeight;
-  drawCell(page, font, rightX, y, rightW, 14, language === 'en' ? '2026 Club Officer Team' : '2026年（上）俱乐部干事 Club Officer Team', { fill: '#9bdcf6', align: 'center', fontSize: 6.5 });
+  const officerTop = y;
+  drawPage2Cell(rightX, y, rightW, 14, language === 'en' ? '2026 Club Officer Team' : '2026年（上）俱乐部干事 Club Officer Team', { fill: '#9bdcf6', align: 'center', fontSize: 6.9, bold: true });
   y += 14;
   const officerWidths = [rightW * 0.47, rightW * 0.25, rightW * 0.28];
   (language === 'en' ? ['Officer', 'Phone', 'WeChat'] : ['干事 Officer', '电话 Phone', '微信 WeChat']).forEach((label, index) => {
     const x = rightX + officerWidths.slice(0, index).reduce((sum, value) => sum + value, 0);
-    drawCell(page, font, x, y, officerWidths[index], 12, label, { fill: '#e2e8f0', align: 'center', fontSize: 5.5 });
+    drawPage2Cell(x, y, officerWidths[index], 12, label, { fill: '#e2e8f0', align: 'center', fontSize: 5.9 });
   });
   y += 12;
+  const officerHeaderBottom = y;
   (template.page2.officers || []).forEach((officer, officerIndex) => {
-    const values = [`${officer.role}  ${officer.name}`, officer.phone, officer.wechat];
+    drawPage2Cell(rightX, y, rightW, 10, expandOfficerRole(officer.role), { fill: '#d7ffff', fontSize: 6.1, verticalAlign: 'middle' });
+    y += 10;
+    const values = [officer.name, officer.phone, officer.wechat];
     values.forEach((value, index) => {
       const x = rightX + officerWidths.slice(0, index).reduce((sum, width) => sum + width, 0);
-      drawCell(page, font, x, y, officerWidths[index], 13, value, { fill: officerIndex % 2 ? '#ffffff' : '#d7ffff', fontSize: 5.1 });
+      drawPage2Cell(x, y, officerWidths[index], 21.25, value, { fill: '#ffffff', fontSize: 6.4, align: index === 0 ? 'center' : 'left', verticalAlign: 'middle' });
     });
-    y += 13;
+    y += 21.25;
+    page.drawLine({ start: { x: rightX, y: topY(y, 0) }, end: { x: rightX + rightW, y: topY(y, 0) }, thickness: 0.45, color: BORDER });
   });
-  drawText(page, font, template.page2.resources, PAGE.margin, 675, { width: PAGE.width - PAGE.margin * 2, height: 20, fontSize: 5.3, align: 'center' });
+  const officerBottom = y;
+  page.drawRectangle({ x: rightX, y: topY(officerTop, officerBottom - officerTop), width: rightW, height: officerBottom - officerTop, borderColor: BORDER, borderWidth: 0.6 });
+  page.drawLine({ start: { x: rightX, y: topY(officerHeaderBottom, 0) }, end: { x: rightX + rightW, y: topY(officerHeaderBottom, 0) }, thickness: 0.45, color: BORDER });
+  const resourcesTop = 724;
+  page.drawLine({ start: { x: PAGE.margin, y: topY(resourcesTop, 0) }, end: { x: PAGE.width - PAGE.margin, y: topY(resourcesTop, 0) }, thickness: 0.6, color: BORDER });
+  drawText(page, font, template.page2.resources, PAGE.margin + 10, resourcesTop + 7, { width: PAGE.width - PAGE.margin * 2 - 20, height: 10, fontSize: 6.4, align: 'center', verticalAlign: 'middle' });
+  drawText(page, font, 'Recommended Resources: Toastmasters International - http://www.toastmasters.org    District 118 Official Account - Toastmasters D118', PAGE.margin + 10, resourcesTop + 20, { width: PAGE.width - PAGE.margin * 2 - 20, height: 10, fontSize: 6.2, align: 'center', verticalAlign: 'middle' });
+  page.drawLine({ start: { x: rightX, y: topY(resourcesTop, 0) }, end: { x: rightX, y: topY(top + 16, 0) }, thickness: 0.45, color: BORDER });
+  page.drawRectangle({ x: PAGE.margin, y: topY(top, 640), width: PAGE.width - PAGE.margin * 2, height: 640, borderColor: BORDER, borderWidth: 0.6 });
 }
 
 /**
