@@ -317,6 +317,7 @@ function buildPerson(rawName, memberships) {
       memberId: member._id || member.id || '',
       displayNameZh: member.nameZh || normalizeText(rawName),
       displayNameEn: member.nameEn || normalizeText(rawName),
+      educationProgress: member.educationProgress || '',
       pathNameZh: member.pathNameZh || '',
       pathNameEn: member.pathNameEn || '',
       officerTitleZh: member.officerTitleZh || '',

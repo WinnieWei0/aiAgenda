@@ -586,7 +586,8 @@ function testPdfAgendaLineStyle() {
   assert.strictEqual(pdfRenderer.formatPersonName({
     memberId: 'member-1',
     displayNameZh: '廖凤媚',
-    pathNameZh: 'PM2',
+    educationProgress: 'PM2',
+    pathNameZh: '精通演讲',
     officerTitleZh: '秘书长'
   }, 'zh'), '廖凤媚(PM2)<秘书长>');
   assert.strictEqual(pdfRenderer.formatPersonName({ displayNameZh: '外部来宾' }, 'zh'), '外部来宾');

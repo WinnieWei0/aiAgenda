@@ -32,6 +32,7 @@ function createPerson(value) {
     memberIndex: Number.isFinite(Number(source.memberIndex)) ? Number(source.memberIndex) : -1,
     displayNameZh: source.displayNameZh || rawName,
     displayNameEn: source.displayNameEn || rawName,
+    educationProgress: source.educationProgress || '',
     pathNameZh: source.pathNameZh || '',
     pathNameEn: source.pathNameEn || '',
     officerTitleZh: source.officerTitleZh || '',

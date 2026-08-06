@@ -269,6 +269,16 @@ Page({
   decoratePerson(personValue) {
     const person = agendaUtil.createPerson(personValue);
     person.memberIndex = this.data.memberOptions.findIndex((option) => option.member._id === person.memberId);
+    if (person.memberIndex >= 0) {
+      const member = this.data.memberOptions[person.memberIndex].member;
+      Object.assign(person, {
+        educationProgress: member.educationProgress || '',
+        pathNameZh: member.pathNameZh || '',
+        pathNameEn: member.pathNameEn || '',
+        officerTitleZh: member.officerTitleZh || '',
+        officerTitleEn: member.officerTitleEn || ''
+      });
+    }
     return person;
   },
 
@@ -421,6 +431,7 @@ Page({
       memberId: member._id,
       displayNameZh: member.nameZh || member.nameEn || '',
       displayNameEn: member.nameEn || member.nameZh || '',
+      educationProgress: member.educationProgress || '',
       pathNameZh: member.pathNameZh || '',
       pathNameEn: member.pathNameEn || '',
       officerTitleZh: member.officerTitleZh || '',

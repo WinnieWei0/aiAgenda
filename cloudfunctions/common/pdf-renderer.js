@@ -274,9 +274,9 @@ function formatPersonName(person, language) {
   if (!person.memberId || !name) {
     return name;
   }
-  const pathway = language === 'en'
+  const pathway = person.educationProgress || (language === 'en'
     ? person.pathNameEn || person.pathNameZh
-    : person.pathNameZh || person.pathNameEn;
+    : person.pathNameZh || person.pathNameEn);
   const officerTitle = language === 'en'
     ? person.officerTitleEn || person.officerTitleZh
     : person.officerTitleZh || person.officerTitleEn;
