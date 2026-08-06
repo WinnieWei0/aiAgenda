@@ -22,7 +22,6 @@
 
   <view wx:if="{{tab === 'rules'}}" class="editor-band">
     <view class="time-settings"><label class="field"><text>签到时间</text><input value="{{template.settings.signInTime}}" data-group="settings" data-field="signInTime" bindinput="handleSharedTemplateInput" /></label><label class="field"><text>主流程开始时间</text><input value="{{template.settings.mainStartTime}}" data-group="settings" data-field="mainStartTime" bindinput="handleSharedTemplateInput" /></label></view>
-    <view class="setting-row"><text class="band-title">特别主题环节</text><switch checked="{{template.settings.specialSessionEnabled}}" bindchange="toggleSpecialSession" /></view>
     <view wx:for="{{template.agendaRules}}" wx:for-item="rule" wx:for-index="ruleIndex" wx:key="id" class="rule-row">
       <view class="rule-id">{{rule.id}}</view>
       <input class="rule-title" value="{{activeLocale === 'en' ? rule.titleEn : rule.titleZh}}" data-index="{{ruleIndex}}" data-field="{{activeLocale === 'en' ? 'titleEn' : 'titleZh'}}" bindinput="handleRuleInput" />

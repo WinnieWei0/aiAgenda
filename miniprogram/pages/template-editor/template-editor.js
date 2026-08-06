@@ -140,17 +140,6 @@ Page({
   },
 
   /**
-   * 方法是什么：切换特别主题环节。
-   * 方法作用：控制该可选环节是否出现在所有当前议程预览和导出中。
-   * 为什么添加：样例包含特别主题，但标准议程需要允许超管全局停用。
-   */
-  toggleSpecialSession(event) {
-    const template = agendaUtil.cloneJson(this.data.template);
-    template.settings.specialSessionEnabled = Boolean(event.detail.value);
-    this.setData({ template });
-  },
-
-  /**
    * 方法是什么：修改干事表字段。
    * 方法作用：维护第二页角色、姓名、电话和微信，并同步会长默认人员。
    * 为什么添加：干事信息会定期换届且会长还被开场和尾声环节引用。

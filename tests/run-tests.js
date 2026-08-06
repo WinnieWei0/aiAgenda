@@ -165,18 +165,18 @@ function testAgendaModel() {
   }));
   assert.strictEqual(agenda.schemaVersion, 2, '应升级为 AgendaV2');
   assert.deepStrictEqual(timeMap.venueIntroduction, ['19:30', 2]);
-  assert.deepStrictEqual(timeMap.opening, ['19:32', 2]);
-  assert.deepStrictEqual(timeMap.facilitatorIntroduction, ['19:34', 11]);
-  assert.deepStrictEqual(timeMap.tableTopics, ['19:45', 25]);
-  assert.deepStrictEqual(timeMap.preparedSpeech, ['20:10', 14]);
-  assert.deepStrictEqual(timeMap.break, ['20:24', 5]);
-  assert.deepStrictEqual(timeMap.specialSession, ['', 0]);
-  assert.deepStrictEqual(timeMap.evaluation, ['20:29', 7]);
-  assert.deepStrictEqual(timeMap.facilitatorReport, ['20:36', 17]);
-  assert.deepStrictEqual(timeMap.vote, ['20:53', 1]);
-  assert.deepStrictEqual(timeMap.closing, ['20:54', 7]);
-  assert.deepStrictEqual(timeMap.end, ['21:01', 0]);
-  assert.strictEqual(agenda.computedEndTime, '21:01');
+  assert.deepStrictEqual(timeMap.opening, ['19:32', 5]);
+  assert.deepStrictEqual(timeMap.facilitatorIntroduction, ['19:37', 11]);
+  assert.deepStrictEqual(timeMap.tableTopics, ['19:48', 25]);
+  assert.deepStrictEqual(timeMap.preparedSpeech, ['20:13', 14]);
+  assert.deepStrictEqual(timeMap.break, ['20:27', 5]);
+  assert.strictEqual(timeMap.specialSession, undefined);
+  assert.deepStrictEqual(timeMap.evaluation, ['20:32', 7]);
+  assert.deepStrictEqual(timeMap.facilitatorReport, ['20:39', 17]);
+  assert.deepStrictEqual(timeMap.vote, ['20:56', 1]);
+  assert.deepStrictEqual(timeMap.closing, ['20:57', 7]);
+  assert.deepStrictEqual(timeMap.end, ['21:04', 0]);
+  assert.strictEqual(agenda.computedEndTime, '21:04');
   assert.strictEqual(agenda.timeMismatch, true);
 }
 
@@ -238,6 +238,17 @@ function testAgendaPreviewValidation() {
     }]
   }, template);
   assert.deepStrictEqual(agendaUtil.validateAgendaForPreview(agenda), []);
+  const legacyAgenda = agendaUtil.cloneJson(agenda);
+  const facilitator = legacyAgenda.sections.find((section) => section.id === 'facilitatorIntroduction');
+  facilitator.children.push({ id: 'legacy-icebreaker', moduleKind: 'icebreaker', titleZh: '破冰', duration: 0, personMode: 'editable', person: {} });
+  legacyAgenda.sections.push({ id: 'specialSession', type: 'row', enabled: true, row: { id: 'specialSession', titleZh: '特别主题环节', duration: 25, personMode: 'editable', person: {} } });
+  const normalized = agendaUtil.normalizeAgenda(legacyAgenda, template);
+  assert.deepStrictEqual(agendaUtil.validateAgendaForPreview(normalized), []);
+  assert.strictEqual(normalized.sections.find((section) => section.id === 'facilitatorIntroduction').children.some((row) => row.id === 'legacy-icebreaker'), false);
+  const withManualIcebreaker = agendaUtil.addDynamicModule(normalized, 'icebreaker');
+  const manualIcebreakerErrors = agendaUtil.validateAgendaForPreview(withManualIcebreaker);
+  assert.ok(manualIcebreakerErrors.some((message) => message.includes('破冰')));
+  assert.strictEqual(withManualIcebreaker.sections.find((section) => section.id === 'facilitatorIntroduction').children.slice(-1)[0].moduleKind, 'icebreaker');
   const preparedBlock = agenda.sections.find((section) => section.id === 'preparedSpeech').children[0];
   preparedBlock.pathway.objectiveZh = '';
   assert.deepStrictEqual(agendaUtil.validateAgendaForPreview(agenda), []);
@@ -253,23 +264,37 @@ function testAgendaPreviewValidation() {
 
 /**
  * 方法是什么：测试模板开关和旧议程升级。
- * 方法作用：验证特别主题全局停用以及旧 roleKey 草稿能转换为 AgendaV2。
+ * 方法作用：验证固定特殊主题已移除，且旧 roleKey 草稿能转换为 AgendaV2。
  * 为什么添加：上线后现有七天草稿和超管模板设置都必须继续生效。
  */
 function testTemplateAndLegacyUpgrade() {
   const template = agendaUtil.createDefaultTemplate();
-  assert.strictEqual(template.settings.specialSessionEnabled, false);
-  template.settings.specialSessionEnabled = false;
+  const cleanedLegacyTemplate = agendaUtil.normalizeTemplate({
+    settings: { specialSessionEnabled: true },
+    agendaRules: [
+      { id: 'tableTopicsIcebreaker', titleZh: '破冰', duration: 5 },
+      { id: 'specialSession', titleZh: '特别主题环节', duration: 25 }
+    ]
+  });
+  assert.strictEqual(Object.prototype.hasOwnProperty.call(cleanedLegacyTemplate.settings, 'specialSessionEnabled'), false);
+  assert.strictEqual(cleanedLegacyTemplate.agendaRules.some((rule) => rule.id === 'tableTopicsIcebreaker' || rule.id === 'specialSession'), false);
   const normalized = agendaUtil.createAgendaFromFacts({ preparedSpeeches: [{ duration: 6 }, { duration: 7 }] }, template);
-  const special = normalized.sections.find(function findSpecial(section) { return section.id === 'specialSession'; });
-  assert.strictEqual(special.enabled, false);
-  assert.strictEqual(normalized.computedEndTime, '21:01');
+  assert.strictEqual(normalized.sections.some(function hasSpecial(section) { return section.id === 'specialSession'; }), false);
+  assert.strictEqual(normalized.computedEndTime, '21:04');
   const oldDraft = agendaUtil.createAgendaFromFacts({}, template);
+  const oldOpeningRemarks = oldDraft.sections.find((section) => section.id === 'opening').children.find((row) => row.id === 'openingRemarks');
+  oldOpeningRemarks.duration = 0;
+  oldOpeningRemarks.showDuration = false;
   oldDraft.sections.find((section) => section.id === 'opening').children.unshift({ id: 'openingIcebreaker', duration: 3 });
+  oldDraft.sections.find((section) => section.id === 'tableTopics').children.push({ id: 'tableTopicsIcebreaker', duration: 0 });
+  oldDraft.sections.push({ id: 'specialSession', type: 'row', enabled: true, row: { id: 'specialSession', duration: 25 } });
   const oldPhotographer = oldDraft.sections.find((section) => section.id === 'facilitatorIntroduction').children.find((row) => row.id === 'photographer');
   delete oldPhotographer.transitionExempt;
   const upgradedDraft = agendaUtil.normalizeAgenda(oldDraft, template);
   assert.strictEqual(upgradedDraft.sections.find((section) => section.id === 'opening').children.some((row) => row.id === 'openingIcebreaker'), false);
+  assert.strictEqual(upgradedDraft.sections.find((section) => section.id === 'opening').children.find((row) => row.id === 'openingRemarks').duration, 3);
+  assert.strictEqual(upgradedDraft.sections.find((section) => section.id === 'tableTopics').children.some((row) => row.id === 'tableTopicsIcebreaker'), false);
+  assert.strictEqual(upgradedDraft.sections.some((section) => section.id === 'specialSession'), false);
   assert.strictEqual(upgradedDraft.sections.find((section) => section.id === 'facilitatorIntroduction').duration, 11);
   const legacy = agendaUtil.normalizeAgenda({
     meetingInfo: { meetingNo: '700', startTime: '19:30', endTime: '21:30' },
@@ -314,6 +339,11 @@ function testLocalizedTemplateAndAnchors() {
   template.settings.signInTime = '18:45';
   template.settings.mainStartTime = '20:00';
   const agenda = agendaUtil.createAgendaFromFacts({ meetingInfo: { startTime: '10:00' } }, template);
+  const openingRemarks = agenda.sections.find((section) => section.id === 'opening').children.find((row) => row.id === 'openingRemarks');
+  const tableTopics = agenda.sections.find((section) => section.id === 'tableTopics');
+  assert.strictEqual(openingRemarks.duration, 3);
+  assert.strictEqual(openingRemarks.showDuration, true);
+  assert.strictEqual(tableTopics.children.some((row) => row.id === 'tableTopicsIcebreaker'), false);
   assert.strictEqual(agenda.sections.find((section) => section.id === 'signIn').startTime, '18:45');
   assert.strictEqual(agenda.sections.find((section) => section.id === 'venueIntroduction').startTime, '20:00');
   agenda.sections.forEach((section) => { section.startTime = '01:01'; });
@@ -365,6 +395,9 @@ function testDynamicAgendaModules() {
   assert.strictEqual(flattened.some((row) => row.id === 'openingIcebreaker'), false);
   assert.strictEqual(flattened.some((row) => row.id === 'specialSession'), false);
   assert.strictEqual(flattened.some((row) => row.moduleKind === 'icebreaker'), true);
+  assert.strictEqual(flattened.find((row) => row.id === 'vote').isGroup, true);
+  assert.strictEqual(flattened.find((row) => row.moduleKind === 'educationAward').isGroup, true);
+  assert.strictEqual(flattened.find((row) => row.moduleKind === 'memberInterview').isGroup, true);
 }
 
 /**
@@ -550,6 +583,13 @@ async function testPdfRenderer(agenda) {
  * 为什么添加：导出样式要求移除四个内部竖线及小模块之间的横线。
  */
 function testPdfAgendaLineStyle() {
+  assert.strictEqual(pdfRenderer.formatPersonName({
+    memberId: 'member-1',
+    displayNameZh: '廖凤媚',
+    pathNameZh: 'PM2',
+    officerTitleZh: '秘书长'
+  }, 'zh'), '廖凤媚(PM2)<秘书长>');
+  assert.strictEqual(pdfRenderer.formatPersonName({ displayNameZh: '外部来宾' }, 'zh'), '外部来宾');
   const rectangles = [];
   const lines = [];
   const page = {

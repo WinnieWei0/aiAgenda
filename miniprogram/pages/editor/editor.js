@@ -421,6 +421,10 @@ Page({
       memberId: member._id,
       displayNameZh: member.nameZh || member.nameEn || '',
       displayNameEn: member.nameEn || member.nameZh || '',
+      pathNameZh: member.pathNameZh || '',
+      pathNameEn: member.pathNameEn || '',
+      officerTitleZh: member.officerTitleZh || '',
+      officerTitleEn: member.officerTitleEn || '',
       clubZh: '广州双语',
       clubEn: 'Bilingual',
       inputMode: 'select',
@@ -638,29 +642,29 @@ Page({
   },
 
   /**
-   * 方法是什么：保存后直接执行 PDF 导出流程。
-   * 方法作用：调用正式 PDF 云函数、下载结果，并通过微信文档页开放导出菜单。
-   * 为什么添加：预览按钮必须使用正式导出结果，不能再执行旧的自定义预览逻辑。
+   * 方法是什么：先保存议程，再执行 PDF 预览流程。
+   * 方法作用：保存当前表单后校验服务端结果，再调用正式 PDF 云函数并打开微信文档页。
+   * 为什么添加：预览必须基于刚保存的数据库版本，且保存提示与独立保存操作保持一致。
    */
   async goPreview() {
     if (this.data.saving || this.data.previewing) {
       return;
     }
-    const validationErrors = agendaUtil.validateAgendaForPreview(this.data.agenda);
-    if (validationErrors.length) {
-      const visibleErrors = validationErrors.slice(0, 6);
-      const remaining = validationErrors.length - visibleErrors.length;
-      this.setData({
-        validationDialogVisible: true,
-        validationErrors: visibleErrors,
-        validationRemaining: remaining
-      });
-      return;
-    }
     this.setData({ previewing: true });
     try {
-      const agenda = await this.saveAgenda({ silent: true, manageSaving: false });
+      const agenda = await this.saveAgenda({ manageSaving: false });
       if (!agenda || !agenda._id) {
+        return;
+      }
+      const validationErrors = agendaUtil.validateAgendaForPreview(agenda);
+      if (validationErrors.length) {
+        const visibleErrors = validationErrors.slice(0, 6);
+        const remaining = validationErrors.length - visibleErrors.length;
+        this.setData({
+          validationDialogVisible: true,
+          validationErrors: visibleErrors,
+          validationRemaining: remaining
+        });
         return;
       }
       const data = await cloud.callCloud('exportAgendaPdf', { agendaId: agenda._id });

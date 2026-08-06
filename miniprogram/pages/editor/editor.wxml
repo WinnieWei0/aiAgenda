@@ -25,7 +25,7 @@
   </view>
 
   <block wx:for="{{agenda.sections}}" wx:for-item="section" wx:for-index="sectionIndex" wx:key="id">
-    <view wx:if="{{section.enabled !== false && (!section.languageGate || section.languageGate === agenda.meetingInfo.language) && section.id !== 'evaluation' && section.id !== 'facilitatorReport' && section.id !== 'vote' && section.id !== 'specialSession'}}" class="panel agenda-section {{section.type === 'end' ? 'end-section' : ''}}">
+    <view wx:if="{{section.enabled !== false && (!section.languageGate || section.languageGate === agenda.meetingInfo.language) && section.id !== 'evaluation' && section.id !== 'facilitatorReport' && section.id !== 'vote'}}" class="panel agenda-section {{section.type === 'end' ? 'end-section' : ''}}">
       <view class="section-heading">
         <view>
           <text class="section-time">{{section.startTime}}</text>
@@ -63,7 +63,7 @@
            <template is="person-editor" data="{{row: row, person: row.evaluator, scope: 'child', sectionIndex: sectionIndex, childIndex: childIndex, personField: 'evaluator', memberLabels: memberLabels, memberLoading: memberLoading, memberLoadError: memberLoadError, language: agenda.meetingInfo.language, label: '点评者'}}" />
           <view class="sort-actions"><button size="mini" data-child-index="{{childIndex}}" data-direction="-1" bindtap="movePreparedBlock">上移</button><button size="mini" data-child-index="{{childIndex}}" data-direction="1" bindtap="movePreparedBlock">下移</button></view>
         </view>
-        <view wx:else hidden="{{row.id === 'guestIntroduction' || row.id === 'topicNote' || row.id === 'topicSummary' || row.id === 'tableTopicsIcebreaker' || row.id === 'feedback' || row.id === 'award'}}" class="agenda-row {{row.type === 'note' ? 'note-row' : ''}}">
+        <view wx:else hidden="{{row.id === 'guestIntroduction' || row.id === 'topicNote' || row.id === 'topicSummary' || row.id === 'feedback' || row.id === 'award'}}" class="agenda-row {{row.type === 'note' ? 'note-row' : ''}}">
           <view wx:if="{{row.id !== 'openingRemarks'}}" class="row-main"><input disabled="{{!row.canEditTitle}}" value="{{row.displayTitle || row.titleZh}}" data-scope="child" data-section-index="{{sectionIndex}}" data-child-index="{{childIndex}}" data-field="{{agenda.meetingInfo.language === 'en' ? 'titleEn' : 'titleZh'}}" bindinput="handleRowInput" /><input wx:if="{{row.showDuration}}" class="duration-input" type="number" disabled="{{!row.canEditDuration}}" value="{{row.duration}}" data-scope="child" data-section-index="{{sectionIndex}}" data-child-index="{{childIndex}}" data-field="duration" bindinput="handleRowInput" /><text wx:if="{{row.showDuration}}">分钟</text></view>
            <template is="person-editor" wx:if="{{(row.personMode === 'editable' && row.id !== 'tableTopicsSpeech') || row.id === 'openingIcebreaker'}}" data="{{row: row, person: row.person, scope: 'child', sectionIndex: sectionIndex, childIndex: childIndex, personField: 'person', memberLabels: memberLabels, memberLoading: memberLoading, memberLoadError: memberLoadError, language: agenda.meetingInfo.language, label: row.id === 'openingRemarks' ? '开场人' : (row.id === 'topicExplanation' ? '即兴主持人' : (row.id === 'tableTopicsEvaluation' ? '即兴点评' : '演讲者'))}}" />
           <view wx:if="{{row.personMode === 'fixed' && row.id !== 'openingIcebreaker'}}" class="fixed-person">{{row.person.displayNameZh || row.person.rawName}} · {{row.person.clubZh}}</view>

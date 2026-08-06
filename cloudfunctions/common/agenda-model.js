@@ -32,6 +32,10 @@ function createPerson(value) {
     memberIndex: Number.isFinite(Number(source.memberIndex)) ? Number(source.memberIndex) : -1,
     displayNameZh: source.displayNameZh || rawName,
     displayNameEn: source.displayNameEn || rawName,
+    pathNameZh: source.pathNameZh || '',
+    pathNameEn: source.pathNameEn || '',
+    officerTitleZh: source.officerTitleZh || '',
+    officerTitleEn: source.officerTitleEn || '',
     clubZh: source.clubZh === undefined ? '广州双语' : source.clubZh,
     clubEn: source.clubEn === undefined ? 'Bilingual' : source.clubEn,
     inputMode: source.inputMode || (source.memberId || !rawName ? 'select' : 'input'),
@@ -204,7 +208,6 @@ function createDefaultTemplate() {
       ]
     },
     settings: {
-      specialSessionEnabled: false,
       evaluationDuration: 3,
       preparedFallbackDuration: 7,
       signInTime: '19:00',
@@ -227,9 +230,7 @@ function createDefaultTemplate() {
       { id: 'topicNote', titleZh: '给每位演讲者一个不同的主题', duration: 0 },
       { id: 'topicSummary', titleZh: '总结', duration: 1, memberPersonEditable: true },
       { id: 'tableTopicsEvaluation', titleZh: '即兴点评', duration: 7, memberDurationEditable: true, memberPersonEditable: true },
-      { id: 'tableTopicsIcebreaker', titleZh: '破冰', duration: 0, memberDurationEditable: true, memberPersonEditable: true },
       { id: 'break', titleZh: '中场休息+合照', duration: 5, memberDurationEditable: true },
-      { id: 'specialSession', titleZh: '特别主题环节', duration: 25, memberDurationEditable: true, memberPersonEditable: true, memberTitleEditable: true },
       { id: 'grammarianReport', titleZh: '语法师', duration: 4, memberPersonEditable: true },
       { id: 'ahCounterReport', titleZh: '哼哈师', duration: 1, memberPersonEditable: true },
       { id: 'timerReport', titleZh: '计时员', duration: 1, memberPersonEditable: true },
@@ -241,7 +242,7 @@ function createDefaultTemplate() {
     ]
   };
   const titleEnMap = {
-    signIn: 'Registration and Welcome', venueIntroduction: 'Guest SAA Briefing', openingIcebreaker: 'Icebreaker', guestIntroduction: 'Guest Introductions', host: 'Toastmaster of the Evening', photographer: 'Photographer', timerIntro: 'Timer', ahCounterIntro: 'Ah-Counter', grammarianIntro: 'Grammarian', generalEvaluatorIntro: 'General Evaluator', topicExplanation: 'Table Topics Master', tableTopicsSpeech: 'Table Topics Time', topicNote: 'A Different Topic for Each Speaker', topicSummary: 'Summary', tableTopicsEvaluation: 'Table Topics Evaluation', tableTopicsIcebreaker: 'Icebreaker', break: 'Break and Group Photo', specialSession: 'Special Session', grammarianReport: 'Grammarian Report', ahCounterReport: 'Ah-Counter Report', timerReport: 'Timer Report', generalEvaluatorReport: 'General Evaluator Report', vote: 'Best Speaker Voting', feedback: 'Guest and Member Feedback', award: 'Awards', roleBooking: 'Next Meeting Role Booking'
+    signIn: 'Registration and Welcome', venueIntroduction: 'Guest SAA Briefing', openingIcebreaker: 'Icebreaker', guestIntroduction: 'Guest Introductions', host: 'Toastmaster of the Evening', photographer: 'Photographer', timerIntro: 'Timer', ahCounterIntro: 'Ah-Counter', grammarianIntro: 'Grammarian', generalEvaluatorIntro: 'General Evaluator', topicExplanation: 'Table Topics Master', tableTopicsSpeech: 'Table Topics Time', topicNote: 'A Different Topic for Each Speaker', topicSummary: 'Summary', tableTopicsEvaluation: 'Table Topics Evaluation',  break: 'Break and Group Photo', grammarianReport: 'Grammarian Report', ahCounterReport: 'Ah-Counter Report', timerReport: 'Timer Report', generalEvaluatorReport: 'General Evaluator Report', vote: 'Best Speaker Voting', feedback: 'Guest and Member Feedback', award: 'Awards', roleBooking: 'Next Meeting Role Booking'
   };
   template.agendaRules = template.agendaRules.map((rule) => Object.assign({}, rule, { titleEn: rule.titleEn || titleEnMap[rule.id] || rule.titleZh }));
   template.locales = {
@@ -273,7 +274,8 @@ function normalizeTemplate(templateValue) {
     assets: Object.assign({}, defaults.assets, source.assets || {}),
     agendaRules: Array.isArray(source.agendaRules) && source.agendaRules.length ? source.agendaRules : defaults.agendaRules
   });
-  template.agendaRules = template.agendaRules.map((rule) => {
+  delete template.settings.specialSessionEnabled;
+  template.agendaRules = template.agendaRules.filter((rule) => rule.id !== 'tableTopicsIcebreaker' && rule.id !== 'specialSession').map((rule) => {
     const fallback = defaults.agendaRules.find((item) => item.id === rule.id) || {};
     return Object.assign({}, fallback, rule);
   });
@@ -333,15 +335,14 @@ function createPresidentPerson(template, language) {
 /**
  * 方法是什么：创建开场白负责人行。
  * 方法作用：使用模板中的当前会长作为默认人员，并开放会员下拉选择。
- * 为什么添加：开场白需要显示独立负责人控件，同时不能改变原有两分钟时间链。
+ * 为什么添加：开场白需要显示独立负责人控件，并按三分钟默认时长参与时间链。
  */
 function createOpeningRemarksRow(template, language) {
   const row = createRow(template, 'openingRemarks', {
     titleZh: '开场白',
     titleEn: 'Opening',
-    duration: 0,
-    person: createPresidentPerson(template, language),
-    showDuration: false
+    duration: 3,
+    person: createPresidentPerson(template, language)
   });
   row.permissions.memberPerson = true;
   return row;
@@ -449,12 +450,10 @@ function createAgendaFromFacts(factsValue, templateValue) {
       createRow(template, 'tableTopicsSpeech', { person: createPerson({ rawName: '随机演讲者', clubZh: '全部', clubEn: 'All' }) }),
       createRow(template, 'topicNote', { type: 'note', personMode: 'none', showDuration: false }),
       createRow(template, 'topicSummary', { person: ttMaster, roleKey: 'tableTopicsMaster' }),
-      createRow(template, 'tableTopicsEvaluation', { person: rolePerson(facts, 'tableTopicsEvaluator'), roleKey: 'tableTopicsEvaluator' }),
-      createRow(template, 'tableTopicsIcebreaker', { person: createPerson({ clubZh: '', clubEn: '' }) })
+      createRow(template, 'tableTopicsEvaluation', { person: rolePerson(facts, 'tableTopicsEvaluator'), roleKey: 'tableTopicsEvaluator' })
     ] },
     { id: 'preparedSpeech', type: 'group', titleZh: '有准备的演讲环节', titleEn: 'Prepared Speeches', transitionPolicy: 'betweenChildren', children: (facts.preparedSpeeches || []).map((item, index) => createPreparedBlock(item, index, template)) },
     { id: 'break', type: 'row', children: [], row: createRow(template, 'break', { personMode: 'none', clubMode: 'fixed', clubZh: '全体参会人员欢聚' }) },
-    { id: 'specialSession', type: 'row', enabled: template.settings.specialSessionEnabled !== false, children: [], row: createRow(template, 'specialSession', { person: createPerson({ clubZh: '', clubEn: '' }) }) },
     { id: 'evaluation', type: 'group', titleZh: '备稿演讲点评', titleEn: 'Prepared Speech Evaluations', transitionPolicy: 'betweenChildren', derived: true, children: [] },
     { id: 'facilitatorReport', type: 'group', titleZh: '会议促进者报告', titleEn: 'Meeting Facilitator Reports', transitionPolicy: 'betweenChildren', children: [
       createRow(template, 'grammarianReport', { person: rolePerson(facts, 'grammarian'), roleKey: 'grammarian' }),
@@ -684,11 +683,19 @@ function normalizeAgenda(value, templateValue) {
     }
     if (section.id === 'opening') {
       section.children = (section.children || []).filter((row) => row.id !== 'openingIcebreaker' || row.dynamic);
-      if (!section.children.some((row) => row.id === 'openingRemarks')) {
+      const openingRemarks = section.children.find((row) => row.id === 'openingRemarks');
+      if (!openingRemarks) {
         section.children.unshift(createOpeningRemarksRow(template, agenda.meetingInfo.language));
+      } else if (openingRemarks.showDuration === false && Number(openingRemarks.duration) === 0) {
+        openingRemarks.duration = 3;
+        openingRemarks.showDuration = true;
       }
     }
+    if (section.id === 'tableTopics') {
+      section.children = (section.children || []).filter((row) => row.id !== 'tableTopicsIcebreaker');
+    }
     if (section.id === 'facilitatorIntroduction') {
+      section.children = (section.children || []).filter((row) => row.moduleKind !== 'icebreaker' || row.dynamic === true);
       const photographer = (section.children || []).find((row) => row.id === 'photographer');
       if (photographer) {
         photographer.duration = 0;
@@ -697,10 +704,7 @@ function normalizeAgenda(value, templateValue) {
       }
     }
   });
-  const special = agenda.sections.find((section) => section.id === 'specialSession');
-  if (special) {
-    special.enabled = template.settings.specialSessionEnabled !== false;
-  }
+  agenda.sections = agenda.sections.filter((section) => section.id !== 'specialSession');
   applyTemplateRules(agenda, template);
   return calculateAgenda(agenda, template);
 }
@@ -816,11 +820,12 @@ function flattenAgendaRows(agendaValue) {
   const rows = [];
   const language = normalizeLanguage(agendaValue && agendaValue.meetingInfo && agendaValue.meetingInfo.language);
   (agendaValue.sections || []).forEach((section) => {
-    if (section.enabled === false || section.languageGate && section.languageGate !== language || section.id === 'specialSession' && !section.dynamic) {
+    if (section.enabled === false || section.languageGate && section.languageGate !== language) {
       return;
     }
     if (section.type === 'row') {
-      rows.push(Object.assign({}, section.row, { startTime: section.startTime, duration: section.duration, isGroup: false }));
+      const isSectionHeading = section.id === 'vote' || section.dynamic === true;
+      rows.push(Object.assign({}, section.row, { startTime: section.startTime, duration: section.duration, isGroup: isSectionHeading }));
       return;
     }
     rows.push({ id: section.id, type: section.type, titleZh: section.titleZh, startTime: section.startTime, duration: section.duration, isGroup: true, personMode: 'none' });
