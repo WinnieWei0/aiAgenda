@@ -6,10 +6,8 @@ Page({
   data: {
     loading: true,
     saving: false,
-    tab: 'page1',
     activeLocale: 'zh',
-    template: agendaUtil.createDefaultTemplate(),
-    textFields: {}
+    template: agendaUtil.createDefaultTemplate()
   },
 
   /**
@@ -26,7 +24,7 @@ Page({
     try {
       const data = await cloud.callCloud('agendaTemplate', { action: 'get' });
       const template = agendaUtil.normalizeTemplate(data.template);
-      this.setData({ template, textFields: this.buildTextFields(template, 'zh'), loading: false });
+      this.setData({ template, loading: false });
     } catch (error) {
       this.setData({ loading: false });
       cloud.showError(error);
@@ -51,22 +49,13 @@ Page({
   },
 
   /**
-   * 方法是什么：切换模板编辑视图。
-   * 方法作用：在第一页固定内容、议程规则和第二页资料之间切换。
-   * 为什么添加：模板字段较多，需要按职责分组避免形成超长混杂表单。
-   */
-  switchTab(event) {
-    this.setData({ tab: event.currentTarget.dataset.tab });
-  },
-
-  /**
    * 方法是什么：切换模板文案语言。
    * 方法作用：在同一模板记录的中文和英文 locale 之间切换编辑状态。
    * 为什么添加：两套文案共用规则和素材，但必须能够分别维护。
    */
   switchLocale(event) {
     const activeLocale = event.currentTarget.dataset.locale === 'en' ? 'en' : 'zh';
-    this.setData({ activeLocale, textFields: this.buildTextFields(this.data.template, activeLocale) });
+    this.setData({ activeLocale });
   },
 
   /**
@@ -78,6 +67,9 @@ Page({
     const template = agendaUtil.cloneJson(this.data.template);
     const group = event.currentTarget.dataset.group;
     const field = event.currentTarget.dataset.field;
+    if (group !== 'fixedContent' || !['venue', 'fees'].includes(field)) {
+      return;
+    }
     const locale = template.locales[this.data.activeLocale];
     locale[group] = locale[group] || {};
     locale[group][field] = event.detail.value;
@@ -159,6 +151,9 @@ Page({
   async replaceAsset(event) {
     try {
       const field = event.currentTarget.dataset.field;
+      if (!['officialQr', 'membershipQr'].includes(field)) {
+        return;
+      }
       const media = await wx.chooseMedia({ count: 1, mediaType: ['image'], sourceType: ['album', 'camera'] });
       const file = media.tempFiles && media.tempFiles[0];
       if (!file) {
@@ -186,7 +181,7 @@ Page({
     try {
       const data = await cloud.callCloud('agendaTemplate', { action: 'save', template: this.data.template });
       const template = agendaUtil.normalizeTemplate(data.template);
-      this.setData({ template, textFields: this.buildTextFields(template, this.data.activeLocale) });
+      this.setData({ template });
       cloud.showSuccess('模板已保存');
       return true;
     } catch (error) {

@@ -32,6 +32,7 @@ function createPerson(value) {
     memberIndex: Number.isFinite(Number(source.memberIndex)) ? Number(source.memberIndex) : -1,
     displayNameZh: source.displayNameZh || rawName,
     displayNameEn: source.displayNameEn || rawName,
+    educationAwards: source.educationAwards || '',
     educationProgress: source.educationProgress || '',
     pathNameZh: source.pathNameZh || '',
     pathNameEn: source.pathNameEn || '',
@@ -480,6 +481,12 @@ function createAgendaFromFacts(factsValue, templateValue) {
     participants: facts.participants || [],
     warnings: facts.warnings || [],
     unresolvedNames: facts.unresolvedNames || [],
+    bestAwards: {
+      preparedSpeech: '',
+      tableTopics: '',
+      role: '',
+      evaluator: ''
+    },
     assets: { meetingGroupQr: template.assets.meetingGroupQr }
   };
   return calculateAgenda(agenda, template);
@@ -667,6 +674,7 @@ function normalizeAgenda(value, templateValue) {
   agenda.templateId = agenda.templateId || template.templateId;
   agenda.meetingInfo = Object.assign({}, createAgendaFromFacts({}, template).meetingInfo, agenda.meetingInfo || {});
   agenda.assets = Object.assign({ meetingGroupQr: template.assets.meetingGroupQr }, agenda.assets || {});
+  agenda.bestAwards = Object.assign({ preparedSpeech: '', tableTopics: '', role: '', evaluator: '' }, agenda.bestAwards || {});
   agenda.warnings = Array.isArray(agenda.warnings) ? agenda.warnings : [];
   agenda.sections.forEach((section) => {
     if (section.row) {

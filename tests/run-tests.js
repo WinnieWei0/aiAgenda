@@ -164,6 +164,7 @@ function testAgendaModel() {
     return [section.id, [section.startTime, section.duration]];
   }));
   assert.strictEqual(agenda.schemaVersion, 2, '应升级为 AgendaV2');
+  assert.deepStrictEqual(agenda.bestAwards, { preparedSpeech: '', tableTopics: '', role: '', evaluator: '' });
   assert.deepStrictEqual(timeMap.venueIntroduction, ['19:30', 2]);
   assert.deepStrictEqual(timeMap.opening, ['19:32', 5]);
   assert.deepStrictEqual(timeMap.facilitatorIntroduction, ['19:37', 11]);
@@ -552,13 +553,31 @@ function testMemberOptionsAndAgendaPayload() {
   assert.deepStrictEqual(sorted.map((member) => member._id), ['1', '2', '3']);
 
   const agenda = agendaUtil.createAgendaFromFacts({ meetingInfo: { theme: '保存测试' } }, agendaUtil.createDefaultTemplate());
+  agenda.bestAwards = { preparedSpeech: '甲', tableTopics: '乙', role: '丙', evaluator: '丁' };
   agenda._id = 'temporary-id';
   agenda.expiresAt = '2026-07-25T00:00:00.000Z';
   const payload = saveAgenda.buildAgendaPayload(agenda, agendaUtil.createDefaultTemplate());
   assert.strictEqual(payload.schemaVersion, 2);
   assert.strictEqual(payload.meetingInfo.theme, '保存测试');
+  assert.deepStrictEqual(payload.bestAwards, { preparedSpeech: '甲', tableTopics: '乙', role: '丙', evaluator: '丁' });
   assert.strictEqual(Object.prototype.hasOwnProperty.call(payload, '_id'), false);
   assert.strictEqual(Object.prototype.hasOwnProperty.call(payload, 'expiresAt'), false);
+
+  const legacyAgenda = agendaUtil.createAgendaFromFacts({
+    rolePeople: { tableTopicsMaster: { rawName: '韦文耐', clubZh: '广州双语' } }
+  }, agendaUtil.createDefaultTemplate());
+  exportAgendaPdf.hydrateAgendaMembers(legacyAgenda, [{
+    _id: 'member-wennai',
+    nameZh: '韦文耐',
+    nameEn: 'Wen Nai',
+    educationAwards: '三冠王',
+    educationProgress: 'MS',
+    pathNameZh: '战略关系',
+    officerTitleZh: '教育副会长',
+    officerTitleEn: 'VPE'
+  }]);
+  const topicsMaster = legacyAgenda.sections.find((section) => section.id === 'tableTopics').children.find((row) => row.id === 'topicExplanation').person;
+  assert.strictEqual(pdfRenderer.formatPersonName(topicsMaster, 'zh'), '韦文耐(三冠王)<教育副会长>', '旧议程姓名应从会员库补齐教育奖项和职位');
 }
 
 /**
@@ -583,13 +602,17 @@ async function testPdfRenderer(agenda) {
  * 为什么添加：导出样式要求移除四个内部竖线及小模块之间的横线。
  */
 function testPdfAgendaLineStyle() {
+  assert.deepStrictEqual(pdfRenderer.resolveSidebarWinners(agendaUtil.resolveTemplateLocale(agendaUtil.createDefaultTemplate(), 'zh'), {
+    bestAwards: { preparedSpeech: '备稿甲', tableTopics: '即兴乙', role: '角色丙', evaluator: '点评丁' }
+  }).map((winner) => winner.value), ['角色丙', '即兴乙', '备稿甲', '点评丁'], '右侧最佳名单应读取当前议程最佳模块');
   assert.strictEqual(pdfRenderer.formatPersonName({
     memberId: 'member-1',
     displayNameZh: '廖凤媚',
+    educationAwards: 'DTM',
     educationProgress: 'PM2',
     pathNameZh: '精通演讲',
-    officerTitleZh: '秘书长'
-  }, 'zh'), '廖凤媚(PM2)<秘书长>');
+    officerTitleZh: '<<秘书长>>'
+  }, 'zh'), '廖凤媚(DTM)<秘书长>');
   assert.strictEqual(pdfRenderer.formatPersonName({ displayNameZh: '外部来宾' }, 'zh'), '外部来宾');
   const rectangles = [];
   const lines = [];
@@ -602,7 +625,7 @@ function testPdfAgendaLineStyle() {
     widthOfTextAtSize(text, size) { return String(text).length * size; }
   };
   const table = pdfRenderer.drawAgendaHeader(page, font, 100, 'zh');
-  assert.deepStrictEqual(table.widths, [26, 153, 68, 98, 75], '时间列应缩窄，限时列应左移并与演讲者增加间距');
+  assert.deepStrictEqual(table.widths, [26, 140, 68, 115, 71], '人员列应加宽并使用统一字号显示完整会员格式');
   assert.strictEqual(rectangles.length, 5);
   assert.ok(rectangles.every((rectangle) => rectangle.borderWidth === 0), '议程表头应由独立线条绘制边界');
   assert.strictEqual(lines.filter((line) => line.start.x === line.end.x).length, 1, '议程表头只应绘制俱乐部右边界');
@@ -635,9 +658,27 @@ function testPdfAgendaLineStyle() {
 
   rectangles.length = 0;
   lines.length = 0;
+  pdfRenderer.drawAgendaRow(page, font, { id: 'preparedSpeech', type: 'group', titleZh: '有准备的演讲环节', pdfSectionStart: true }, table, 128, 'zh');
+  const preparedSectionLines = lines.filter((line) => line.start.y === line.end.y);
+  assert.strictEqual(preparedSectionLines.length, 2, '有准备的演讲环节上下都应绘制横线');
+  assert.strictEqual(preparedSectionLines[1].thickness, 0.25, '有准备的演讲环节下方线条应与其他行一致');
+
+  rectangles.length = 0;
+  lines.length = 0;
   pdfRenderer.drawAgendaRow(page, font, { id: 'prepared-1', type: 'preparedSpeechBlock', titleZh: '备稿演讲标题', pathway: {} }, table, 128, 'zh', 30);
   assert.strictEqual(rectangles.filter((rectangle) => rectangle.color !== undefined).length, 1, '备稿演讲只应在标题区域显示灰色背景');
-  assert.strictEqual(rectangles.find((rectangle) => rectangle.color !== undefined).height, 10, '备稿演讲标题背景高度应固定为 10pt');
+  assert.strictEqual(rectangles.find((rectangle) => rectangle.color !== undefined).height, 10.6, '备稿演讲标题背景应向上覆盖潜在分隔线');
+  assert.strictEqual(lines.filter((line) => line.start.y === line.end.y).length, 0, '备稿演讲标题上方不应绘制横线');
+
+  rectangles.length = 0;
+  lines.length = 0;
+  pdfRenderer.drawAgendaRow(page, font, { id: 'prepared-1', type: 'preparedSpeechBlock', titleZh: '备稿演讲标题', pathway: {}, firstPreparedSpeech: true }, table, 128, 'zh', 30);
+  const firstPreparedTopLine = lines.find((line) => line.start.x === table.x
+    && line.end.x === table.x + table.widths.reduce((sum, width) => sum + width, 0)
+    && line.start.y === pdfRenderer.topY(128, 0)
+    && line.end.y === pdfRenderer.topY(128, 0)
+    && line.thickness === 0.25);
+  assert.ok(firstPreparedTopLine, '第一篇备稿上方必须按普通线宽重画分组底线');
 
   rectangles.length = 0;
   lines.length = 0;

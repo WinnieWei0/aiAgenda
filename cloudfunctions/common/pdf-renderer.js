@@ -274,13 +274,16 @@ function formatPersonName(person, language) {
   if (!person.memberId || !name) {
     return name;
   }
-  const pathway = person.educationProgress || (language === 'en'
-    ? person.pathNameEn || person.pathNameZh
-    : person.pathNameZh || person.pathNameEn);
-  const officerTitle = language === 'en'
+  const educationAwards = String(person.educationAwards || '').trim();
+  const officerTitleValue = language === 'en'
     ? person.officerTitleEn || person.officerTitleZh
     : person.officerTitleZh || person.officerTitleEn;
-  return `${name}${pathway ? `(${pathway})` : ''}${officerTitle ? `<${officerTitle}>` : ''}`;
+  const officerTitle = String(officerTitleValue || '')
+    .trim()
+    .replace(/^[<\uFF1C\u3008\u300A]+/, '')
+    .replace(/[>\uFF1E\u3009\u300B]+$/, '')
+    .trim();
+  return `${name}${educationAwards ? `(${educationAwards})` : ''}${officerTitle ? `<${officerTitle}>` : ''}`;
 }
 
 function getRowPersonName(row, language) {
@@ -385,7 +388,7 @@ function drawFirstPageHeaderFrame(page, agendaTop) {
  */
 function drawAgendaHeader(page, font, y, language, drawRightBoundaryValue) {
   const x = PAGE.margin;
-  const widths = [26, 153, 68, 98, 75];
+  const widths = [26, 140, 68, 115, 71];
   const headerHeight = 13;
   const labels = language === 'en' ? ['', 'Agenda', 'Limit', 'Speaker', 'Club'] : ['', '会议促进者', '限时', '演讲者', '俱乐部'];
   let cursor = x;
@@ -428,19 +431,14 @@ function drawAgendaRow(page, font, row, table, y, language, forcedHeight) {
   const values = [row.startTime || '', [title, projectName].filter(Boolean).join('\n'), duration, getRowPersonName(row, language), getRowClub(row, language)];
   const tableWidth = table.widths.reduce((total, width) => total + width, 0);
   if (row.type === 'preparedSpeechBlock') {
+    const backgroundOverlap = row.firstPreparedSpeech ? 0 : 0.6;
     page.drawRectangle({
       x: table.x,
-      y: topY(y, 10),
+      y: topY(y - backgroundOverlap, 10 + backgroundOverlap),
       width: tableWidth,
-      height: 10,
+      height: 10 + backgroundOverlap,
       color: hexToRgb('#d8d8d8'),
       borderWidth: 0
-    });
-    page.drawLine({
-      start: { x: table.x, y: topY(y, 0) },
-      end: { x: table.x + tableWidth, y: topY(y, 0) },
-      thickness: 0.25,
-      color: BORDER
     });
   }
   if (row.pdfSectionStart) {
@@ -478,6 +476,14 @@ function drawAgendaRow(page, font, row, table, y, language, forcedHeight) {
       verticalAlign: 'middle'
     });
   }
+  if (row.firstPreparedSpeech) {
+    page.drawLine({
+      start: { x: table.x, y: topY(y, 0) },
+      end: { x: table.x + tableWidth, y: topY(y, 0) },
+      thickness: 0.25,
+      color: BORDER
+    });
+  }
   if (row.pdfSectionStart || row.id === 'end') {
     page.drawLine({
       start: { x: table.x, y: topY(y + height, 0) },
@@ -498,7 +504,15 @@ function drawAgendaRow(page, font, row, table, y, language, forcedHeight) {
  * 方法作用：输出上周最佳、价值观、俱乐部介绍和三个二维码。
  * 为什么添加：截图红框外的侧栏属于固定模板，导出时不能继续缺失。
  */
-function drawSidebar(page, font, template, images, y, height, language) {
+function resolveSidebarWinners(template, agenda) {
+  const labels = (template.sidebar && template.sidebar.winners || []).map((winner) => winner.label || '');
+  const awards = Object.assign({ preparedSpeech: '', tableTopics: '', role: '', evaluator: '' }, agenda && agenda.bestAwards || {});
+  const values = [awards.role, awards.tableTopics, awards.preparedSpeech, awards.evaluator];
+  const fallbackLabels = ['Best Meeting Role', 'Best Table Topics', 'Best Prepared', 'Best Evaluator'];
+  return values.map((value, index) => ({ label: labels[index] || fallbackLabels[index], value: value || '' }));
+}
+
+function drawSidebar(page, font, template, agenda, images, y, height, language) {
   const x = PAGE.margin + 420;
   const width = PAGE.width - PAGE.margin - x;
   const headingHeight = 13;
@@ -511,7 +525,7 @@ function drawSidebar(page, font, template, images, y, height, language) {
   };
   drawHeading(y, language === 'en' ? 'Last Meeting Awards' : '上周最佳演讲者', 7.6, false);
   let cursorY = y + headingHeight;
-  (template.sidebar.winners || []).forEach((winner) => {
+  resolveSidebarWinners(template, agenda).forEach((winner) => {
     drawText(page, font, winner.label, x + 4, cursorY + 3, { width: 65, height: 13, fontSize: 6.2 });
     drawText(page, font, winner.value, x + 70, cursorY + 3, { width: width - 74, height: 13, fontSize: 6.2 });
     cursorY += 19;
@@ -572,9 +586,17 @@ function drawTimerRules(page, font, template, language) {
 function drawAgendaPages(pdfDoc, font, template, agenda, images) {
   const language = agendaModel.normalizeLanguage(agenda.meetingInfo && agenda.meetingInfo.language);
   const sectionStartIds = new Set((agenda.sections || []).map((section) => section.type === 'row' && section.row ? section.row.id : section.id));
-  const rows = agendaModel.flattenAgendaRows(agenda).map((row) => Object.assign({}, row, {
-    pdfSectionStart: sectionStartIds.has(row.id)
-  }));
+  let preparedSpeechSeen = false;
+  const rows = agendaModel.flattenAgendaRows(agenda).map((row) => {
+    const firstPreparedSpeech = row.type === 'preparedSpeechBlock' && !preparedSpeechSeen;
+    if (row.type === 'preparedSpeechBlock') {
+      preparedSpeechSeen = true;
+    }
+    return Object.assign({}, row, {
+      firstPreparedSpeech,
+      pdfSectionStart: row.type !== 'preparedSpeechBlock' && sectionStartIds.has(row.id)
+    });
+  });
   const firstPage = pdfDoc.addPage([PAGE.width, PAGE.height]);
   drawFirstPageHeader(firstPage, font, template, agenda, images, language);
   let page = firstPage;
@@ -583,7 +605,7 @@ function drawAgendaPages(pdfDoc, font, template, agenda, images) {
   let y = agendaTop;
   let table = drawAgendaHeader(page, font, y, language, false);
   y += table.height;
-  drawSidebar(firstPage, font, template, images, agendaTop, agendaBottom - agendaTop, language);
+  drawSidebar(firstPage, font, template, agenda, images, agendaTop, agendaBottom - agendaTop, language);
   const sharedBoundaryX = PAGE.margin + table.widths.reduce((sum, width) => sum + width, 0);
   const baseHeights = rows.map((row) => getAgendaRowHeight(row, language));
   const availableFirstPageHeight = agendaBottom - y;
@@ -770,6 +792,7 @@ module.exports = {
   drawFirstPageHeader,
   drawAgendaHeader,
   drawAgendaRow,
+  resolveSidebarWinners,
   drawSidebar,
   drawTimerRules,
   drawAgendaPages,

@@ -110,6 +110,107 @@ async function hydrateAssetBuffers(template, agenda) {
 }
 
 /**
+ * 方法是什么：使用会员库记录补齐议程中的人员信息。
+ * 方法作用：按会员 ID 或姓名恢复教育进度、职位及广州双语俱乐部字段。
+ * 为什么添加：旧草稿可能只保存姓名，PDF 导出仍必须显示完整会员格式。
+ */
+function hydrateAgendaMembers(agenda, memberships) {
+  const members = memberships || [];
+  const memberById = new Map(members.map((member) => [String(member._id || member.id || ''), member]));
+  const hydratePerson = (person) => {
+    if (!person) {
+      return;
+    }
+    const memberId = String(person.memberId || '');
+    const rawName = person.rawName || person.displayNameZh || person.displayNameEn || '';
+    const nameMatch = rawName ? common.parser.matchMemberByName(rawName, members) : {};
+    const member = memberById.get(memberId) || (nameMatch.matched ? nameMatch.member : null);
+    if (!member) {
+      return;
+    }
+    Object.assign(person, {
+      memberId: member._id || member.id || person.memberId || '',
+      displayNameZh: member.nameZh || person.displayNameZh || rawName,
+      displayNameEn: member.nameEn || person.displayNameEn || rawName,
+      educationAwards: member.educationAwards || '',
+      educationProgress: member.educationProgress || '',
+      pathNameZh: member.pathNameZh || '',
+      pathNameEn: member.pathNameEn || '',
+      officerTitleZh: member.officerTitleZh || '',
+      officerTitleEn: member.officerTitleEn || '',
+      clubZh: '广州双语',
+      clubEn: 'Bilingual',
+      unresolved: false
+    });
+  };
+  (agenda.sections || []).forEach((section) => {
+    const rows = section.type === 'row' ? [section.row] : section.children || [];
+    rows.filter(Boolean).forEach((row) => {
+      hydratePerson(row.person);
+      hydratePerson(row.speaker);
+      hydratePerson(row.evaluator);
+      (row.persons || []).forEach(hydratePerson);
+    });
+  });
+  return agenda;
+}
+
+async function hydrateAgendaMembersFromDb(agenda) {
+  const res = await common.getDb().collection('memberships').limit(100).get();
+  return hydrateAgendaMembers(agenda, res.data || []);
+}
+
+/**
+ * 方法是什么：使用会员库记录补齐议程中的人员信息。
+ * 方法作用：按会员 ID 或姓名恢复教育进度、职位及广州双语俱乐部字段。
+ * 为什么添加：旧草稿可能只保存姓名，PDF 导出仍必须显示完整会员格式。
+ */
+function hydrateAgendaMembers(agenda, memberships) {
+  const members = memberships || [];
+  const memberById = new Map(members.map((member) => [String(member._id || member.id || ''), member]));
+  const hydratePerson = (person) => {
+    if (!person) {
+      return;
+    }
+    const memberId = String(person.memberId || '');
+    const rawName = person.rawName || person.displayNameZh || person.displayNameEn || '';
+    const matched = memberById.get(memberId) || (rawName && common.parser.matchMemberByName(rawName, members).member);
+    if (!matched) {
+      return;
+    }
+    Object.assign(person, {
+      memberId: matched._id || matched.id || person.memberId || '',
+      displayNameZh: matched.nameZh || person.displayNameZh || rawName,
+      displayNameEn: matched.nameEn || person.displayNameEn || rawName,
+      educationAwards: matched.educationAwards || '',
+      educationProgress: matched.educationProgress || '',
+      pathNameZh: matched.pathNameZh || '',
+      pathNameEn: matched.pathNameEn || '',
+      officerTitleZh: matched.officerTitleZh || '',
+      officerTitleEn: matched.officerTitleEn || '',
+      clubZh: '广州双语',
+      clubEn: 'Bilingual',
+      unresolved: false
+    });
+  };
+  (agenda.sections || []).forEach((section) => {
+    const rows = section.type === 'row' ? [section.row] : section.children || [];
+    rows.filter(Boolean).forEach((row) => {
+      hydratePerson(row.person);
+      hydratePerson(row.speaker);
+      hydratePerson(row.evaluator);
+      (row.persons || []).forEach(hydratePerson);
+    });
+  });
+  return agenda;
+}
+
+async function hydrateAgendaMembersFromDb(agenda) {
+  const res = await common.getDb().collection('memberships').limit(100).get();
+  return hydrateAgendaMembers(agenda, res.data || []);
+}
+
+/**
  * 方法是什么：处理议程 PDF 导出云函数请求。
  * 方法作用：读取议程、生成中/英文 PDF、上传云存储并返回文件 ID。
  * 为什么添加：PDF 生成需要服务端能力，小程序端只负责触发和预览结果。
@@ -134,6 +235,7 @@ async function main(event) {
     }
     const language = common.agendaModel.normalizeLanguage(agenda.meetingInfo && agenda.meetingInfo.language);
     const template = common.agendaModel.resolveTemplateLocale(await common.getAgendaTemplate(), language);
+    await hydrateAgendaMembersFromDb(agenda);
     await hydrateAssetBuffers(template, agenda);
     const buffer = await common.pdfRenderer.renderAgendaPdf(agenda, language, template);
     const fileName = buildPdfFileName();
@@ -148,3 +250,5 @@ async function main(event) {
 exports.main = main;
 exports.saveExportRecord = saveExportRecord;
 exports.buildPdfFileName = buildPdfFileName;
+exports.hydrateAgendaMembers = hydrateAgendaMembers;
+exports.hydrateAgendaMembers = hydrateAgendaMembers;

@@ -272,6 +272,7 @@ Page({
     if (person.memberIndex >= 0) {
       const member = this.data.memberOptions[person.memberIndex].member;
       Object.assign(person, {
+        educationAwards: member.educationAwards || '',
         educationProgress: member.educationProgress || '',
         pathNameZh: member.pathNameZh || '',
         pathNameEn: member.pathNameEn || '',
@@ -342,6 +343,22 @@ Page({
     }
     const agenda = agendaUtil.cloneJson(this.data.agenda);
     agenda.meetingInfo[field] = event.detail.value;
+    this.setAgenda(agenda);
+  },
+
+  /**
+   * 方法是什么：修改本期会议最佳结果。
+   * 方法作用：保存最佳备稿、即兴、角色和点评四项文本。
+   * 为什么添加：会议结果需要随议程草稿一并保存，供后续流程使用。
+   */
+  handleBestAwardInput(event) {
+    const field = event.currentTarget.dataset.field;
+    if (!['preparedSpeech', 'tableTopics', 'role', 'evaluator'].includes(field)) {
+      return;
+    }
+    const agenda = agendaUtil.cloneJson(this.data.agenda);
+    agenda.bestAwards = Object.assign({ preparedSpeech: '', tableTopics: '', role: '', evaluator: '' }, agenda.bestAwards || {});
+    agenda.bestAwards[field] = event.detail.value;
     this.setAgenda(agenda);
   },
 
@@ -431,6 +448,7 @@ Page({
       memberId: member._id,
       displayNameZh: member.nameZh || member.nameEn || '',
       displayNameEn: member.nameEn || member.nameZh || '',
+      educationAwards: member.educationAwards || '',
       educationProgress: member.educationProgress || '',
       pathNameZh: member.pathNameZh || '',
       pathNameEn: member.pathNameEn || '',

@@ -75,6 +75,16 @@
     </view>
   </block>
 
+  <view class="panel best-awards-panel">
+    <view class="panel-title">最佳模块</view>
+    <view class="field-grid">
+      <label class="field"><text>最佳备稿演讲</text><input value="{{agenda.bestAwards.preparedSpeech}}" placeholder="请输入" data-field="preparedSpeech" bindinput="handleBestAwardInput" /></label>
+      <label class="field"><text>最佳即兴演讲</text><input value="{{agenda.bestAwards.tableTopics}}" placeholder="请输入" data-field="tableTopics" bindinput="handleBestAwardInput" /></label>
+      <label class="field"><text>最佳角色</text><input value="{{agenda.bestAwards.role}}" placeholder="请输入" data-field="role" bindinput="handleBestAwardInput" /></label>
+      <label class="field"><text>最佳点评</text><input value="{{agenda.bestAwards.evaluator}}" placeholder="请输入" data-field="evaluator" bindinput="handleBestAwardInput" /></label>
+    </view>
+  </view>
+
   <view wx:if="{{addModuleOptions.length}}" class="panel add-module-panel"><text class="panel-title">新增模块</text><picker range="{{addModuleLabels}}" bindchange="addDynamicModule"><view class="add-module-picker">选择要新增的模块<text class="picker-arrow">⌄</text></view></picker></view>
 
   <view class="panel qr-panel"><text class="panel-title">例会群二维码</text><button size="mini" bindtap="chooseMeetingGroupQr">替换图片</button></view>
