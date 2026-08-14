@@ -10,6 +10,8 @@ const agendaQuery = require('../cloudfunctions/agendaQuery');
 const common = require('../cloudfunctions/common');
 const lookupOptions = require('../cloudfunctions/lookupOptions');
 const saveAgenda = require('../cloudfunctions/saveAgenda');
+const signupModel = require('../cloudfunctions/common/signup');
+const signupService = require('../cloudfunctions/signupService');
 const exportAgendaPdf = require('../cloudfunctions/exportAgendaPdf');
 const { PDFDocument } = require('../cloudfunctions/common/node_modules/pdf-lib');
 
@@ -205,6 +207,35 @@ function testPreparedSpeechRules() {
   agendaUtil.calculateAgenda(agenda, template);
   assert.strictEqual(evaluation.children.length, 1);
   assert.strictEqual(evaluation.children[0].person.rawName, '点评乙');
+}
+
+function testSignupRoleSlots() {
+  let agenda = agendaUtil.createAgendaFromFacts({
+    rolePeople: { toastmaster: { rawName: '预设主持人' } },
+    preparedSpeeches: [{ id: 'speech-one' }, { id: 'speech-two' }]
+  }, agendaUtil.createDefaultTemplate());
+  agenda = agendaUtil.addDynamicModule(agenda, 'icebreaker');
+  agenda = agendaUtil.addDynamicModule(agenda, 'workshop');
+  const slots = signupModel.buildRoleSlots(agenda);
+  assert.strictEqual(slots.length, 16, '应生成10个固定角色、4个备稿槽位和2个动态角色');
+  assert.strictEqual(slots.find((slot) => slot.id === 'role:toastmaster').preset, true);
+  assert.ok(slots.some((slot) => slot.id === 'prepared:speech-two:evaluator'));
+  assert.ok(slots.some((slot) => slot.roleKey === 'icebreaker'));
+  assert.ok(slots.some((slot) => slot.roleKey === 'workshop'));
+  const timer = slots.find((slot) => slot.id === 'role:timer');
+  const updated = signupModel.writeSlotPerson(agenda, timer, { name: '时间官甲', personType: 'guest', club: '宾客' });
+  const timerRows = [];
+  updated.sections.forEach((section) => (section.children || []).forEach((row) => { if (row.roleKey === 'timer') timerRows.push(row); }));
+  assert.strictEqual(timerRows.length, 2, '时间官介绍与报告应共享角色');
+  assert.ok(timerRows.every((row) => row.person.rawName === '时间官甲'));
+}
+
+function testSignupProfiles() {
+  const member = { _id: 'member-1', nameZh: '会员甲', nameEn: 'Member A', educationAwards: 'PM2' };
+  assert.strictEqual(signupService.profileFromEvent({ personType: 'member' }, member).memberId, 'member-1');
+  assert.strictEqual(signupService.profileFromEvent({ personType: 'club', name: '友会甲', club: '友会俱乐部' }).club, '友会俱乐部');
+  assert.strictEqual(signupService.profileFromEvent({ personType: 'guest', name: '宾客甲' }).club, '宾客');
+  assert.throws(() => signupService.profileFromEvent({ personType: 'club', name: '无俱乐部' }), /姓名和俱乐部/);
 }
 
 /**
@@ -473,18 +504,6 @@ function testEmptyRolePlaceholders() {
 }
 
 /**
- * 方法是什么：测试议程草稿过期判断。
- * 方法作用：验证七天前、无日期和未来日期的处理。
- * 为什么添加：草稿生命周期是数据库保存契约的一部分。
- */
-function testDraftExpiry() {
-  const now = new Date('2026-07-14T00:00:00.000Z');
-  assert.strictEqual(agendaQuery.isExpired({ expiresAt: '2026-07-13T00:00:00.000Z' }, now), true);
-  assert.strictEqual(agendaQuery.isExpired({ expiresAt: '2026-07-15T00:00:00.000Z' }, now), false);
-  assert.strictEqual(agendaQuery.isExpired({}, now), true);
-}
-
-/**
  * 方法是什么：测试集合不存在错误识别。
  * 方法作用：覆盖 CloudBase 数字错误码和文本错误两种返回形式。
  * 为什么添加：新环境必须自动创建 agenda_templates 和 agendas，而不是首次读取直接失败。
@@ -747,13 +766,14 @@ async function main() {
   const agenda = testRuleParser();
   testAgendaModel();
   testPreparedSpeechRules();
+  testSignupRoleSlots();
+  testSignupProfiles();
   testAgendaPreviewValidation();
   testTemplateAndLegacyUpgrade();
   testLocalizedTemplateAndAnchors();
   testDynamicAgendaModules();
   testMeetingLanguageDetection();
   testEmptyRolePlaceholders();
-  testDraftExpiry();
   testCollectionMissingError();
   testPdfExportFileName();
   testMemberOptionsAndAgendaPayload();

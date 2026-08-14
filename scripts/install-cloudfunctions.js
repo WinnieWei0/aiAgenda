@@ -70,7 +70,7 @@ function refreshLocalDependencies(dir) {
     }
     fs.rmSync(target, { recursive: true, force: true });
     const includePdfFiles = path.basename(dir) === 'exportAgendaPdf';
-    const entries = ['index.js', 'parser.js', 'deepseek.js', 'agenda-model.js', 'package.json'];
+    const entries = ['index.js', 'parser.js', 'deepseek.js', 'agenda-model.js', 'signup.js', 'package.json'];
     if (includePdfFiles) {
       entries.push('pdf-renderer.js', 'fonts', 'assets');
     }

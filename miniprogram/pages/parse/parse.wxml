@@ -1,5 +1,10 @@
-<view class="page parse-page">
-  <textarea class="parse-input" value="{{rawText}}" maxlength="-1" placeholder="请粘贴接龙文本" bindinput="handleRawTextInput" />
-  <button class="parse-button" type="primary" loading="{{parsing}}" bindtap="parseAgenda">解析议程表</button>
-  <button wx:if="{{agenda}}" class="edit-button" bindtap="goEditor">编辑接龙</button>
+<view class="page agenda-home">
+  <view class="summary" wx:if="{{agenda}}">
+    <text class="summary-title">第 {{agenda.meetingInfo.meetingNo || '--'}} 期</text>
+    <text>{{agenda.meetingInfo.date || '日期待填写'}} · {{agenda.meetingInfo.theme || '主题待填写'}}</text>
+  </view>
+  <view class="summary empty" wx:else><text class="summary-title">尚未创建当前会议</text><text>从编辑接龙开始设置本期议程</text></view>
+  <button class="primary" loading="{{loading}}" bindtap="goEditor">编辑接龙</button>
+  <button loading="{{creatingSignup}}" bindtap="goSignup">报名页</button>
+  <button bindtap="goTemplate">修改议程表模板</button>
 </view>

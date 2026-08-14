@@ -20,7 +20,8 @@ Page({
     addModuleLabels: [],
     validationDialogVisible: false,
     validationErrors: [],
-    validationRemaining: 0
+    validationRemaining: 0,
+    signupData: null
   },
 
   /**
@@ -46,7 +47,7 @@ Page({
    * 方法作用：从首页切换模拟超管后返回编辑器时重新装饰权限。
    * 为什么添加：页面栈保留期间全局模拟身份可能发生变化。
    */
-  onShow() {
+  async onShow() {
     if (this.data.previewing) {
       this.setData({ previewing: false });
     }
@@ -54,6 +55,21 @@ Page({
     if (isSuperAdmin !== this.data.isSuperAdmin) {
       this.setData({ isSuperAdmin });
       this.setAgenda(this.data.agenda);
+    }
+    if (this.data.agenda && this.data.agenda.signupPublicId) {
+      if (this.data.agenda._id) {
+        await this.loadAgendaById(this.data.agenda._id);
+      }
+      await this.loadSignupData();
+    }
+  },
+
+  async loadSignupData() {
+    try {
+      const signupData = await cloud.callCloud('signupService', { action: 'get', publicId: this.data.agenda.signupPublicId });
+      this.setData({ signupData });
+    } catch (error) {
+      this.setData({ signupData: null });
     }
   },
 
@@ -128,7 +144,7 @@ Page({
 
   /**
    * 方法是什么：读取当前用户草稿。
-   * 方法作用：在应用重启或全局状态缺失时恢复七天内的 AgendaV2。
+   * 方法作用：在应用重启或全局状态缺失时恢复当前 AgendaV2。
    * 为什么添加：编辑流程不能依赖解析页始终留在页面栈中。
    */
   async loadCurrentAgenda() {
@@ -550,10 +566,14 @@ Page({
    * 方法作用：移除整组演讲数据并自动删除对应派生点评。
    * 为什么添加：报名取消时不能遗留孤立的点评行。
    */
-  deletePreparedBlock(event) {
+  async deletePreparedBlock(event) {
     const agenda = agendaUtil.cloneJson(this.data.agenda);
     const section = agenda.sections.find((item) => item.id === 'preparedSpeech');
-    section.children.splice(Number(event.currentTarget.dataset.childIndex), 1);
+    const index = Number(event.currentTarget.dataset.childIndex);
+    const block = section.children[index];
+    const slotIds = block ? [`prepared:${block.id}:speaker`, `prepared:${block.id}:evaluator`] : [];
+    if (!(await this.confirmAndCancelSlots(slotIds, '该备稿已有报名，删除后将同时取消演讲者和点评师报名。确认删除吗？'))) return;
+    section.children.splice(index, 1);
     this.setAgenda(agenda);
   },
 
@@ -575,7 +595,7 @@ Page({
    * 方法作用：支持删除顶层动态模块或会议促进者介绍中的动态破冰。
    * 为什么添加：动态模块必须可撤销且删除后重新出现在新增菜单中。
    */
-  deleteDynamicModule(event) {
+  async deleteDynamicModule(event) {
     const agenda = agendaUtil.cloneJson(this.data.agenda);
     const dataset = event.currentTarget.dataset;
     const section = agenda.sections[Number(dataset.sectionIndex)];
@@ -585,12 +605,29 @@ Page({
     if (dataset.childIndex !== undefined && dataset.childIndex !== '') {
       const child = section.children[Number(dataset.childIndex)];
       if (child && child.dynamic) {
+        if (!(await this.confirmAndCancelSlots([`dynamic:${child.id}`], '该模块已有报名，删除后将同时取消报名。确认删除吗？'))) return;
         section.children.splice(Number(dataset.childIndex), 1);
       }
     } else if (section.dynamic && section.deletable) {
+      if (!(await this.confirmAndCancelSlots([`dynamic:${section.row && section.row.id}`], '该模块已有报名，删除后将同时取消报名。确认删除吗？'))) return;
       agenda.sections.splice(Number(dataset.sectionIndex), 1);
     }
     this.setAgenda(agenda);
+  },
+
+  async confirmAndCancelSlots(slotIds, message) {
+    if (!this.data.signupData || !this.data.agenda.signupPublicId) return true;
+    const occupied = (this.data.signupData.slots || []).filter((slot) => slotIds.includes(slot.id) && slot.occupied);
+    if (!occupied.length) return true;
+    const confirmed = await new Promise((resolve) => wx.showModal({ title: '确认删除', content: message, confirmColor: '#b91c1c', success: (res) => resolve(Boolean(res.confirm)), fail: () => resolve(false) }));
+    if (!confirmed) return false;
+    try {
+      for (const slot of occupied) {
+        await cloud.callCloud('signupService', { action: 'cancelSlot', publicId: this.data.agenda.signupPublicId, slotId: slot.id });
+      }
+      await this.loadSignupData();
+      return true;
+    } catch (error) { cloud.showError(error); return false; }
   },
 
   /**
@@ -640,7 +677,7 @@ Page({
 
   /**
    * 方法是什么：保存 AgendaV2 草稿。
-   * 方法作用：提交服务端规范化结果并保持原七天过期时间。
+   * 方法作用：提交服务端规范化结果并同步现有报名槽位。
    * 为什么添加：预览和 PDF 必须使用数据库中的最新议程。
    */
   async saveAgenda(options) {
@@ -654,7 +691,8 @@ Page({
       app.setCurrentAgenda(savedAgenda);
       this.setData({
         'agenda._id': savedAgenda._id || '',
-        'agenda.expiresAt': savedAgenda.expiresAt || ''
+        'agenda.signupPublicId': savedAgenda.signupPublicId || '',
+        'agenda.signupSlots': savedAgenda.signupSlots || []
       });
       if (!(options && options.silent)) {
         cloud.showSuccess('已保存');
@@ -669,6 +707,43 @@ Page({
       }
     }
   },
+
+  async openSignupPage() {
+    const agenda = await this.saveAgenda({ silent: true });
+    if (!agenda) return;
+    try {
+      const data = await cloud.callCloud('signupService', { action: 'create', agendaId: agenda._id });
+      this.setData({ signupData: data, 'agenda.signupPublicId': data.publicId, 'agenda.signupSlots': data.slots });
+      wx.navigateTo({ url: `/pages/signup/signup?publicId=${data.publicId}` });
+    } catch (error) { cloud.showError(error); }
+  },
+
+  cancelManagedSlot(event) {
+    const slotId = event.currentTarget.dataset.slotId;
+    wx.showModal({ title: '取消角色', content: '确认清空该角色报名并释放名额吗？', success: async (res) => {
+      if (!res.confirm) return;
+      try {
+        const data = await cloud.callCloud('signupService', { action: 'cancelSlot', publicId: this.data.agenda.signupPublicId, slotId });
+        this.setData({ signupData: data });
+        await this.loadAgendaById(this.data.agenda._id);
+        cloud.showSuccess('已取消');
+      } catch (error) { cloud.showError(error); }
+    } });
+  },
+
+  resetMeeting() {
+    wx.showModal({ title: '重置当前会议', content: '将清空本期议程和全部报名，原报名链接立即失效。此操作不可撤销。', confirmColor: '#b91c1c', success: async (res) => {
+      if (!res.confirm) return;
+      try {
+        const data = await cloud.callCloud('signupService', { action: 'reset', agendaId: this.data.agenda._id });
+        this.setData({ signupData: null });
+        this.setAgenda(data.agenda);
+        cloud.showSuccess('会议已重置');
+      } catch (error) { cloud.showError(error); }
+    } });
+  },
+
+  noop() {},
 
   /**
    * 方法是什么：先保存议程，再执行 PDF 预览流程。

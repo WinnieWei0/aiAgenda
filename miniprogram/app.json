@@ -10,6 +10,7 @@
     "pages/roles/list/list",
     "pages/roles/edit/edit",
     "pages/editor/editor",
+    "pages/signup/signup",
     "pages/template-preview/template-preview",
     "pages/template-editor/template-editor",
     "pages/history/history",
@@ -35,7 +36,7 @@
       },
       {
         "pagePath": "pages/parse/parse",
-        "text": "解析议程表",
+        "text": "议程表",
         "iconPath": "images/tabbar/parse.png",
         "selectedIconPath": "images/tabbar/parse-active.png"
       }

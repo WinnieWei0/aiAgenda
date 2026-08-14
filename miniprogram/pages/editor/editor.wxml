@@ -9,6 +9,13 @@
     </view>
   </view>
 
+  <view class="panel signup-manage-panel">
+    <view class="panel-title">角色报名</view>
+    <button class="signup-entry" bindtap="openSignupPage">{{agenda.signupPublicId ? '打开报名页' : '创建报名页'}}</button>
+    <view wx:if="{{signupData}}" class="signup-summary">剩余 {{signupData.remainingRoles}} 个角色 · {{signupData.attendeeCount}} 人参会</view>
+    <view wx:if="{{signupData}}" class="signup-slots"><view wx:for="{{signupData.slots}}" wx:key="id" class="signup-slot"><text>{{item.label}}</text><text class="slot-person">{{item.occupied ? (item.person.displayNameZh || item.person.rawName || '已占用') : '待报名'}}</text><button wx:if="{{item.occupied}}" size="mini" data-slot-id="{{item.id}}" bindtap="cancelManagedSlot">取消</button></view></view>
+  </view>
+
   <view class="mode-note {{isSuperAdmin ? 'admin' : ''}}">
     当前身份：{{isSuperAdmin ? '模拟超管' : '普通会员'}}
   </view>
@@ -88,7 +95,7 @@
   <view wx:if="{{addModuleOptions.length}}" class="panel add-module-panel"><text class="panel-title">新增模块</text><picker range="{{addModuleLabels}}" bindchange="addDynamicModule"><view class="add-module-picker">选择要新增的模块<text class="picker-arrow">⌄</text></view></picker></view>
 
   <view class="panel qr-panel"><text class="panel-title">例会群二维码</text><button size="mini" bindtap="chooseMeetingGroupQr">替换图片</button></view>
-  <view class="bottom-actions"><button disabled="{{saving || previewing}}" bindtap="saveAgenda">{{saving ? '保存中...' : '保存草稿'}}</button><button class="preview-button" disabled="{{saving || previewing}}" bindtap="goPreview">{{previewing ? '生成中...' : '预览'}}</button></view>
+  <view class="bottom-actions"><button disabled="{{saving || previewing}}" bindtap="saveAgenda">{{saving ? '保存中...' : '保存草稿'}}</button><button class="preview-button" disabled="{{saving || previewing}}" bindtap="goPreview">{{previewing ? '生成中...' : '预览'}}</button><button class="reset-button" bindtap="resetMeeting">重置当前会议</button></view>
 
   <view wx:if="{{validationDialogVisible}}" class="validation-mask">
     <view class="validation-dialog">

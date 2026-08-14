@@ -2,6 +2,7 @@ const cloud = require('wx-server-sdk');
 const parser = require('./parser');
 const deepseek = require('./deepseek');
 const agendaModel = require('./agenda-model');
+const signup = require('./signup');
 
 let cloudInitialized = false;
 const ensuredCollections = new Set();
@@ -308,6 +309,7 @@ const commonExports = {
   parser,
   deepseek,
   agendaModel,
+  signup,
   initCloud,
   getDb,
   isCollectionMissingError,

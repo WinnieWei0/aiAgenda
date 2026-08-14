@@ -1,16 +1,6 @@
 const common = require('agenda-common');
 
 /**
- * 方法是什么：判断议程草稿是否过期。
- * 方法作用：比较草稿的 expiresAt 与当前时间。
- * 为什么添加：读取和导出都必须阻止访问超过七天的数据。
- */
-function isExpired(record, now) {
-  const expiry = record && record.expiresAt ? new Date(record.expiresAt).getTime() : NaN;
-  return Boolean(!Number.isFinite(expiry) || expiry <= now.getTime());
-}
-
-/**
  * 方法是什么：转换数据库议程记录。
  * 方法作用：兼容新 JSON 草稿和旧平面文档并补回文档 ID。
  * 为什么添加：升级期间已有数据仍需要能够打开。
@@ -20,7 +10,12 @@ function hydrateRecord(record) {
     return null;
   }
   const agenda = record.agenda || record;
-  return Object.assign({}, agenda, { _id: record._id, expiresAt: record.expiresAt });
+  return Object.assign({}, agenda, {
+    _id: record._id,
+    signupPublicId: record.signupPublicId || '',
+    signupSlots: record.signupSlots || [],
+    signupVersion: Number(record.signupVersion || 0)
+  });
 }
 
 /**
@@ -34,10 +29,6 @@ async function getCurrentDraft(openid) {
   const records = (result.data || []).sort((left, right) => String(right.updatedAt || '').localeCompare(String(left.updatedAt || '')));
   const record = records.length ? records[0] : null;
   if (!record) {
-    return null;
-  }
-  if (isExpired(record, new Date())) {
-    await collection.doc(record._id).remove();
     return null;
   }
   for (const duplicate of records.slice(1)) {
@@ -55,7 +46,7 @@ async function getAgenda(openid, agendaId) {
   const collection = await common.ensureCollection('agendas');
   const result = await collection.doc(agendaId).get();
   const record = result.data;
-  if (!record || isExpired(record, new Date())) {
+  if (!record) {
     const notFound = new Error('议程不存在或已过期');
     notFound.code = 'AGENDA_NOT_FOUND';
     throw notFound;
@@ -78,9 +69,7 @@ async function listAgendas(openid) {
   const result = await collection.where({ ownerOpenid: openid }).limit(20).get();
   const list = [];
   for (const record of result.data || []) {
-    if (!isExpired(record, new Date())) {
-      list.push(hydrateRecord(record));
-    }
+    list.push(hydrateRecord(record));
   }
   return list;
 }
@@ -110,5 +99,5 @@ async function main(event) {
   }
 }
 
-module.exports = { isExpired, hydrateRecord, getCurrentDraft, getAgenda, main };
+module.exports = { hydrateRecord, getCurrentDraft, getAgenda, main };
 exports.main = main;
