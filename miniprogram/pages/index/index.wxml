@@ -1,5 +1,5 @@
 <view class="page home-page">
-  <button class="home-button secondary-button" bindtap="openTimer">时间牌</button>
+  <button class="home-button secondary-button" disabled>时间牌</button>
   <button wx:if="{{isAdmin}}" class="home-button secondary-button" bindtap="openMembersList">会员列表</button>
   <button wx:if="{{isAdmin}}" class="home-button secondary-button" bindtap="openPathwaysList">路径列表</button>
   <button wx:if="{{isAdmin}}" class="home-button invite-button" bindtap="openMembershipInvite">邀请绑定</button>
