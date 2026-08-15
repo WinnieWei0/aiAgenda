@@ -86,6 +86,7 @@ async function main(event) {
     common.initCloud();
     const action = event && event.action ? event.action : 'list';
     const db = common.getDb();
+    await common.requireAdmin(common.getOpenid());
     if (action === 'list') {
       return common.ok(await common.listCollection('pathways', Object.assign({}, event || {}, { orderBy: 'code', order: 'asc' })));
     }

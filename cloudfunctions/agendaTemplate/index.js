@@ -28,6 +28,7 @@ async function main(event) {
       return common.ok({ template: await common.getAgendaTemplate() });
     }
     if (action === 'save') {
+      await common.requireAdmin(common.getOpenid());
       return common.ok({ template: await common.saveAgendaTemplate(event.template || {}) });
     }
     if (action === 'resolve') {

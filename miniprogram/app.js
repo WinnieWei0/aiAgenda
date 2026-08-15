@@ -3,8 +3,7 @@ App({
     envId: 'ai-agenda-d1gxlfuz6843bbed0',
     user: null,
     roles: [],
-    canClaimAdmin: false,
-    isSuperAdminMode: false,
+    identity: { role: 'guest', roleLabel: '宾客', name: '', membership: null },
     currentAgenda: null
   },
 
@@ -52,7 +51,7 @@ App({
       if (res.result && res.result.ok) {
         this.globalData.user = res.result.data.user;
         this.globalData.roles = res.result.data.roles || [];
-        this.globalData.canClaimAdmin = Boolean(res.result.data.canClaimAdmin);
+        this.globalData.identity = res.result.data.identity || { role: 'guest', roleLabel: '宾客', name: '', membership: null };
       }
     } catch (error) {
       console.warn('登录失败', error);
@@ -65,26 +64,8 @@ App({
    * 为什么添加：多个页面都需要根据管理员身份展示或隐藏管理能力。
    */
   isAdmin() {
-    return this.globalData.roles.indexOf('admin') >= 0;
-  },
-
-  /**
-   * 方法是什么：切换模拟超管模式。
-   * 方法作用：在当前小程序运行期间切换普通会员与模板超管界面。
-   * 为什么添加：本期明确只需要前端模拟身份，不做角色授权或持久化。
-   */
-  toggleSuperAdminMode() {
-    this.globalData.isSuperAdminMode = !this.globalData.isSuperAdminMode;
-    return this.globalData.isSuperAdminMode;
-  },
-
-  /**
-   * 方法是什么：判断是否处于模拟超管模式。
-   * 方法作用：供首页、编辑器和模板页面统一控制可编辑字段。
-   * 为什么添加：模拟状态不能继续复用数据库中的 admin 角色。
-   */
-  isSuperAdminMode() {
-    return Boolean(this.globalData.isSuperAdminMode);
+    const role = this.globalData.identity && this.globalData.identity.role;
+    return role === 'super_admin' || role === 'admin';
   },
 
   /**

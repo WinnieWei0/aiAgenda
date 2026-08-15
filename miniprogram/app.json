@@ -10,6 +10,7 @@
     "pages/roles/list/list",
     "pages/roles/edit/edit",
     "pages/editor/editor",
+    "pages/membership-invite/membership-invite",
     "pages/signup/signup",
     "pages/template-preview/template-preview",
     "pages/template-editor/template-editor",

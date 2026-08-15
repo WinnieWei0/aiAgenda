@@ -26,7 +26,7 @@ const MEMBER_FIELDS = [
   'birthday', 'competitionEligible', 'educationAwards', 'educationProgress',
   'educationProgressUpdatedAt', 'email', 'isMentor', 'joinedAt', 'menteeCount',
   'mentorName', 'nameEn', 'nameZh', 'nickName', 'notes', 'officerTitleEn',
-  'officerTitleZh', 'pathNameEn', 'pathNameZh', 'phone', 'quarter', 'status'
+  'officerTitleZh', 'pathNameEn', 'pathNameZh', 'phone', 'quarter', 'status', 'role'
 ];
 const LEGACY_FIELDS = ['clubEn', 'clubZh', 'rawRow', 'sourceKey', 'agendaNameZh', 'aliases', 'titleOnAgenda', 'id'];
 
@@ -40,6 +40,10 @@ function buildMemberPayload(member) {
   for (const field of MEMBER_FIELDS) {
     payload[field] = member[field] === undefined || member[field] === null ? '' : member[field];
   }
+  if (member.role && !common.MEMBERSHIP_ROLES.includes(member.role)) {
+    throw Object.assign(new Error('会员角色无效'), { code: 'INVALID_MEMBERSHIP_ROLE' });
+  }
+  payload.role = common.normalizeMembershipRole(payload.role || 'member');
   payload.searchText = [payload.nickName, payload.nameZh, payload.nameEn, payload.mentorName,
     payload.officerTitleZh, payload.officerTitleEn, payload.pathNameZh, payload.pathNameEn]
     .filter(Boolean).join(' ').toLowerCase();
@@ -62,7 +66,7 @@ async function saveMember(member) {
       updateData[field] = db.command.remove();
     });
     const existing = await db.collection('memberships').doc(id).get();
-    const allowedFields = new Set(MEMBER_FIELDS.concat(['searchText', 'createdAt', 'updatedAt']));
+    const allowedFields = new Set(MEMBER_FIELDS.concat(['openid', 'searchText', 'createdAt', 'updatedAt']));
     Object.keys(existing.data || {}).forEach((field) => {
       if (field !== '_id' && !allowedFields.has(field)) {
         updateData[field] = db.command.remove();
@@ -98,6 +102,7 @@ async function main(event) {
     common.initCloud();
     const action = event && event.action ? event.action : 'list';
     const db = common.getDb();
+    await common.requireAdmin(common.getOpenid());
     if (action === 'list') {
       return common.ok(await common.listCollection('memberships', Object.assign({}, event || {}, { orderBy: 'joinedAt', order: 'asc' })));
     }
@@ -111,10 +116,22 @@ async function main(event) {
       await db.collection('memberships').doc(event.id).remove();
       return common.ok({ removed: true });
     }
+    if (action === 'clearBinding') {
+      const memberRes = await db.collection('memberships').doc(event.id).get();
+      const member = memberRes.data;
+      await db.collection('memberships').doc(event.id).update({ data: { openid: db.command.remove(), updatedAt: common.nowIso() } });
+      if (member && member.openid) {
+        const crypto = require('crypto');
+        const bindingId = crypto.createHash('sha256').update(member.openid).digest('hex');
+        try { await db.collection('membership_identity_bindings').doc(bindingId).remove(); } catch (error) { /* Legacy bindings may not have a lock document. */ }
+      }
+      return common.ok({ cleared: true });
+    }
     return common.fail('UNKNOWN_ACTION', '不支持的会员管理操作');
   } catch (error) {
     return common.handleError(error);
   }
 }
 
+module.exports = { MEMBER_FIELDS, buildMemberPayload, saveMember, main };
 exports.main = main;

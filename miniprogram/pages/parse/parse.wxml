@@ -1,4 +1,5 @@
 <view class="page agenda-home">
+  <view class="identity-bar"><text class="identity-label">当前身份</text><text class="identity-value">{{identityText}}</text></view>
   <view class="summary {{summary ? '' : 'empty'}}">
     <block wx:if="{{summary}}">
       <text class="summary-title">第 {{summary.meetingNo || '--'}} 期</text>
@@ -12,5 +13,5 @@
 
   <button class="action-button primary" disabled="{{openingEditor || creatingSignup}}" bindtap="goEditor">编辑接龙</button>
   <button class="action-button" disabled="{{openingEditor || creatingSignup}}" bindtap="goSignup">报名页</button>
-  <button wx:if="{{isSuperAdmin}}" class="action-button template-button" disabled="{{openingEditor || creatingSignup}}" bindtap="goTemplate">修改议程表模板</button>
+  <button wx:if="{{isAdmin}}" class="action-button template-button" disabled="{{openingEditor || creatingSignup}}" bindtap="goTemplate">修改议程表模板</button>
 </view>

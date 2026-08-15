@@ -42,3 +42,6 @@
 .form-actions {
   margin-top: 28rpx;
 }
+
+.role-picker { box-sizing:border-box; min-height:72rpx; padding:16rpx; border:1rpx solid #cbd5e1; background:#fff; }
+.clear-binding { margin:0 0 22rpx; color:#b91c1c; border:1rpx solid #fecaca; background:#fff; }

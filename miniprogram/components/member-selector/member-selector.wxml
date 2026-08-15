@@ -1,0 +1,14 @@
+<view wx:if="{{visible}}" class="selector-mask" bindtap="cancel" catchtouchmove="noop">
+  <view class="selector-panel" catchtap="noop">
+    <view class="selector-header"><button bindtap="cancel">取消</button><text>{{title}}</text><button class="confirm" disabled="{{!pendingId}}" bindtap="confirm">确定</button></view>
+    <input class="selector-search" value="{{keyword}}" placeholder="搜索中文名、英文名或昵称" focus="{{visible}}" bindinput="handleSearch" />
+    <scroll-view scroll-y class="selector-list">
+      <button wx:for="{{filteredMembers}}" wx:key="_id" class="selector-option {{pendingId === item._id ? 'selected' : ''}}" data-id="{{item._id}}" bindtap="selectMember">
+        <text class="primary">{{item.nameZh || item.nameEn || item.nickName || '未命名会员'}}</text>
+        <text class="secondary">{{item.nameEn}} {{item.nickName}}</text>
+        <text wx:if="{{pendingId === item._id}}" class="check">✓</text>
+      </button>
+      <view wx:if="{{!filteredMembers.length}}" class="selector-empty">没有匹配的会员</view>
+    </scroll-view>
+  </view>
+</view>

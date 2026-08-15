@@ -6,7 +6,10 @@ Page({
   data: {
     agenda: agendaUtil.createEmptyAgenda(),
     template: agendaUtil.createDefaultTemplate(),
-    isSuperAdmin: false,
+    isAdmin: false,
+    memberSelectorVisible: false,
+    memberSelectorContext: null,
+    memberSelectorSelectedId: '',
     loading: true,
     saving: false,
     previewing: false,
@@ -30,7 +33,8 @@ Page({
    * 为什么添加：字段权限、默认规则和下拉选项必须在议程规范化前准备完成。
    */
   async onLoad(options) {
-    this.setData({ isSuperAdmin: app.isSuperAdminMode() });
+    await app.login();
+    this.setData({ isAdmin: app.isAdmin() });
     await Promise.all([this.loadTemplate(), this.loadMembers(), this.loadPathways()]);
     if (options && options.id) {
       await this.loadAgendaById(options.id);
@@ -51,9 +55,9 @@ Page({
     if (this.data.previewing) {
       this.setData({ previewing: false });
     }
-    const isSuperAdmin = app.isSuperAdminMode();
-    if (isSuperAdmin !== this.data.isSuperAdmin) {
-      this.setData({ isSuperAdmin });
+    const isAdmin = app.isAdmin();
+    if (isAdmin !== this.data.isAdmin) {
+      this.setData({ isAdmin });
       this.setAgenda(this.data.agenda);
     }
     if (this.data.agenda && this.data.agenda.signupPublicId) {
@@ -199,10 +203,10 @@ Page({
       if (!row) {
         return;
       }
-      row.canEditTitle = this.data.isSuperAdmin || Boolean(row.permissions && row.permissions.memberTitle);
-      row.canEditDuration = this.data.isSuperAdmin || Boolean(row.permissions && row.permissions.memberDuration);
-      row.canEditPerson = this.data.isSuperAdmin || Boolean(row.permissions && row.permissions.memberPerson);
-      row.canEditClub = this.data.isSuperAdmin || Boolean(row.permissions && row.permissions.memberClub);
+      row.canEditTitle = this.data.isAdmin || Boolean(row.permissions && row.permissions.memberTitle);
+      row.canEditDuration = this.data.isAdmin || Boolean(row.permissions && row.permissions.memberDuration);
+      row.canEditPerson = this.data.isAdmin || Boolean(row.permissions && row.permissions.memberPerson);
+      row.canEditClub = this.data.isAdmin || Boolean(row.permissions && row.permissions.memberClub);
       row.displayTitle = language === 'en' ? (row.titleEn || row.titleZh) : row.titleZh;
       if (row.id === 'topicExplanation' && language === 'zh') {
         row.displayTitle = '即兴主持人';
@@ -339,7 +343,7 @@ Page({
    * 为什么添加：只做界面置灰不足以表达可靠的前端权限边界。
    */
   canEditRow(row, field) {
-    if (this.data.isSuperAdmin) {
+    if (this.data.isAdmin) {
       return true;
     }
     if (row && row.id === 'openingIcebreaker' && field === 'person') {
@@ -430,7 +434,7 @@ Page({
    * 为什么添加：普通会员必须保留解析结果，不能修改页眉字段。
    */
   handleMeetingInput(event) {
-    if (!this.data.isSuperAdmin) {
+    if (!this.data.isAdmin) {
       return;
     }
     const agenda = agendaUtil.cloneJson(this.data.agenda);
@@ -486,6 +490,31 @@ Page({
       person.clubEn = '';
     }
     this.setAgenda(agenda);
+  },
+
+  openMemberSelector(event) {
+    const dataset = Object.assign({}, event.currentTarget.dataset);
+    const selectedId = dataset.selectorKind === 'mm'
+      ? (this.data.memberOptions[this.data.mmMemberIndex] && this.data.memberOptions[this.data.mmMemberIndex].member._id || '')
+      : (dataset.memberId || '');
+    this.setData({ memberSelectorVisible: true, memberSelectorContext: dataset, memberSelectorSelectedId: selectedId });
+  },
+
+  closeMemberSelector() {
+    this.setData({ memberSelectorVisible: false, memberSelectorContext: null });
+  },
+
+  confirmMemberSelector(event) {
+    const member = event.detail.member;
+    const index = this.data.memberOptions.findIndex((option) => option.member._id === member._id);
+    const context = this.data.memberSelectorContext || {};
+    this.closeMemberSelector();
+    if (index < 0) return;
+    if (context.selectorKind === 'mm') {
+      this.chooseMeetingManager({ detail: { value: index } });
+      return;
+    }
+    this.chooseMember({ detail: { value: index }, currentTarget: { dataset: context } });
   },
 
   /**

@@ -10,8 +10,15 @@ Page({
       educationProgress: '', educationProgressUpdatedAt: '', email: '', isMentor: false,
       joinedAt: '', menteeCount: 0, mentorName: '', nameEn: '', nameZh: '', nickName: '',
       notes: '', officerTitleEn: '', officerTitleZh: '', pathNameEn: '', pathNameZh: '',
-      phone: '', quarter: '', searchText: '', status: '', updatedAt: ''
-    }
+      phone: '', quarter: '', searchText: '', status: '', updatedAt: '', role: 'member', openid: ''
+    },
+    roleOptions: [
+      { code: 'super_admin', label: '超管' },
+      { code: 'admin', label: '管理员' },
+      { code: 'member', label: '会员' }
+    ],
+    roleLabels: ['超管', '管理员', '会员'],
+    roleIndex: 2
   },
 
   /**
@@ -36,7 +43,9 @@ Page({
     try {
       const data = await cloud.callCloud('adminMemberships', { action: 'get', id });
       if (data.record) {
-        this.setData({ member: Object.assign({}, this.data.member, data.record) });
+        const member = Object.assign({}, this.data.member, data.record);
+        const roleIndex = Math.max(this.data.roleOptions.findIndex((item) => item.code === member.role), 0);
+        this.setData({ member, roleIndex });
       }
     } catch (error) {
       cloud.showError(error);
@@ -65,6 +74,22 @@ Page({
     const field = event.currentTarget.dataset.field;
     const member = Object.assign({}, this.data.member, { [field]: Boolean(event.detail.value) });
     this.setData({ member });
+  },
+
+  handleRoleChange(event) {
+    const roleIndex = Number(event.detail.value);
+    const member = Object.assign({}, this.data.member, { role: this.data.roleOptions[roleIndex].code });
+    this.setData({ member, roleIndex });
+  },
+
+  async clearBinding() {
+    const result = await new Promise((resolve) => wx.showModal({ title: '清除身份绑定', content: '清除后，该会员需要通过新邀请重新绑定。', success: resolve, fail: () => resolve({ confirm: false }) }));
+    if (!result.confirm) return;
+    try {
+      await cloud.callCloud('adminMemberships', { action: 'clearBinding', id: this.data.member._id });
+      this.setData({ 'member.openid': '' });
+      cloud.showSuccess('绑定已清除');
+    } catch (error) { cloud.showError(error); }
   },
 
   /**

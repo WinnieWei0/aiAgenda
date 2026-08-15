@@ -11,30 +11,14 @@ async function saveRole(role) {
     error.code = 'EMPTY_ROLE_CODE';
     throw error;
   }
+  if (!['super_admin', 'admin', 'member', 'guest'].includes(role.code)) {
+    throw Object.assign(new Error('系统角色编码无效'), { code: 'INVALID_ROLE_CODE' });
+  }
   return common.upsertByKey('roles', 'code', role.code, {
     code: role.code,
     name: role.name || role.code,
     description: role.description || '',
-    locked: role.code === 'admin',
-    updatedAt: common.nowIso()
-  });
-}
-
-/**
- * 方法是什么：给用户绑定系统角色。
- * 方法作用：把指定 openid 和 roleCode 写入 `user_roles`。
- * 为什么添加：管理员需要通过系统分配用户权限，而不是直接修改数据库。
- */
-async function assignRole(openid, roleCode) {
-  if (!openid || !roleCode) {
-    const error = new Error('openid 和角色编码不能为空');
-    error.code = 'EMPTY_ROLE_ASSIGNMENT';
-    throw error;
-  }
-  return common.upsertByKey('user_roles', 'bindingKey', `${openid}:${roleCode}`, {
-    bindingKey: `${openid}:${roleCode}`,
-    openid,
-    roleCode,
+    locked: true,
     updatedAt: common.nowIso()
   });
 }
@@ -59,6 +43,7 @@ async function main(event) {
   try {
     common.initCloud();
     await common.ensureDefaultRoles();
+    await common.requireAdmin(common.getOpenid());
     const action = event && event.action ? event.action : 'list';
     const db = common.getDb();
     if (action === 'list') {
@@ -72,14 +57,14 @@ async function main(event) {
     }
     if (action === 'delete') {
       const roleCode = event.code;
-      if (roleCode === 'admin') {
-        return common.fail('ROLE_LOCKED', '管理员角色不可删除');
+      if (['super_admin', 'admin', 'member', 'guest'].includes(roleCode)) {
+        return common.fail('ROLE_LOCKED', '系统角色不可删除');
       }
       const res = await db.collection('roles').where({ code: roleCode }).remove();
       return common.ok({ removed: res.stats ? res.stats.removed : 0 });
     }
     if (action === 'assign') {
-      return common.ok(await assignRole(event.openid, event.roleCode));
+      return common.fail('FEATURE_RETIRED', '请在会员编辑页设置角色');
     }
     if (action === 'users') {
       return common.ok(await common.listCollection('users', event || {}));

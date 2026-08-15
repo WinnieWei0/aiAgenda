@@ -1,19 +1,11 @@
 <view class="page">
   <view class="section panel">
     <view class="title">角色列表</view>
-    <view class="muted">维护角色定义，并可为用户分配角色。当前角色不限制管理功能。</view>
+    <view class="muted">系统角色固定为超管、管理员、会员和宾客。会员角色请在会员编辑页设置。</view>
     <input placeholder="搜索角色编码、名称、描述" value="{{keyword}}" bindinput="handleKeywordInput" />
     <view class="button-row actions">
-      <button type="primary" bindtap="openCreate">新增角色</button>
       <button loading="{{loading}}" bindtap="refreshRecords">刷新</button>
     </view>
-  </view>
-
-  <view class="section panel">
-    <view class="title">分配角色</view>
-    <input placeholder="用户 openid" value="{{assignOpenid}}" data-field="openid" bindinput="handleAssignInput" />
-    <input placeholder="角色编码，如 viewer" value="{{assignRoleCode}}" data-field="roleCode" bindinput="handleAssignInput" />
-    <button type="primary" bindtap="assignRole">绑定角色</button>
   </view>
 
   <view class="section">
@@ -24,7 +16,6 @@
       <view class="muted">{{item.description}}</view>
       <view class="button-row card-actions">
         <button size="mini" data-code="{{item.code}}" bindtap="editRecord">编辑角色</button>
-        <button size="mini" type="warn" data-code="{{item.code}}" bindtap="confirmDelete">删除</button>
       </view>
     </view>
   </view>

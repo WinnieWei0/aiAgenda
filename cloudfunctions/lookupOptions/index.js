@@ -21,7 +21,13 @@ async function searchMembers(keyword) {
     ? collection.where({ searchText: db.RegExp({ regexp: escapeSearchKeyword(keyword), options: 'i' }) })
     : collection;
   const res = await query.limit(keyword ? 8 : 100).get();
-  return sortMembers(res.data || []);
+  return sortMembers(res.data || []).map(sanitizeMember);
+}
+
+function sanitizeMember(member) {
+  const result = Object.assign({}, member);
+  delete result.openid;
+  return result;
 }
 
 /**
@@ -77,5 +83,5 @@ async function main(event) {
   }
 }
 
-module.exports = { escapeSearchKeyword, sortMembers, searchMembers, searchPathways, main };
+module.exports = { escapeSearchKeyword, sortMembers, sanitizeMember, searchMembers, searchPathways, main };
 exports.main = main;

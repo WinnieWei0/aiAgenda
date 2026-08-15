@@ -44,7 +44,7 @@ function installInDir(dir) {
   if (path.basename(dir) !== 'common' && path.basename(dir) !== 'exportAgendaPdf') {
     const obsoletePdfPackages = ['pdf-lib', '@pdf-lib', 'pako'];
     for (const packageName of obsoletePdfPackages) {
-      fs.rmSync(path.join(dir, 'node_modules', packageName), { recursive: true, force: true });
+      fs.rmSync(path.join(dir, 'node_modules', packageName), { recursive: true, force: true, maxRetries: 5, retryDelay: 200 });
     }
   }
   refreshLocalDependencies(dir);
@@ -68,7 +68,7 @@ function refreshLocalDependencies(dir) {
     if (!fs.existsSync(source)) {
       throw new Error(`本地依赖不存在：${source}`);
     }
-    fs.rmSync(target, { recursive: true, force: true });
+    fs.rmSync(target, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 });
     const includePdfFiles = path.basename(dir) === 'exportAgendaPdf';
     const entries = ['index.js', 'parser.js', 'deepseek.js', 'agenda-model.js', 'signup.js', 'package.json'];
     if (includePdfFiles) {

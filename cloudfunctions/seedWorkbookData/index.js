@@ -50,6 +50,7 @@ async function downloadWorkbook(event) {
 async function main(event) {
   try {
     common.initCloud();
+    await common.requireAdmin(common.getOpenid());
     const workbook = workbookParser.parseWorkbook(await downloadWorkbook(event));
     const membershipStats = await seedCollection('memberships', 'sourceKey', workbook.memberships);
     const pathwayStats = await seedCollection('pathways', 'sourceKey', workbook.pathways);

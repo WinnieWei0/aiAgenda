@@ -45,6 +45,7 @@ function prepareMembers(members) {
     for (const field of MEMBER_FIELDS) {
       payload[field] = member[field] === undefined || member[field] === null ? '' : member[field];
     }
+    payload.role = member.nameZh === '韦文耐' ? 'super_admin' : ['冉桂竹', '徐欢欢', '张蝶花', '郭聪聪', '黎建安', '陈程'].includes(member.nameZh) ? 'admin' : 'member';
     payload.searchText = [payload.nickName, payload.nameZh, payload.nameEn, payload.mentorName,
       payload.officerTitleZh, payload.officerTitleEn, payload.pathNameZh, payload.pathNameEn]
       .filter(Boolean).join(' ').toLowerCase();
@@ -92,7 +93,7 @@ async function upsertMember(collection, member, removeCommand) {
     for (const field of REMOVED_FIELDS) {
       updateData[field] = removeCommand.remove();
     }
-    const allowedFields = new Set(MEMBER_FIELDS.concat(['searchText', 'updatedAt', 'createdAt']));
+    const allowedFields = new Set(MEMBER_FIELDS.concat(['role', 'openid', 'searchText', 'updatedAt', 'createdAt']));
     Object.keys(existing).forEach(function removeUnknownField(field) {
       if (field !== '_id' && !allowedFields.has(field)) {
         updateData[field] = removeCommand.remove();

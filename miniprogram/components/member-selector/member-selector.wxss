@@ -1,0 +1,9 @@
+.selector-mask{position:fixed;inset:0;z-index:200;display:flex;align-items:flex-end;background:rgba(0,0,0,.5)}
+.selector-panel{width:100%;max-height:78vh;background:#fff}
+.selector-header{display:grid;grid-template-columns:120rpx 1fr 120rpx;align-items:center;min-height:92rpx;border-bottom:1rpx solid #e2e8f0;text-align:center}
+.selector-header button{margin:0;padding:0;color:#64748b;background:transparent;font-size:28rpx}
+.selector-header button::after{border:0}.selector-header .confirm{color:#0f766e}.selector-header text{font-size:30rpx;font-weight:600}
+.selector-search{box-sizing:border-box;width:calc(100% - 48rpx);height:76rpx;margin:20rpx 24rpx;padding:0 22rpx;border:1rpx solid #cbd5e1;border-radius:6rpx;background:#f8fafc}
+.selector-list{height:52vh;border-top:1rpx solid #f1f5f9}
+.selector-option{position:relative;display:block;box-sizing:border-box;width:100%;min-height:94rpx;margin:0;padding:18rpx 90rpx 18rpx 28rpx;border-bottom:1rpx solid #e5e7eb;border-radius:0;background:#fff;text-align:left}
+.selector-option::after{border:0}.selector-option.selected{background:#ecfdf5}.primary{display:block;color:#111827;font-size:29rpx}.secondary{display:block;margin-top:5rpx;color:#64748b;font-size:23rpx}.check{position:absolute;right:30rpx;top:30rpx;color:#0f766e;font-size:32rpx}.selector-empty{padding:80rpx 24rpx;color:#94a3b8;text-align:center}

@@ -1,7 +1,7 @@
 const cloud = require('../../utils/cloud');
 
 Page({
-  data: { publicId: '', data: null, loading: true, modal: false, selectedSlot: null, personType: 'member', allowMember: true, allowClub: true, allowGuest: true, members: [], memberLabels: [], memberIndex: 0, name: '', club: '', submitting: false },
+  data: { publicId: '', data: null, loading: true, modal: false, selectedSlot: null, personType: 'member', allowMember: true, allowClub: true, allowGuest: true, members: [], memberLabels: [], memberIndex: -1, memberSelectorVisible: false, name: '', club: '', submitting: false },
   onLoad(options) {
     this.initialLoadStarted = true;
     this.setData({ publicId: options.publicId || '' });
@@ -29,12 +29,19 @@ Page({
   closeModal() { this.setData({ modal: false }); },
   chooseType(event) { this.setData({ personType: event.currentTarget.dataset.type }); },
   chooseMember(event) { this.setData({ memberIndex: Number(event.detail.value) }); },
+  openMemberSelector() { this.setData({ memberSelectorVisible: true }); },
+  closeMemberSelector() { this.setData({ memberSelectorVisible: false }); },
+  confirmMemberSelector(event) { const memberIndex = this.data.members.findIndex((member) => member._id === event.detail.member._id); this.setData({ memberIndex, memberSelectorVisible: false }); },
   inputName(event) { this.setData({ name: event.detail.value }); },
   inputClub(event) { this.setData({ club: event.detail.value }); },
   noop() {},
   async submitSignup() {
     if (this.data.submitting) return;
     const member = this.data.members[this.data.memberIndex];
+    if (this.data.personType === 'member' && !member) {
+      wx.showToast({ title: '请选择会员', icon: 'none' });
+      return;
+    }
     const payload = { action: 'signup', publicId: this.data.publicId, slotId: this.data.selectedSlot && this.data.selectedSlot.id || '', personType: this.data.personType, memberId: member && member._id || '', name: this.data.name, club: this.data.club };
     this.setData({ submitting: true });
     try {

@@ -6,12 +6,8 @@
       <label class="field"><text>日期</text><picker mode="date" value="{{agenda.meetingInfo.date}}" bindchange="handleDateChange"><view class="picker-value basic-picker">{{agenda.meetingInfo.date || '请选择日期'}}<text class="picker-arrow">⌄</text></view></picker></label>
       <label class="field"><text>语言</text><picker range="{{languageLabels}}" value="{{agenda.meetingInfo.language === 'en' ? 1 : 0}}" bindchange="handleLanguageChange"><view class="picker-value basic-picker">{{agenda.meetingInfo.language === 'en' ? 'English' : '中文'}}<text class="picker-arrow">⌄</text></view></picker></label>
       <label class="field"><text>主题</text><input value="{{agenda.meetingInfo.theme}}" placeholder="请输入本期会议主题" data-field="theme" bindinput="handleBasicInfoInput" /></label>
-      <label class="field full"><text>MM</text><picker range="{{memberLabels}}" value="{{mmMemberIndex}}" bindchange="chooseMeetingManager"><view class="picker-value basic-picker">{{mmMemberIndex >= 0 ? memberLabels[mmMemberIndex] : '请选择会议经理'}}<text class="picker-arrow">⌄</text></view></picker></label>
+      <label class="field full"><text>MM</text><button class="selector-trigger basic-picker" data-selector-kind="mm" bindtap="openMemberSelector">{{mmMemberIndex >= 0 ? memberLabels[mmMemberIndex] : '请选择会议经理'}}<text class="picker-arrow">⌄</text></button></label>
     </view>
-  </view>
-
-  <view class="mode-note {{isSuperAdmin ? 'admin' : ''}}">
-    当前身份：{{isSuperAdmin ? '模拟超管' : '普通会员'}}
   </view>
 
   <block wx:for="{{agenda.sections}}" wx:for-item="section" wx:for-index="sectionIndex" wx:key="id">
@@ -96,7 +92,7 @@
   <view class="person-editor">
     <view class="person-line">
       <text class="person-label">{{label || '演讲者'}}</text>
-      <picker wx:if="{{person.inputMode === 'select'}}" class="person-control member-picker" disabled="{{!row.canEditPerson || memberLoading || memberLoadError || !memberLabels.length}}" range="{{memberLabels}}" value="{{person.memberIndex}}" data-scope="{{scope}}" data-section-index="{{sectionIndex}}" data-child-index="{{childIndex}}" data-person-field="{{personField}}" data-person-index="{{personIndex}}" bindchange="chooseMember"><view class="picker-value"><text class="picker-label">{{language === 'en' ? (person.displayNameEn || person.rawName || 'Select a member') : (person.displayNameZh || person.rawName || '选择会员')}}</text><text class="picker-arrow">⌄</text></view></picker>
+      <button wx:if="{{person.inputMode === 'select'}}" class="person-control member-picker selector-trigger" disabled="{{!row.canEditPerson || memberLoading || memberLoadError || !memberLabels.length}}" data-scope="{{scope}}" data-section-index="{{sectionIndex}}" data-child-index="{{childIndex}}" data-person-field="{{personField}}" data-person-index="{{personIndex}}" data-member-id="{{person.memberId}}" bindtap="openMemberSelector"><text class="picker-label">{{language === 'en' ? (person.displayNameEn || person.rawName || 'Select a member') : (person.displayNameZh || person.rawName || '选择会员')}}</text><text class="picker-arrow">⌄</text></button>
       <input wx:else class="person-control" disabled="{{!row.canEditPerson}}" value="{{person.rawName}}" placeholder="输入姓名" data-scope="{{scope}}" data-section-index="{{sectionIndex}}" data-child-index="{{childIndex}}" data-person-field="{{personField}}" data-person-index="{{personIndex}}" data-field="rawName" bindinput="handlePersonInput" />
       <button wx:if="{{row.id !== 'openingIcebreaker' && row.id !== 'openingRemarks'}}" class="switch-button" size="mini" disabled="{{!row.canEditPerson}}" data-scope="{{scope}}" data-section-index="{{sectionIndex}}" data-child-index="{{childIndex}}" data-person-field="{{personField}}" data-person-index="{{personIndex}}" bindtap="togglePersonMode">{{person.inputMode === 'select' ? '输入' : '选择'}}</button>
     </view>
@@ -106,3 +102,5 @@
     <view wx:if="{{row.id !== 'openingIcebreaker' && row.id !== 'openingRemarks'}}" class="club-line"><text class="club-label">俱乐部</text><input class="club-input" disabled="{{person.memberId || !row.canEditClub}}" value="{{language === 'en' ? person.clubEn : person.clubZh}}" placeholder="俱乐部" data-scope="{{scope}}" data-section-index="{{sectionIndex}}" data-child-index="{{childIndex}}" data-person-field="{{personField}}" data-person-index="{{personIndex}}" data-field="{{language === 'en' ? 'clubEn' : 'clubZh'}}" bindinput="handlePersonInput" /></view>
   </view>
 </template>
+
+<member-selector visible="{{memberSelectorVisible}}" members="{{memberOptions}}" selected-id="{{memberSelectorSelectedId}}" bindcancel="closeMemberSelector" bindconfirm="confirmMemberSelector" />

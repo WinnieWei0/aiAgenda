@@ -19,8 +19,9 @@ Page({
    * 为什么添加：普通会员不能进入固定内容和议程规则维护界面。
    */
   async onLoad() {
-    if (!app.isSuperAdminMode()) {
-      wx.showToast({ title: '请先在首页进入超管模式', icon: 'none' });
+    await app.login();
+    if (!app.isAdmin()) {
+      wx.showToast({ title: '仅管理员可编辑模板', icon: 'none' });
       wx.navigateBack();
       return;
     }

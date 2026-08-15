@@ -5,6 +5,9 @@
 
   <view class="section panel form-panel">
     <view class="readonly-field"><text>id</text><text>{{member._id}}</text></view>
+    <view class="form-row"><text>系统角色</text><picker range="{{roleLabels}}" value="{{roleIndex}}" bindchange="handleRoleChange"><view class="role-picker">{{roleLabels[roleIndex]}}</view></picker></view>
+    <view class="readonly-field"><text>身份绑定</text><text>{{member.openid || '未绑定'}}</text></view>
+    <button wx:if="{{member.openid}}" class="clear-binding" bindtap="clearBinding">清除身份绑定</button>
     <view class="form-row"><text>生日</text><input value="{{member.birthday}}" data-field="birthday" bindinput="handleInput" /></view>
     <view class="switch-row"><text>符合参赛资格</text><switch checked="{{member.competitionEligible}}" data-field="competitionEligible" bindchange="handleSwitch" /></view>
     <view class="readonly-field"><text>创建时间</text><text>{{member.createdAt}}</text></view>

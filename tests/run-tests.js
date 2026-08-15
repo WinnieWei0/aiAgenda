@@ -13,6 +13,10 @@ const saveAgenda = require('../cloudfunctions/saveAgenda');
 const signupModel = require('../cloudfunctions/common/signup');
 const signupService = require('../cloudfunctions/signupService');
 const exportAgendaPdf = require('../cloudfunctions/exportAgendaPdf');
+const adminMemberships = require('../cloudfunctions/adminMemberships');
+const membershipRoleMigration = require('../scripts/migrate-membership-roles');
+const memberSearch = require('../miniprogram/utils/member-search');
+const membershipInvites = require('../cloudfunctions/membershipInvites');
 const { PDFDocument } = require('../cloudfunctions/common/node_modules/pdf-lib');
 
 let memberships = [];
@@ -747,6 +751,26 @@ function testPdfFontFallback() {
   assert.ok(pdfRenderer.resolveFontPath().endsWith('NotoSerifSC-Medium.ttf'));
 }
 
+function testMembershipRolesAndSearch() {
+  assert.strictEqual(membershipRoleMigration.roleForName('韦文耐'), 'super_admin');
+  assert.strictEqual(membershipRoleMigration.roleForName('冉桂竹'), 'admin');
+  assert.strictEqual(membershipRoleMigration.roleForName('普通会员'), 'member');
+  assert.strictEqual(adminMemberships.buildMemberPayload({ nameZh: '新会员' }).role, 'member');
+  assert.throws(() => adminMemberships.buildMemberPayload({ nameZh: '错误角色', role: 'owner' }), /会员角色无效/);
+  const members = [
+    { _id: '1', nameZh: '韦文耐', nameEn: 'Winnie Wei', nickName: '文耐' },
+    { _id: '2', nameZh: '冉桂竹', nameEn: 'Grace Ran', nickName: '桂竹' }
+  ];
+  assert.deepStrictEqual(memberSearch.filterMembers(members, 'WINNIE').map((item) => item._id), ['1']);
+  assert.deepStrictEqual(memberSearch.filterMembers(members.map((member) => ({ member })), '桂竹').map((item) => item._id), ['2']);
+  assert.strictEqual(memberSearch.filterMembers(members, '').length, 2);
+  assert.strictEqual(Object.prototype.hasOwnProperty.call(lookupOptions.sanitizeMember({ _id: '1', openid: 'secret-openid' }), 'openid'), false);
+  const now = new Date('2026-08-15T00:00:00.000Z');
+  assert.doesNotThrow(() => membershipInvites.assertInviteUsable({ status: 'pending', expiresAt: '2026-08-16T00:00:00.000Z' }, now));
+  assert.throws(() => membershipInvites.assertInviteUsable({ status: 'used', expiresAt: '2026-08-16T00:00:00.000Z' }, now), /邀请已使用/);
+  assert.throws(() => membershipInvites.assertInviteUsable({ status: 'pending', expiresAt: '2026-08-14T00:00:00.000Z' }, now), /邀请已过期/);
+}
+
 /**
  * 方法是什么：测试超长议程 PDF 续页。
  * 方法作用：用八个备稿块验证渲染器会插入议程续页并保留最终资料页。
@@ -795,6 +819,7 @@ async function main() {
   testPdfAgendaLineStyle();
   testPdfHeaderFrame();
   testPdfFontFallback();
+  testMembershipRolesAndSearch();
   await testExportRecordCollectionInitialization();
   await testPdfRenderer(agenda);
   await testPdfOverflow();

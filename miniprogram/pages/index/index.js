@@ -1,35 +1,25 @@
 Page({
   data: {
-    isSuperAdmin: false
+    isAdmin: false
   },
 
   /**
    * 方法是什么：首页显示生命周期方法。
-   * 方法作用：每次返回首页时同步当前模拟超管状态。
-   * 为什么添加：模板编辑器返回后首页按钮必须显示正确身份。
+   * 方法作用：每次返回首页时同步当前真实管理员身份。
+   * 为什么添加：管理入口必须随会员绑定状态更新。
    */
-  onShow() {
-    this.setData({ isSuperAdmin: getApp().isSuperAdminMode() });
-  },
-
-  /**
-   * 方法是什么：切换模拟超管身份。
-   * 方法作用：点击首页按钮后在普通会员和超管模式之间切换。
-   * 为什么添加：用户要求通过简单按钮模拟超管且不做任何授权。
-   */
-  toggleSuperAdmin() {
-    const isSuperAdmin = getApp().toggleSuperAdminMode();
-    this.setData({ isSuperAdmin });
-    wx.showToast({ title: isSuperAdmin ? '已进入超管模式' : '已退出超管模式', icon: 'none' });
+  async onShow() {
+    await getApp().login();
+    this.setData({ isAdmin: getApp().isAdmin() });
   },
 
   /**
    * 方法是什么：打开全局模板编辑器。
-   * 方法作用：让模拟超管维护固定内容、素材和议程规则。
-   * 为什么添加：超管的主要职责是编辑两页议程模板。
+   * 方法作用：让管理员维护固定内容、素材和议程规则。
+   * 为什么添加：模板编辑必须由真实管理员身份控制。
    */
   openTemplateEditor() {
-    if (!this.data.isSuperAdmin) {
+    if (!this.data.isAdmin) {
       return;
     }
     wx.navigateTo({ url: '/pages/template-editor/template-editor' });
@@ -68,5 +58,11 @@ Page({
    */
   openPathwaysList() {
     wx.navigateTo({ url: '/pages/pathways/list/list' });
+  },
+
+  openMembershipInvite() {
+    if (this.data.isAdmin) {
+      wx.navigateTo({ url: '/pages/membership-invite/membership-invite' });
+    }
   }
 });

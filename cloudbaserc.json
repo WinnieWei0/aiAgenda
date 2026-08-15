@@ -9,6 +9,14 @@
       "timeout": 60,
       "memorySize": 512,
       "installDependency": true
+    },
+    {
+      "name": "membershipInvites",
+      "dir": "membershipInvites",
+      "handler": "index.main",
+      "timeout": 10,
+      "memorySize": 256,
+      "installDependency": true
     }
   ],
   "framework": {

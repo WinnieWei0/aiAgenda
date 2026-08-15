@@ -10,9 +10,9 @@ async function main(event) {
     common.initCloud();
     const openid = common.getOpenid();
     const user = await common.upsertUser(openid, event && event.profile ? event.profile : {});
-    const roles = await common.getUserRoles(openid);
-    const canClaimAdmin = !(await common.hasAdmin());
-    return common.ok({ user, roles, canClaimAdmin });
+    const membership = await common.getMembershipByOpenid(openid);
+    const identity = common.membershipIdentity(membership);
+    return common.ok({ user, roles: identity.role === 'guest' ? [] : [identity.role], identity });
   } catch (error) {
     return common.handleError(error);
   }

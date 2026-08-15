@@ -16,7 +16,8 @@ function summarizeAgenda(agenda) {
 Page({
   data: {
     summary: null,
-    isSuperAdmin: false,
+    isAdmin: false,
+    identityText: '宾客',
     openingEditor: false,
     creatingSignup: false
   },
@@ -26,10 +27,13 @@ Page({
    * 方法作用：先显示内存摘要，再仅向云端读取期数和时间字段。
    * 为什么添加：避免进入页面时下载完整议程导致白屏和闪烁。
    */
-  onShow() {
+  async onShow() {
+    await app.login();
+    const identity = app.globalData.identity || {};
     const localSummary = summarizeAgenda(app.globalData.currentAgenda);
     this.setData({
-      isSuperAdmin: app.isSuperAdminMode(),
+      isAdmin: app.isAdmin(),
+      identityText: identity.role === 'guest' ? '宾客' : `${identity.name || '未命名会员'} · ${identity.roleLabel || '会员'}`,
       ...(localSummary ? { summary: localSummary } : {})
     });
     this.loadSummary();

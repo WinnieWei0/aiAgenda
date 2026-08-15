@@ -154,9 +154,9 @@ async function upsertByKey(collectionName, key, value, data) {
  * 为什么添加：后续权限分配和议程归属都需要用户表作为基础数据。
  */
 async function upsertUser(openid, profile) {
-  const db = getDb();
+  const collection = await ensureCollection('users');
   const userProfile = profile || {};
-  const existing = await db.collection('users').where({ openid }).limit(1).get();
+  const existing = await collection.where({ openid }).limit(1).get();
   const data = {
     openid,
     nickName: userProfile.nickName || '',
@@ -165,10 +165,10 @@ async function upsertUser(openid, profile) {
     updatedAt: nowIso()
   };
   if (existing.data && existing.data.length) {
-    await db.collection('users').doc(existing.data[0]._id).update({ data });
+    await collection.doc(existing.data[0]._id).update({ data });
     return Object.assign({}, existing.data[0], data);
   }
-  const addRes = await db.collection('users').add({ data: Object.assign({}, data, { createdAt: nowIso() }) });
+  const addRes = await collection.add({ data: Object.assign({}, data, { createdAt: nowIso() }) });
   return Object.assign({}, data, { _id: addRes._id });
 }
 
@@ -178,24 +178,46 @@ async function upsertUser(openid, profile) {
  * 为什么添加：前端菜单显示和后端权限校验都需要知道用户是否为管理员。
  */
 async function getUserRoles(openid) {
-  const db = getDb();
-  const res = await db.collection('user_roles').where({ openid }).get();
-  const roles = [];
-  for (const item of res.data || []) {
-    roles.push(item.roleCode);
-  }
-  return roles;
+  const membership = await getMembershipByOpenid(openid);
+  return membership ? [normalizeMembershipRole(membership.role)] : [];
+}
+
+const MEMBERSHIP_ROLES = ['super_admin', 'admin', 'member'];
+
+function normalizeMembershipRole(role) {
+  return MEMBERSHIP_ROLES.includes(role) ? role : 'member';
+}
+
+async function getMembershipByOpenid(openid) {
+  if (!openid) return null;
+  const res = await (await ensureCollection('memberships')).where({ openid }).limit(1).get();
+  return res.data && res.data.length ? res.data[0] : null;
+}
+
+function membershipIdentity(membership) {
+  if (!membership) return { role: 'guest', roleLabel: '宾客', name: '', membership: null };
+  const role = normalizeMembershipRole(membership.role);
+  const labels = { super_admin: '超管', admin: '管理员', member: '会员' };
+  return {
+    role,
+    roleLabel: labels[role],
+    name: membership.nameZh || membership.nameEn || membership.nickName || '',
+    membership
+  };
 }
 
 /**
  * 方法是什么：判断系统是否已有管理员。
- * 方法作用：统计 `user_roles` 中 admin 角色绑定数量。
- * 为什么添加：首次登录领取管理员只能在系统尚未初始化管理员时开放。
+ * 方法作用：检查 memberships 中是否存在已绑定的超管或管理员。
+ * 为什么添加：初始化和管理能力都依赖真实会员身份。
  */
 async function hasAdmin() {
-  const db = getDb();
-  const res = await db.collection('user_roles').where({ roleCode: 'admin' }).count();
-  return (res.total || 0) > 0;
+  const collection = await ensureCollection('memberships');
+  const [superAdmins, admins] = await Promise.all([
+    collection.where({ role: 'super_admin' }).limit(100).get(),
+    collection.where({ role: 'admin' }).limit(100).get()
+  ]);
+  return (superAdmins.data || []).concat(admins.data || []).some((member) => Boolean(member.openid));
 }
 
 /**
@@ -204,8 +226,9 @@ async function hasAdmin() {
  * 为什么添加：Membership、Pathways、角色管理和 Excel 导入都必须限制为管理员操作。
  */
 async function isAdmin(openid) {
-  const roles = await getUserRoles(openid);
-  return roles.includes('admin');
+  const membership = await getMembershipByOpenid(openid);
+  const role = membership && normalizeMembershipRole(membership.role);
+  return role === 'super_admin' || role === 'admin';
 }
 
 /**
@@ -229,9 +252,10 @@ async function requireAdmin(openid) {
  */
 async function ensureDefaultRoles() {
   const defaults = [
-    { code: 'admin', name: '管理员', description: '可维护基础数据、角色和所有议程' },
-    { code: 'editor', name: '编辑者', description: '可创建和编辑自己的议程' },
-    { code: 'viewer', name: '查看者', description: '可查看历史议程和导出结果' }
+    { code: 'super_admin', name: '超管', description: '可维护全部系统数据和议程' },
+    { code: 'admin', name: '管理员', description: '可维护全部系统数据和议程' },
+    { code: 'member', name: '会员', description: '可使用会议和报名功能' },
+    { code: 'guest', name: '宾客', description: '未绑定会员身份的用户' }
   ];
   const results = [];
   for (const role of defaults) {
@@ -321,6 +345,10 @@ const commonExports = {
   listCollection,
   upsertByKey,
   upsertUser,
+  MEMBERSHIP_ROLES,
+  normalizeMembershipRole,
+  getMembershipByOpenid,
+  membershipIdentity,
   getUserRoles,
   hasAdmin,
   isAdmin,

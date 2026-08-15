@@ -2,6 +2,10 @@
   padding-top: 32rpx;
 }
 
+.identity-bar { display:flex; align-items:center; justify-content:space-between; margin-bottom:20rpx; padding:20rpx 24rpx; border-left:8rpx solid #0f766e; background:#fff; }
+.identity-label { color:#64748b; font-size:24rpx; }
+.identity-value { color:#111827; font-size:30rpx; font-weight:700; }
+
 .summary {
   box-sizing: border-box;
   display: flex;

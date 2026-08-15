@@ -2,7 +2,7 @@
 
 这是一个原生微信小程序 + CloudBase + DeepSeek 的议程生成系统。用户粘贴微信群接龙文本后，云函数会调用 DeepSeek 生成结构化议程，前端提供模块化表单、拖拽排序、保存和中英文 PDF 导出。
 
-当前议程使用 `AgendaV2` 固定规则模型：DeepSeek 只提取接龙事实，系统模板负责环节结构、字段权限、过渡时间和 PDF 版式。首页“我是超管”仅切换本次运行期间的模拟超管状态，不进行真实授权，也不会持久化。
+当前议程使用 `AgendaV2` 固定规则模型：DeepSeek 只提取接龙事实，系统模板负责环节结构、字段权限、过渡时间和 PDF 版式。系统身份来自 `memberships.role`，超管和管理员拥有基础数据、模板及会议管理权限。
 
 ## 目录
 
@@ -12,6 +12,7 @@
 - `cloudfunctions/agendaTemplate/`：全局两页模板的初始化、保存和议程视图解析。
 - `cloudfunctions/agendaQuery/`：当前七天议程草稿和单条议程的服务端查询。
 - `cloudfunctions/lookupOptions/`：编辑页会员和 Pathways 的服务端候选搜索。
+- `cloudfunctions/membershipInvites/`：创建和领取 24 小时一次性会员身份邀请。
 - `cloudfunctions/seedWorkbookData/workbook-parser.js`：解析 Excel 中的 Membership / Pathways 工作表。
 - `scripts/check-comments.js`：中文三段式方法注释检查。
 - `tests/run-tests.js`：核心解析与 Excel 导入测试。
@@ -43,6 +44,7 @@ $env:TENCENTCLOUD_SECRETID = '你的 SecretId'
 $env:TENCENTCLOUD_SECRETKEY = '你的 SecretKey'
 npm run import:membership -- 'E:\小程序\广州双语议程表.xlsx'
 npm run import:pathways -- 'E:\小程序\广州双语议程表.xlsx'
+npm run migrate:membership-roles -- '韦文耐的 openid'
 ```
 
 脚本只导入 `Membership` 工作表的前 26 条记录，写入前会清理其余会员并只保留会员白名单字段。重复执行会按姓名更新记录，不会重复创建。
@@ -58,7 +60,7 @@ npm run verify
 
 ## 模板工作流
 
-1. 在首页点击“我是超管”可进入模拟超管模式，并维护第一页固定内容、议程规则、图片和第二页俱乐部资料。
+1. 超管或管理员可在首页维护模板，并通过“邀请绑定”向未绑定会员发送一次性身份邀请。
 2. 普通会员解析接龙后只能修改模板规则开放的人员、俱乐部、时长、备稿和例会群二维码。
 3. 编辑器保存后进入 A4 模板预览页，再从预览页导出 PDF。
 4. 模板只有一个当前版本，保存后立即作用于所有未过期草稿的预览和导出。
