@@ -523,6 +523,19 @@ function syncEvaluationSection(agenda, template) {
 }
 
 /**
+ * 方法是什么：同步报名页的宾客 SAA 到会场秩序介绍。
+ * 方法作用：把已占用宾客接待槽位的人员写入编辑页实际展示的人员位置。
+ * 为什么添加：报名槽位历史上只写入签到人员，导致编辑接龙显示为空。
+ */
+function syncGuestReceptionSignup(agenda) {
+  const slot = (agenda.signupSlots || []).find((item) => item.roleKey === 'guestReception' && item.occupied && item.person);
+  if (!slot) return agenda;
+  const venueIntroduction = (agenda.sections || []).find((section) => section.id === 'venueIntroduction');
+  if (venueIntroduction && venueIntroduction.row) venueIntroduction.row.person = createPerson(slot.person);
+  return agenda;
+}
+
+/**
  * 方法是什么：计算一个模块的占用时长。
  * 方法作用：累加子项时长并按指定策略加入相邻节点过渡时间。
  * 为什么添加：大模块显示时长必须与后续开始时间使用同一口径。
@@ -549,6 +562,7 @@ function calculateSectionDuration(section) {
 function calculateAgenda(agendaValue, templateValue) {
   const agenda = agendaValue;
   const template = normalizeTemplate(templateValue);
+  syncGuestReceptionSignup(agenda);
   syncEvaluationSection(agenda, template);
   const language = normalizeLanguage(agenda.meetingInfo && agenda.meetingInfo.language);
   const mainStart = parseTime(template.settings.mainStartTime) === null ? parseTime('19:30') : parseTime(template.settings.mainStartTime);

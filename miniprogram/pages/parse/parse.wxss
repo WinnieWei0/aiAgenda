@@ -55,3 +55,9 @@
   background: #0f766e;
   border-color: #0f766e;
 }
+
+.action-button.template-button {
+  color: #fff;
+  background: #b91c1c;
+  border-color: #b91c1c;
+}

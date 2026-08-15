@@ -16,6 +16,7 @@ function summarizeAgenda(agenda) {
 Page({
   data: {
     summary: null,
+    isSuperAdmin: false,
     openingEditor: false,
     creatingSignup: false
   },
@@ -27,7 +28,10 @@ Page({
    */
   onShow() {
     const localSummary = summarizeAgenda(app.globalData.currentAgenda);
-    if (localSummary) this.setData({ summary: localSummary });
+    this.setData({
+      isSuperAdmin: app.isSuperAdminMode(),
+      ...(localSummary ? { summary: localSummary } : {})
+    });
     this.loadSummary();
   },
 

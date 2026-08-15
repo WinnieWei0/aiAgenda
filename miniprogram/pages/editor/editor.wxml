@@ -14,17 +14,6 @@
     当前身份：{{isSuperAdmin ? '模拟超管' : '普通会员'}}
   </view>
 
-  <view wx:if="{{isSuperAdmin}}" class="panel meeting-panel">
-    <view class="panel-title">高级会议信息</view>
-    <view class="field-grid">
-      <label class="field"><text>开始时间</text><input disabled="{{!isSuperAdmin}}" value="{{agenda.meetingInfo.startTime}}" data-field="startTime" bindinput="handleMeetingInput" /></label>
-      <label class="field"><text>页眉结束时间</text><input disabled="{{!isSuperAdmin}}" value="{{agenda.meetingInfo.endTime}}" data-field="endTime" bindinput="handleMeetingInput" /></label>
-      <label class="field"><text>模板语言</text><picker range="{{languageLabels}}" value="{{agenda.meetingInfo.language === 'en' ? 1 : 0}}" bindchange="handleLanguageChange"><view class="picker-value language-picker">{{agenda.meetingInfo.language === 'en' ? 'English' : '中文'}}<text class="picker-arrow">⌄</text></view></picker></label>
-      <label class="field full"><text>地址</text><textarea disabled="{{!isSuperAdmin}}" value="{{agenda.meetingInfo.address}}" data-field="address" bindinput="handleMeetingInput" /></label>
-    </view>
-    <view wx:if="{{agenda.timeMismatch}}" class="time-warning">时间链结束于 {{agenda.computedEndTime}}，与页眉 {{agenda.meetingInfo.endTime}} 不一致</view>
-  </view>
-
   <block wx:for="{{agenda.sections}}" wx:for-item="section" wx:for-index="sectionIndex" wx:key="id">
     <view wx:if="{{section.enabled !== false && (!section.languageGate || section.languageGate === agenda.meetingInfo.language) && section.id !== 'evaluation' && section.id !== 'facilitatorReport' && section.id !== 'vote'}}" class="panel agenda-section {{section.type === 'end' ? 'end-section' : ''}}">
       <view class="section-heading">

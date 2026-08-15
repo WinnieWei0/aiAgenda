@@ -12,5 +12,5 @@
 
   <button class="action-button primary" disabled="{{openingEditor || creatingSignup}}" bindtap="goEditor">编辑接龙</button>
   <button class="action-button" disabled="{{openingEditor || creatingSignup}}" bindtap="goSignup">报名页</button>
-  <button class="action-button" disabled="{{openingEditor || creatingSignup}}" bindtap="goTemplate">修改议程表模板</button>
+  <button wx:if="{{isSuperAdmin}}" class="action-button template-button" disabled="{{openingEditor || creatingSignup}}" bindtap="goTemplate">修改议程表模板</button>
 </view>

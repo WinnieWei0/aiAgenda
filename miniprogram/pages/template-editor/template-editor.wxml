@@ -1,10 +1,23 @@
 <view class="template-editor" wx:if="{{!loading}}">
-  <view class="locale-bar"><button class="{{activeLocale === 'zh' ? 'active' : ''}}" data-locale="zh" bindtap="switchLocale">中文模板</button><button class="{{activeLocale === 'en' ? 'active' : ''}}" data-locale="en" bindtap="switchLocale">English Template</button></view>
   <view class="editor-band">
     <view class="band-title">会议信息</view>
     <label class="field"><text>地址</text><textarea value="{{template.locales[activeLocale].fixedContent.venue}}" data-group="fixedContent" data-field="venue" bindinput="handleTemplateInput" /></label>
     <label class="field"><text>费用</text><textarea value="{{template.locales[activeLocale].fixedContent.fees}}" data-group="fixedContent" data-field="fees" bindinput="handleTemplateInput" /></label>
-    <view class="asset-actions"><button data-field="officialQr" bindtap="replaceAsset">公众号二维码</button><button data-field="membershipQr" bindtap="replaceAsset">会员副会长二维码</button></view>
+  </view>
+
+  <view class="editor-band section-divider">
+    <view class="band-title">二维码</view>
+    <view class="asset-actions"><button class="upload-button" data-field="officialQr" bindtap="replaceAsset">上传公众号二维码</button><button class="upload-button" data-field="membershipQr" bindtap="replaceAsset">上传会员副会长二维码</button></view>
+  </view>
+
+  <view class="editor-band section-divider">
+    <view class="band-title">干事联系方式</view>
+    <view class="officer-editor" wx:for="{{template.locales[activeLocale].page2.officers}}" wx:key="index">
+      <view class="officer-role">{{item.role}}</view>
+      <label class="officer-field officer-name"><text>姓名</text><picker range="{{memberLabels}}" value="{{officerMemberIndexes[index]}}" data-index="{{index}}" bindchange="chooseOfficerMember"><view class="member-picker">{{item.name || '请选择会员'}}<text class="picker-arrow">⌄</text></view></picker></label>
+      <label class="officer-field"><text>电话</text><input value="{{item.phone}}" data-index="{{index}}" data-field="phone" bindinput="handleOfficerInput" /></label>
+      <label class="officer-field"><text>微信</text><input value="{{item.wechat}}" data-index="{{index}}" data-field="wechat" bindinput="handleOfficerInput" /></label>
+    </view>
   </view>
 
   <view class="save-bar"><button loading="{{saving}}" bindtap="saveTemplate">保存模板</button><button class="preview-button" loading="{{saving}}" bindtap="previewTemplate">保存并预览</button></view>

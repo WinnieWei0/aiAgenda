@@ -104,6 +104,10 @@ function writeSlotPerson(agendaValue, slot, personValue) {
       section.row.persons = section.row.persons || [];
       section.row.persons[target.index] = person;
     }
+    if (slot.roleKey === 'guestReception') {
+      const venueIntroduction = agenda.sections.find((item) => item.id === 'venueIntroduction');
+      if (venueIntroduction && venueIntroduction.row) venueIntroduction.row.person = clone(person);
+    }
   } else if (target.kind === 'roleKey') {
     visitRows(agenda, (row) => { if (row.roleKey === target.roleKey) row.person = clone(person); });
   } else if (target.kind === 'prepared') {

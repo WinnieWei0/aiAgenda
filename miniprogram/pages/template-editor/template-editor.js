@@ -7,6 +7,9 @@ Page({
     loading: true,
     saving: false,
     activeLocale: 'zh',
+    memberOptions: [],
+    memberLabels: [],
+    officerMemberIndexes: [],
     template: agendaUtil.createDefaultTemplate()
   },
 
@@ -22,9 +25,29 @@ Page({
       return;
     }
     try {
-      const data = await cloud.callCloud('agendaTemplate', { action: 'get' });
-      const template = agendaUtil.normalizeTemplate(data.template);
-      this.setData({ template, loading: false });
+      const [templateData, memberData] = await Promise.all([
+        cloud.callCloud('agendaTemplate', { action: 'get' }),
+        cloud.callCloud('adminMemberships', { action: 'list', pageSize: 100 })
+      ]);
+      const memberOptions = (memberData.list || []).map((member) => ({
+        label: [member.nameZh, member.nameEn, member.nickName].filter(Boolean).join(' / ') || '未命名会员',
+        member
+      }));
+      const template = agendaUtil.normalizeTemplate(templateData.template);
+      const officerMemberIndexes = (template.locales.zh.page2.officers || []).map((officer) => memberOptions.findIndex((option) => {
+        const member = option.member;
+        return member._id === officer.memberId || [member.nameZh, member.nameEn, member.nickName].filter(Boolean).some((name) => String(officer.name || '').includes(name));
+      }));
+      this.setData({
+        template,
+        memberOptions,
+        memberLabels: memberOptions.map((option) => option.label || '未命名会员'),
+        officerMemberIndexes,
+        loading: false
+      });
+      if (!memberOptions.length) {
+        wx.showToast({ title: '会员列表为空，请先维护会员数据', icon: 'none' });
+      }
     } catch (error) {
       this.setData({ loading: false });
       cloud.showError(error);
@@ -141,6 +164,27 @@ Page({
     const officer = template.locales[this.data.activeLocale].page2.officers[Number(event.currentTarget.dataset.index)];
     officer[event.currentTarget.dataset.field] = event.detail.value;
     this.setData({ template });
+  },
+
+  /**
+   * 方法是什么：选择干事对应的俱乐部会员。
+   * 方法作用：将会员 ID、正式姓名和已有电话写入模板干事记录。
+   * 为什么添加：干事姓名必须从会员库选择，避免手工输入产生不一致。
+   */
+  chooseOfficerMember(event) {
+    const index = Number(event.detail.value);
+    const option = this.data.memberOptions[index];
+    if (!option) return;
+    const template = agendaUtil.cloneJson(this.data.template);
+    const officer = template.locales.zh.page2.officers[Number(event.currentTarget.dataset.index)];
+    if (!officer) return;
+    const member = option.member;
+    officer.memberId = member._id;
+    officer.name = [member.nameZh, member.nameEn].filter(Boolean).join(' ') || member.nickName || '';
+    if (member.phone) officer.phone = member.phone;
+    const officerMemberIndexes = this.data.officerMemberIndexes.slice();
+    officerMemberIndexes[Number(event.currentTarget.dataset.index)] = index;
+    this.setData({ template, officerMemberIndexes });
   },
 
   /**
