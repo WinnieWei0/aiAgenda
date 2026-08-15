@@ -11,6 +11,22 @@ const ROLE_DEFINITIONS = {
   tableTopicsEvaluator: '即兴点评师'
 };
 
+const GUEST_ROLE_KEYS = ['guestReception', 'ahCounter', 'photographer'];
+
+function allowedPersonTypes(roleKey) {
+  return GUEST_ROLE_KEYS.includes(roleKey) ? ['member', 'club', 'guest'] : ['member', 'club'];
+}
+
+function canSignupAs(roleKey, personType) {
+  return allowedPersonTypes(roleKey).includes(personType);
+}
+
+function signupPersonKey(item) {
+  const source = item || {};
+  const identity = source.memberId || `${source.personType || 'guest'}:${source.name || ''}:${source.club || ''}`;
+  return source.openid ? `${source.openid}:${identity}` : `preset:${source._id || identity}`;
+}
+
 function clone(value) {
   return JSON.parse(JSON.stringify(value));
 }
@@ -48,7 +64,8 @@ function buildRoleSlots(agendaValue) {
   const add = (id, roleKey, label, target, person, meta) => {
     slots.push(Object.assign({
       id, roleKey, label, target, occupied: hasPerson(person), preset: hasPerson(person),
-      person: hasPerson(person) ? clone(person) : null
+      person: hasPerson(person) ? clone(person) : null,
+      allowedPersonTypes: allowedPersonTypes(roleKey)
     }, meta || {}));
   };
   const signIn = (agenda.sections || []).find((section) => section.id === 'signIn');
@@ -107,4 +124,4 @@ function mergeSlots(existing, agenda) {
   });
 }
 
-module.exports = { ROLE_DEFINITIONS, buildRoleSlots, writeSlotPerson, mergeSlots, personFromProfile, hasPerson };
+module.exports = { ROLE_DEFINITIONS, GUEST_ROLE_KEYS, allowedPersonTypes, canSignupAs, signupPersonKey, buildRoleSlots, writeSlotPerson, mergeSlots, personFromProfile, hasPerson };

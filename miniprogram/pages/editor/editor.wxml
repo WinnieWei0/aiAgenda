@@ -3,17 +3,11 @@
     <view class="panel-title">基础信息</view>
     <view class="basic-info-grid">
       <label class="field"><text>No.</text><input value="{{agenda.meetingInfo.meetingNo}}" data-field="meetingNo" bindinput="handleBasicInfoInput" /></label>
-      <label class="field"><text>日期</text><input disabled value="{{agenda.meetingInfo.date}}" placeholder="从接龙信息读取" /></label>
-      <label class="field"><text>语言</text><input disabled value="{{agenda.meetingInfo.language === 'en' ? 'English' : '中文'}}" /></label>
+      <label class="field"><text>日期</text><picker mode="date" value="{{agenda.meetingInfo.date}}" bindchange="handleDateChange"><view class="picker-value basic-picker">{{agenda.meetingInfo.date || '请选择日期'}}<text class="picker-arrow">⌄</text></view></picker></label>
+      <label class="field"><text>语言</text><picker range="{{languageLabels}}" value="{{agenda.meetingInfo.language === 'en' ? 1 : 0}}" bindchange="handleLanguageChange"><view class="picker-value basic-picker">{{agenda.meetingInfo.language === 'en' ? 'English' : '中文'}}<text class="picker-arrow">⌄</text></view></picker></label>
       <label class="field"><text>主题</text><input value="{{agenda.meetingInfo.theme}}" placeholder="请输入本期会议主题" data-field="theme" bindinput="handleBasicInfoInput" /></label>
+      <label class="field full"><text>MM</text><picker range="{{memberLabels}}" value="{{mmMemberIndex}}" bindchange="chooseMeetingManager"><view class="picker-value basic-picker">{{mmMemberIndex >= 0 ? memberLabels[mmMemberIndex] : '请选择会议经理'}}<text class="picker-arrow">⌄</text></view></picker></label>
     </view>
-  </view>
-
-  <view class="panel signup-manage-panel">
-    <view class="panel-title">角色报名</view>
-    <button class="signup-entry" bindtap="openSignupPage">{{agenda.signupPublicId ? '打开报名页' : '创建报名页'}}</button>
-    <view wx:if="{{signupData}}" class="signup-summary">剩余 {{signupData.remainingRoles}} 个角色 · {{signupData.attendeeCount}} 人参会</view>
-    <view wx:if="{{signupData}}" class="signup-slots"><view wx:for="{{signupData.slots}}" wx:key="id" class="signup-slot"><text>{{item.label}}</text><text class="slot-person">{{item.occupied ? (item.person.displayNameZh || item.person.rawName || '已占用') : '待报名'}}</text><button wx:if="{{item.occupied}}" size="mini" data-slot-id="{{item.id}}" bindtap="cancelManagedSlot">取消</button></view></view>
   </view>
 
   <view class="mode-note {{isSuperAdmin ? 'admin' : ''}}">
@@ -94,8 +88,8 @@
 
   <view wx:if="{{addModuleOptions.length}}" class="panel add-module-panel"><text class="panel-title">新增模块</text><picker range="{{addModuleLabels}}" bindchange="addDynamicModule"><view class="add-module-picker">选择要新增的模块<text class="picker-arrow">⌄</text></view></picker></view>
 
-  <view class="panel qr-panel"><text class="panel-title">例会群二维码</text><button size="mini" bindtap="chooseMeetingGroupQr">替换图片</button></view>
-  <view class="bottom-actions"><button disabled="{{saving || previewing}}" bindtap="saveAgenda">{{saving ? '保存中...' : '保存草稿'}}</button><button class="preview-button" disabled="{{saving || previewing}}" bindtap="goPreview">{{previewing ? '生成中...' : '预览'}}</button><button class="reset-button" bindtap="resetMeeting">重置当前会议</button></view>
+  <view class="panel qr-panel"><view class="qr-row"><text class="panel-title">例会群二维码</text><button size="mini" bindtap="chooseMeetingGroupQr">替换图片</button></view><button class="reset-button" bindtap="resetMeeting">重置当前会议</button></view>
+  <view class="bottom-actions"><button class="signup-generate-button" disabled="{{saving || previewing}}" bindtap="openSignupPage">{{saving ? '保存中...' : '生成报名页'}}</button><button class="preview-button" disabled="{{saving || previewing}}" bindtap="goPreview">{{previewing ? '生成中...' : '预览'}}</button></view>
 
   <view wx:if="{{validationDialogVisible}}" class="validation-mask">
     <view class="validation-dialog">

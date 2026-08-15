@@ -62,15 +62,18 @@
 .dynamic-child-meta button { margin: 0 0 0 auto; }
 .dynamic-child-meta .position-note { width: 100%; }
 .add-module-panel .panel-title { margin-bottom: 14rpx; }
-.add-module-picker, .language-picker { display: flex; box-sizing: border-box; width: 100%; min-height: 72rpx; align-items: center; justify-content: space-between; padding: 14rpx 18rpx; border: 1rpx solid #cbd5e1; background: #ffffff; }
+.add-module-picker, .language-picker, .basic-picker { display: flex; box-sizing: border-box; width: 100%; min-height: 72rpx; align-items: center; justify-content: space-between; padding: 14rpx 18rpx; border: 1rpx solid #cbd5e1; background: #ffffff; }
 .add-button { margin-top: 18rpx; border: 1rpx dashed #0f766e; color: #0f766e; background: #ffffff; }
-.qr-panel { display: flex; align-items: center; justify-content: space-between; }
-.qr-panel .panel-title { margin: 0; }
+.qr-panel { display: block; }
+.qr-row { display: flex; align-items: center; justify-content: space-between; }
+.qr-row .panel-title { margin: 0; }
+.qr-row button { margin: 0; }
+.qr-panel .reset-button { width: 100%; margin-top: 24rpx; }
 .muted { display: block; margin-top: 6rpx; color: #64748b; font-size: 24rpx; }
-.bottom-actions { position: fixed; right: 0; bottom: 0; left: 0; z-index: 10; display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12rpx; padding: 18rpx 24rpx calc(18rpx + env(safe-area-inset-bottom)); border-top: 1rpx solid #d7dde5; background: #ffffff; }
+.bottom-actions { position: fixed; right: 0; bottom: 0; left: 0; z-index: 10; display: grid; grid-template-columns: 1fr 1fr; gap: 16rpx; padding: 18rpx 24rpx calc(18rpx + env(safe-area-inset-bottom)); border-top: 1rpx solid #d7dde5; background: #ffffff; }
 .bottom-actions button { box-sizing: border-box; width: 100%; min-width: 0; margin: 0; white-space: nowrap; }
 .preview-button { overflow: hidden; color: #ffffff; background: #0f766e; text-overflow: clip; }
-.signup-entry { background: #0f766e; color: #ffffff; }
+.signup-entry, .signup-generate-button { background: #0f766e; color: #ffffff; }
 .signup-summary { margin: 16rpx 0; color: #0f766e; font-weight: 600; }
 .signup-slot { display: flex; align-items: center; gap: 12rpx; padding: 12rpx 0; border-bottom: 1rpx solid #e5e7eb; }
 .slot-person { flex: 1; color: #6b7280; text-align: right; }

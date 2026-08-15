@@ -179,8 +179,10 @@ Page({
     const agenda = agendaUtil.normalizeAgenda(value, this.data.template);
     this.decorateAgenda(agenda);
     const addModuleOptions = this.getAvailableModules(agenda);
+    const preparation = agenda.sections.find((section) => section.id === 'preparation');
+    const mmMemberIndex = preparation && preparation.row && preparation.row.person ? preparation.row.person.memberIndex : -1;
     app.setCurrentAgenda(agenda);
-    this.setData({ agenda, addModuleOptions, addModuleLabels: addModuleOptions.map((item) => item.label) });
+    this.setData({ agenda, mmMemberIndex, addModuleOptions, addModuleLabels: addModuleOptions.map((item) => item.label) });
   },
 
   /**
@@ -349,16 +351,60 @@ Page({
 
   /**
    * 方法是什么：修改所有会员可维护的会议基础信息。
-   * 方法作用：仅接受会议期数和主题，日期继续使用接龙解析结果且不可编辑。
-   * 为什么添加：编辑页顶部需要提供统一基础信息区，同时明确保护解析得到的会议日期。
+   * 方法作用：接受会议期数、日期和主题并立即更新当前议程。
+   * 为什么添加：取消接龙解析后，组织者必须能直接维护完整基础信息。
    */
   handleBasicInfoInput(event) {
     const field = event.currentTarget.dataset.field;
-    if (field !== 'meetingNo' && field !== 'theme') {
+    if (!['meetingNo', 'date', 'theme'].includes(field)) {
       return;
     }
     const agenda = agendaUtil.cloneJson(this.data.agenda);
     agenda.meetingInfo[field] = event.detail.value;
+    this.setAgenda(agenda);
+  },
+
+  /**
+   * 方法是什么：处理基础信息中的日期选择。
+   * 方法作用：把微信日期选择器返回的 YYYY-MM-DD 写入会议日期。
+   * 为什么添加：日期应使用标准选择组件，避免手工输入格式错误。
+   */
+  handleDateChange(event) {
+    const agenda = agendaUtil.cloneJson(this.data.agenda);
+    agenda.meetingInfo.date = event.detail.value;
+    const selected = new Date(`${event.detail.value}T00:00:00`);
+    agenda.meetingInfo.weekday = Number.isNaN(selected.getTime()) ? '' : ['周日', '周一', '周二', '周三', '周四', '周五', '周六'][selected.getDay()];
+    this.setAgenda(agenda);
+  },
+
+  /**
+   * 方法是什么：选择本期会议经理 MM。
+   * 方法作用：把会员库中的完整人员资料写入 preparation 的 meetingManager 人员位。
+   * 为什么添加：报名页会议信息需要显示与正式议程一致的 MM。
+   */
+  chooseMeetingManager(event) {
+    const option = this.data.memberOptions[Number(event.detail.value)];
+    if (!option) return;
+    const agenda = agendaUtil.cloneJson(this.data.agenda);
+    const preparation = agenda.sections.find((section) => section.id === 'preparation');
+    if (!preparation || !preparation.row) return;
+    const member = option.member;
+    preparation.row.person = Object.assign({}, preparation.row.person || {}, {
+      rawName: member.nameZh || member.nameEn || member.nickName || '',
+      memberId: member._id,
+      displayNameZh: member.nameZh || member.nameEn || '',
+      displayNameEn: member.nameEn || member.nameZh || '',
+      educationAwards: member.educationAwards || '',
+      educationProgress: member.educationProgress || '',
+      pathNameZh: member.pathNameZh || '',
+      pathNameEn: member.pathNameEn || '',
+      officerTitleZh: member.officerTitleZh || '',
+      officerTitleEn: member.officerTitleEn || '',
+      clubZh: '广州双语',
+      clubEn: 'Bilingual',
+      inputMode: 'select',
+      unresolved: false
+    });
     this.setAgenda(agenda);
   },
 
@@ -394,13 +440,10 @@ Page({
 
   /**
    * 方法是什么：修正当前会议使用的模板语言。
-   * 方法作用：允许模拟超管在中文和英文模板文案之间切换并重新计算语言门控模块。
-   * 为什么添加：接龙自动识别可能出错，但普通会员不能修改模板选择。
+   * 方法作用：允许组织者在中文和英文之间切换并重新计算语言门控模块。
+   * 为什么添加：会议语言属于每期基础信息，不再依赖接龙识别或超管修改。
    */
   handleLanguageChange(event) {
-    if (!this.data.isSuperAdmin) {
-      return;
-    }
     const agenda = agendaUtil.cloneJson(this.data.agenda);
     agenda.meetingInfo.language = Number(event.detail.value) === 1 ? 'en' : 'zh';
     this.setAgenda(agenda);

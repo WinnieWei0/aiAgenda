@@ -222,6 +222,21 @@ function testSignupRoleSlots() {
   assert.ok(slots.some((slot) => slot.id === 'prepared:speech-two:evaluator'));
   assert.ok(slots.some((slot) => slot.roleKey === 'icebreaker'));
   assert.ok(slots.some((slot) => slot.roleKey === 'workshop'));
+  assert.deepStrictEqual(signupModel.allowedPersonTypes('guestReception'), ['member', 'club', 'guest']);
+  assert.deepStrictEqual(signupModel.allowedPersonTypes('ahCounter'), ['member', 'club', 'guest']);
+  assert.deepStrictEqual(signupModel.allowedPersonTypes('photographer'), ['member', 'club', 'guest']);
+  assert.strictEqual(signupModel.canSignupAs('timer', 'guest'), false);
+  assert.strictEqual(signupModel.canSignupAs('timer', 'club'), true);
+  assert.notStrictEqual(
+    signupModel.signupPersonKey({ openid: 'same-user', memberId: 'member-a' }),
+    signupModel.signupPersonKey({ openid: 'same-user', memberId: 'member-b' }),
+    '同一微信代报不同会员时应显示为两个人'
+  );
+  assert.strictEqual(
+    signupModel.signupPersonKey({ openid: 'same-user', memberId: 'member-a', slotId: 'role:timer' }),
+    signupModel.signupPersonKey({ openid: 'same-user', memberId: 'member-a', slotId: 'role:grammarian' }),
+    '同一会员报名多个角色时应合并显示'
+  );
   const timer = slots.find((slot) => slot.id === 'role:timer');
   const updated = signupModel.writeSlotPerson(agenda, timer, { name: '时间官甲', personType: 'guest', club: '宾客' });
   const timerRows = [];

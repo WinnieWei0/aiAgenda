@@ -58,7 +58,9 @@ async function main(event) {
     const template = await common.getAgendaTemplate();
     const agenda = buildAgendaPayload(submitted, template);
     const signupSlots = existing && existing.signupPublicId
-      ? common.signup.mergeSlots(existing.signupSlots, agenda)
+      ? (common.signup && typeof common.signup.mergeSlots === 'function'
+        ? common.signup.mergeSlots(existing.signupSlots, agenda)
+        : (existing.signupSlots || []))
       : [];
     const payload = {
       ownerOpenid: openid,

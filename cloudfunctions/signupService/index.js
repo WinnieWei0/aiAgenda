@@ -26,15 +26,34 @@ async function getAgendaByPublicId(db, id) {
 async function response(db, record, openid) {
   const signups = await db.collection('agenda_signups').where({ agendaId: record._id }).get();
   const list = signups.data || [];
+  const signupBySlot = new Map(list.filter((item) => item.slotId).map((item) => [item.slotId, item]));
+  const claimResult = await db.collection('agenda_signup_claims').where({ agendaId: record._id }).get();
+  for (const claim of claimResult.data || []) {
+    const hasSignup = list.some((item) => item.claimId === claim._id || item.slotId === claim.slotId);
+    const age = claim.createdAt ? Date.now() - new Date(claim.createdAt).getTime() : Infinity;
+    if (!hasSignup && age > 30000) await db.collection('agenda_signup_claims').doc(claim._id).remove();
+  }
   const people = new Map();
   list.forEach((item) => {
-    const key = item.openid || `preset:${item._id}`;
-    const current = people.get(key) || { key, name: item.name, personType: item.personType, club: item.club, roles: [], attendanceOnly: false, mine: item.openid === openid };
+    const key = common.signup.signupPersonKey(item);
+    const current = people.get(key) || { key, name: item.name, memberId: item.memberId || '', personType: item.personType, club: item.club, roles: [], attendanceOnly: false, mine: item.openid === openid };
     if (item.slotId) current.roles.push({ signupId: item._id, slotId: item.slotId, label: item.roleLabel, mine: current.mine });
     else { current.attendanceOnly = true; current.attendanceSignupId = item._id; }
     people.set(key, current);
   });
-  const slots = record.signupSlots || [];
+  const slots = (record.signupSlots || []).map((slot) => {
+    const signupItem = signupBySlot.get(slot.id);
+    const occupied = Boolean(slot.preset && slot.occupied || signupItem);
+    return Object.assign({}, slot, {
+      occupied,
+      signupId: signupItem && signupItem._id || slot.signupId || '',
+      signupOpenid: signupItem && signupItem.openid || slot.signupOpenid || '',
+      mine: Boolean(signupItem && signupItem.openid === openid),
+      person: signupItem ? common.signup.personFromProfile(signupItem) : slot.person,
+      allowedPersonTypes: common.signup.allowedPersonTypes(slot.roleKey),
+      accessLabel: common.signup.allowedPersonTypes(slot.roleKey).includes('guest') ? '会员/宾客' : '会员'
+    });
+  });
   slots.filter((slot) => slot.preset && slot.occupied && slot.person).forEach((slot) => {
     const name = slot.person.displayNameZh || slot.person.rawName || '组织者预设';
     const key = `preset:${name}`;
@@ -42,7 +61,13 @@ async function response(db, record, openid) {
     current.roles.push({ slotId: slot.id, label: slot.label, mine: false });
     people.set(key, current);
   });
-  return { publicId: record.signupPublicId, agendaId: record._id, meetingInfo: record.agenda.meetingInfo, slots, remainingRoles: slots.filter((s) => !s.occupied).length, attendeeCount: people.size, people: Array.from(people.values()), myOpenid: openid };
+  const preparation = (record.agenda.sections || []).find((section) => section.id === 'preparation');
+  const manager = preparation && preparation.row && preparation.row.person || {};
+  const template = await common.getAgendaTemplate();
+  const language = record.agenda.meetingInfo && record.agenda.meetingInfo.language === 'en' ? 'en' : 'zh';
+  const locale = template.locales && template.locales[language] || {};
+  const templateVenue = locale.fixedContent && locale.fixedContent.venue || '';
+  return { publicId: record.signupPublicId, agendaId: record._id, meetingInfo: record.agenda.meetingInfo, templateVenue, meetingManagerName: manager.displayNameZh || manager.rawName || '待填写', slots, remainingRoles: slots.filter((s) => !s.occupied).length, attendeeCount: people.size, people: Array.from(people.values()), myOpenid: openid };
 }
 
 async function createSession(db, openid, agendaId) {
@@ -66,31 +91,25 @@ async function signup(db, openid, event) {
     if (!existing.data.length) await db.collection('agenda_signups').add({ data: Object.assign({ agendaId: record._id, openid, slotId: '', roleLabel: '', createdAt: now, updatedAt: now }, profile) });
     return response(db, record, openid);
   }
-  const slot = (record.signupSlots || []).find((item) => item.id === event.slotId);
-  if (!slot || slot.occupied) throw Object.assign(new Error('该角色已被报名'), { code: 'SLOT_TAKEN' });
-  const claimId = `${record._id}_${slot.id}`.replace(/[^a-zA-Z0-9_-]/g, '_');
-  try {
-    await db.collection('agenda_signup_claims').doc(claimId).create({ data: { agendaId: record._id, slotId: slot.id, openid, createdAt: now } });
-  } catch (error) {
-    throw Object.assign(new Error('该角色刚刚已被其他人报名'), { code: 'SLOT_TAKEN' });
-  }
-  let result;
-  try {
-    result = await db.collection('agenda_signups').add({ data: Object.assign({ agendaId: record._id, openid, slotId: slot.id, roleLabel: slot.label, claimId, createdAt: now, updatedAt: now }, profile) });
-  } catch (error) {
-    await db.collection('agenda_signup_claims').doc(claimId).remove();
-    throw error;
-  }
-  slot.occupied = true; slot.preset = false; slot.signupId = result._id; slot.signupOpenid = openid; slot.person = common.signup.personFromProfile(profile);
-  const agenda = common.agendaModel.normalizeAgenda(common.signup.writeSlotPerson(record.agenda, slot, profile), await common.getAgendaTemplate());
-  try {
-    await db.collection('agendas').doc(record._id).update({ data: { agenda, signupSlots: record.signupSlots, signupVersion: Number(record.signupVersion || 0) + 1, updatedAt: now } });
-  } catch (error) {
-    await db.collection('agenda_signups').doc(result._id).remove();
-    await db.collection('agenda_signup_claims').doc(claimId).remove();
-    throw error;
-  }
-  return response(db, Object.assign({}, record, { agenda }), openid);
+  const template = await common.getAgendaTemplate();
+  const transactionResult = await db.runTransaction(async (transaction) => {
+    const agendaRef = transaction.collection('agendas').doc(record._id);
+    const latestResult = await agendaRef.get();
+    const latest = latestResult.data;
+    const slot = (latest.signupSlots || []).find((item) => item.id === event.slotId);
+    if (!slot || slot.occupied) throw Object.assign(new Error('该角色已被报名'), { code: 'SLOT_TAKEN' });
+    if (!common.signup.canSignupAs(slot.roleKey, event.personType)) throw Object.assign(new Error('该身份不能报名此角色'), { code: 'ROLE_IDENTITY_FORBIDDEN' });
+    const result = await transaction.collection('agenda_signups').add({ data: Object.assign({ agendaId: latest._id, openid, slotId: slot.id, roleLabel: slot.label, createdAt: now, updatedAt: now }, profile) });
+    slot.occupied = true;
+    slot.preset = false;
+    slot.signupId = result._id;
+    slot.signupOpenid = openid;
+    slot.person = common.signup.personFromProfile(profile);
+    const agenda = common.agendaModel.normalizeAgenda(common.signup.writeSlotPerson(latest.agenda, slot, profile), template);
+    await agendaRef.update({ data: { agenda, signupSlots: latest.signupSlots, signupVersion: Number(latest.signupVersion || 0) + 1, updatedAt: now } });
+    return { agenda, signupSlots: latest.signupSlots };
+  });
+  return response(db, Object.assign({}, record, transactionResult), openid);
 }
 
 async function cancel(db, openid, event) {
