@@ -227,9 +227,6 @@ async function main(event) {
     if (!agenda) {
       return common.fail('AGENDA_NOT_FOUND', '议程不存在');
     }
-    if (agenda.expiresAt && new Date(agenda.expiresAt).getTime() <= Date.now()) {
-      return common.fail('AGENDA_EXPIRED', '议程草稿已过期，请重新解析接龙');
-    }
     if (agenda.ownerOpenid !== openid && !(await common.isAdmin(openid))) {
       return common.fail('FORBIDDEN', '只能导出自己的议程');
     }

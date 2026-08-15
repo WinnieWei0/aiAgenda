@@ -151,7 +151,7 @@ async function reset(db, openid, agendaId) {
   await db.collection('agenda_signups').where({ agendaId }).remove();
   await db.collection('agenda_signup_claims').where({ agendaId }).remove();
   const agenda = common.agendaModel.createAgendaFromFacts({}, await common.getAgendaTemplate());
-  await db.collection('agendas').doc(agendaId).update({ data: { agenda, signupPublicId: common.getDb().command.remove(), signupSlots: [], signupVersion: Number(record.signupVersion || 0) + 1, updatedAt: new Date().toISOString() } });
+  await db.collection('agendas').doc(agendaId).update({ data: { agenda, expiresAt: common.getDb().command.remove(), signupPublicId: common.getDb().command.remove(), signupSlots: [], signupVersion: Number(record.signupVersion || 0) + 1, updatedAt: new Date().toISOString() } });
   return { agenda: Object.assign({}, agenda, { _id: agendaId }) };
 }
 
