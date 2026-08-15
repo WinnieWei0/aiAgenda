@@ -18,6 +18,16 @@ function buildAgendaPayload(agenda, template) {
   return normalized;
 }
 
+function buildMeetingSummary(agenda) {
+  const info = agenda && agenda.meetingInfo || {};
+  return {
+    meetingNo: info.meetingNo || '',
+    date: info.date || '',
+    startTime: info.startTime || '',
+    endTime: info.endTime || ''
+  };
+}
+
 /**
  * 方法是什么：读取议程记录中的 JSON 数据。
  * 方法作用：兼容新嵌套议程和旧平面数据格式。
@@ -65,6 +75,7 @@ async function main(event) {
     const payload = {
       ownerOpenid: openid,
       agenda,
+      meetingSummary: buildMeetingSummary(agenda),
       signupSlots,
       updatedAt: now.toISOString()
     };
@@ -85,5 +96,5 @@ async function main(event) {
   }
 }
 
-module.exports = { buildAgendaPayload, getAgendaFromRecord, main };
+module.exports = { buildAgendaPayload, buildMeetingSummary, getAgendaFromRecord, main };
 exports.main = main;

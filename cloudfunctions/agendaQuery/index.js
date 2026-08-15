@@ -37,6 +37,27 @@ async function getCurrentDraft(openid) {
   return hydrateRecord(record);
 }
 
+function toMeetingSummary(record) {
+  if (!record) return null;
+  const info = record.meetingSummary || record.agenda && record.agenda.meetingInfo || record.meetingInfo || {};
+  return {
+    _id: record._id || '',
+    meetingNo: info.meetingNo || '',
+    date: info.date || '',
+    startTime: info.startTime || '',
+    endTime: info.endTime || ''
+  };
+}
+
+async function getCurrentSummary(openid) {
+  const collection = await common.ensureCollection('agendas');
+  const result = await collection.where({ ownerOpenid: openid }).field({ meetingSummary: true, updatedAt: true }).get();
+  const records = (result.data || []).sort((left, right) => String(right.updatedAt || '').localeCompare(String(left.updatedAt || '')));
+  if (!records.length) return null;
+  if (records[0].meetingSummary) return toMeetingSummary(records[0]);
+  return toMeetingSummary(await getCurrentDraft(openid));
+}
+
 /**
  * 方法是什么：查询指定议程。
  * 方法作用：读取议程详情并校验归属和有效期。
@@ -76,7 +97,7 @@ async function listAgendas(openid) {
 
 /**
  * 方法是什么：处理议程查询请求。
- * 方法作用：分发 current、get 和兼容 list 操作。
+ * 方法作用：分发 summary、current、get 和兼容 list 操作。
  * 为什么添加：小程序重启后需要从服务端恢复当前草稿。
  */
 async function main(event) {
@@ -86,6 +107,9 @@ async function main(event) {
     const action = event && event.action ? event.action : 'current';
     if (action === 'current') {
       return common.ok({ agenda: await getCurrentDraft(openid) });
+    }
+    if (action === 'summary') {
+      return common.ok({ summary: await getCurrentSummary(openid) });
     }
     if (action === 'list') {
       return common.ok({ list: await listAgendas(openid) });
@@ -99,5 +123,5 @@ async function main(event) {
   }
 }
 
-module.exports = { hydrateRecord, getCurrentDraft, getAgenda, main };
+module.exports = { hydrateRecord, toMeetingSummary, getCurrentSummary, getCurrentDraft, getAgenda, main };
 exports.main = main;

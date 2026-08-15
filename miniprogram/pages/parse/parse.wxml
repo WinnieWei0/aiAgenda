@@ -1,10 +1,16 @@
 <view class="page agenda-home">
-  <view class="summary" wx:if="{{agenda}}">
-    <text class="summary-title">第 {{agenda.meetingInfo.meetingNo || '--'}} 期</text>
-    <text>{{agenda.meetingInfo.date || '日期待填写'}} · {{agenda.meetingInfo.theme || '主题待填写'}}</text>
+  <view class="summary {{summary ? '' : 'empty'}}">
+    <block wx:if="{{summary}}">
+      <text class="summary-title">第 {{summary.meetingNo || '--'}} 期</text>
+      <text class="summary-meta">{{summary.date || '日期待填写'}} · {{summary.startTime || '--:--'}}~{{summary.endTime || '--:--'}}</text>
+    </block>
+    <block wx:else>
+      <text class="summary-title">尚未创建当前会议</text>
+      <text class="summary-meta">从编辑接龙开始设置本期议程</text>
+    </block>
   </view>
-  <view class="summary empty" wx:else><text class="summary-title">尚未创建当前会议</text><text>从编辑接龙开始设置本期议程</text></view>
-  <button class="primary" loading="{{loading}}" bindtap="goEditor">编辑接龙</button>
-  <button loading="{{creatingSignup}}" bindtap="goSignup">报名页</button>
-  <button bindtap="goTemplate">修改议程表模板</button>
+
+  <button class="action-button primary" disabled="{{openingEditor || creatingSignup}}" bindtap="goEditor">编辑接龙</button>
+  <button class="action-button" disabled="{{openingEditor || creatingSignup}}" bindtap="goSignup">报名页</button>
+  <button class="action-button" disabled="{{openingEditor || creatingSignup}}" bindtap="goTemplate">修改议程表模板</button>
 </view>
