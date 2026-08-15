@@ -383,8 +383,8 @@ Page({
 
   /**
    * 方法是什么：选择本期会议经理 MM。
-   * 方法作用：把会员库中的完整人员资料写入 preparation 的 meetingManager 人员位。
-   * 为什么添加：报名页会议信息需要显示与正式议程一致的 MM。
+   * 方法作用：把基础信息中的 MM 作为会议筹备人写入 preparation 的 meetingManager 人员位。
+   * 为什么添加：编辑页不再重复显示会议筹备模块，报名页和正式议程仍共用同一 MM 数据。
    */
   chooseMeetingManager(event) {
     const option = this.data.memberOptions[Number(event.detail.value)];

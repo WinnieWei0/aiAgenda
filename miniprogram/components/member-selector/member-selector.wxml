@@ -1,14 +1,20 @@
 <view wx:if="{{visible}}" class="selector-mask" bindtap="cancel" catchtouchmove="noop">
   <view class="selector-panel" catchtap="noop">
-    <view class="selector-header"><button bindtap="cancel">取消</button><text>{{title}}</text><button class="confirm" disabled="{{!pendingId}}" bindtap="confirm">确定</button></view>
-    <input class="selector-search" value="{{keyword}}" placeholder="搜索中文名、英文名或昵称" focus="{{visible}}" bindinput="handleSearch" />
-    <scroll-view scroll-y class="selector-list">
-      <button wx:for="{{filteredMembers}}" wx:key="_id" class="selector-option {{pendingId === item._id ? 'selected' : ''}}" data-id="{{item._id}}" bindtap="selectMember">
-        <text class="primary">{{item.nameZh || item.nameEn || item.nickName || '未命名会员'}}</text>
-        <text class="secondary">{{item.nameEn}} {{item.nickName}}</text>
-        <text wx:if="{{pendingId === item._id}}" class="check">✓</text>
-      </button>
-      <view wx:if="{{!filteredMembers.length}}" class="selector-empty">没有匹配的会员</view>
-    </scroll-view>
+    <view class="selector-header">
+      <button bindtap="cancel">取消</button>
+      <button class="confirm" disabled="{{!pendingId}}" bindtap="confirm">确认选择</button>
+    </view>
+    <view class="search-wrap">
+      <input class="selector-search" value="{{keyword}}" placeholder="搜索中文名、英文名或昵称" focus="{{visible}}" confirm-type="search" bindinput="handleSearch" />
+    </view>
+    <picker-view wx:if="{{filteredMembers.length}}" class="selector-picker" value="{{pickerValue}}" indicator-class="picker-indicator" mask-style="background: transparent;" bindchange="handlePickerChange">
+      <picker-view-column>
+        <view wx:for="{{filteredMembers}}" wx:key="_id" class="picker-option">
+          <text class="primary">{{item.nameZh || item.nameEn || item.nickName || '未命名会员'}}</text>
+          <text wx:if="{{item.nameEn || item.nickName}}" class="secondary">{{item.nameEn}} {{item.nickName}}</text>
+        </view>
+      </picker-view-column>
+    </picker-view>
+    <view wx:else class="selector-empty">没有匹配的会员</view>
   </view>
 </view>

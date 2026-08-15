@@ -6,12 +6,12 @@
       <label class="field"><text>日期</text><picker mode="date" value="{{agenda.meetingInfo.date}}" bindchange="handleDateChange"><view class="picker-value basic-picker">{{agenda.meetingInfo.date || '请选择日期'}}<text class="picker-arrow">⌄</text></view></picker></label>
       <label class="field"><text>语言</text><picker range="{{languageLabels}}" value="{{agenda.meetingInfo.language === 'en' ? 1 : 0}}" bindchange="handleLanguageChange"><view class="picker-value basic-picker">{{agenda.meetingInfo.language === 'en' ? 'English' : '中文'}}<text class="picker-arrow">⌄</text></view></picker></label>
       <label class="field"><text>主题</text><input value="{{agenda.meetingInfo.theme}}" placeholder="请输入本期会议主题" data-field="theme" bindinput="handleBasicInfoInput" /></label>
-      <label class="field full"><text>MM</text><button class="selector-trigger basic-picker" data-selector-kind="mm" bindtap="openMemberSelector">{{mmMemberIndex >= 0 ? memberLabels[mmMemberIndex] : '请选择会议经理'}}<text class="picker-arrow">⌄</text></button></label>
+      <label class="field full"><text>MM</text><button class="selector-trigger basic-picker" data-selector-kind="mm" bindtap="openMemberSelector">{{mmMemberIndex >= 0 ? memberLabels[mmMemberIndex] : '请选择会议筹备人'}}<text class="picker-arrow">⌄</text></button></label>
     </view>
   </view>
 
   <block wx:for="{{agenda.sections}}" wx:for-item="section" wx:for-index="sectionIndex" wx:key="id">
-    <view wx:if="{{section.enabled !== false && (!section.languageGate || section.languageGate === agenda.meetingInfo.language) && section.id !== 'evaluation' && section.id !== 'facilitatorReport' && section.id !== 'vote'}}" class="panel agenda-section {{section.type === 'end' ? 'end-section' : ''}}">
+    <view wx:if="{{section.enabled !== false && (!section.languageGate || section.languageGate === agenda.meetingInfo.language) && section.id !== 'preparation' && section.id !== 'evaluation' && section.id !== 'facilitatorReport' && section.id !== 'vote'}}" class="panel agenda-section {{section.type === 'end' ? 'end-section' : ''}}">
       <view class="section-heading">
         <view>
           <text class="section-time">{{section.startTime}}</text>
