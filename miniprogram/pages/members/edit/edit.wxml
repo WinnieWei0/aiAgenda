@@ -29,7 +29,6 @@
     <view class="form-row"><text>路径中文名</text><input value="{{member.pathNameZh}}" data-field="pathNameZh" bindinput="handleInput" /></view>
     <view class="form-row"><text>电话号码</text><input value="{{member.phone}}" data-field="phone" bindinput="handleInput" /></view>
     <view class="form-row"><text>第几季度</text><input type="number" value="{{member.quarter}}" data-field="quarter" bindinput="handleInput" /></view>
-    <view class="readonly-field"><text>搜索词汇</text><text>{{member.searchText}}</text></view>
     <view class="form-row"><text>当前状态</text><input value="{{member.status}}" data-field="status" bindinput="handleInput" /></view>
     <view class="readonly-field"><text>更新时间</text><text>{{member.updatedAt}}</text></view>
     <view class="button-row form-actions">

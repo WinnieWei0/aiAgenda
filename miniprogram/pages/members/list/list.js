@@ -151,14 +151,5 @@ Page({
     } catch (error) {
       cloud.showError(error);
     }
-  },
-
-  /**
-   * 方法是什么：刷新会员列表。
-   * 方法作用：手动重新调用列表接口并更新页面。
-   * 为什么添加：用户需要在云端数据变化后主动刷新当前列表。
-   */
-  async refreshRecords() {
-    await this.loadRecords();
   }
 });

@@ -1,10 +1,25 @@
 const cloud = require('../../../utils/cloud');
 
+/**
+ * 方法是什么：格式化路径记录时间。
+ * 方法作用：把数据库 ISO 时间转换为本地年月日时分秒。
+ * 为什么添加：管理页面不应直接显示难以阅读的 ISO 时间字符串。
+ */
+function formatDateTime(value) {
+  if (!value) return '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return String(value);
+  const pad = (part) => String(part).padStart(2, '0');
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
+}
+
 Page({
   data: {
     id: '',
     isEdit: false,
     saving: false,
+    formattedCreatedAt: '',
+    formattedUpdatedAt: '',
     pathway: {
       code: '',
       createdAt: '',
@@ -40,7 +55,11 @@ Page({
     try {
       const data = await cloud.callCloud('adminPathways', { action: 'get', id });
       if (data.record) {
-        this.setData({ pathway: Object.assign({}, this.data.pathway, data.record) });
+        this.setData({
+          pathway: Object.assign({}, this.data.pathway, data.record),
+          formattedCreatedAt: formatDateTime(data.record.createdAt),
+          formattedUpdatedAt: formatDateTime(data.record.updatedAt)
+        });
       }
     } catch (error) {
       cloud.showError(error);

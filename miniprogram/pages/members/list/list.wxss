@@ -12,7 +12,23 @@
 
 .record-title {
   font-weight: 700;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.member-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 20rpx;
   margin-bottom: 8rpx;
+}
+
+.officer-title {
+  flex-shrink: 0;
+  color: #475569;
+  font-size: 24rpx;
+  text-align: right;
 }
 
 .card-actions {

@@ -4,19 +4,18 @@
   </view>
 
   <view class="section panel form-panel">
-    <view class="readonly-field"><text>id</text><text>{{pathway._id}}</text></view>
+    <view wx:if="{{isEdit}}" class="readonly-field"><text>id</text><text>{{pathway._id}}</text></view>
     <view class="form-row"><text>code</text><input value="{{pathway.code}}" data-field="code" bindinput="handleInput" /></view>
-    <view class="readonly-field"><text>创建时间</text><text>{{pathway.createdAt}}</text></view>
+    <view wx:if="{{isEdit}}" class="readonly-field"><text>创建时间</text><text>{{formattedCreatedAt}}</text></view>
     <view class="form-row"><text>英文完整标签</text><input value="{{pathway.fullLabelEn}}" data-field="fullLabelEn" bindinput="handleInput" /></view>
     <view class="form-row"><text>中文完整标签</text><input value="{{pathway.fullLabelZh}}" data-field="fullLabelZh" bindinput="handleInput" /></view>
     <view class="form-row"><text>等级</text><input value="{{pathway.level}}" data-field="level" bindinput="handleInput" /></view>
     <view class="form-row"><text>项目要求英文</text><textarea value="{{pathway.objectiveEn}}" data-field="objectiveEn" bindinput="handleInput" /></view>
     <view class="form-row"><text>项目要求中文</text><textarea value="{{pathway.objectiveZh}}" data-field="objectiveZh" bindinput="handleInput" /></view>
-    <view class="readonly-field"><text>搜索关键词</text><text>{{pathway.searchText}}</text></view>
-    <view class="readonly-field"><text>更新时间</text><text>{{pathway.updatedAt}}</text></view>
+    <view wx:if="{{isEdit}}" class="readonly-field"><text>更新时间</text><text>{{formattedUpdatedAt}}</text></view>
     <view class="button-row form-actions">
-      <button type="primary" loading="{{saving}}" bindtap="savePathway">保存</button>
       <button bindtap="cancelEdit">取消</button>
+      <button type="primary" loading="{{saving}}" bindtap="savePathway">保存</button>
     </view>
   </view>
 </view>

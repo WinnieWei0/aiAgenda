@@ -3,6 +3,12 @@
   margin-top: 8rpx;
 }
 
+.form-panel textarea {
+  height: 112rpx;
+  min-height: 112rpx;
+  line-height: 36rpx;
+}
+
 .form-row,
 .readonly-field {
   margin-bottom: 18rpx;
@@ -29,4 +35,11 @@
 
 .form-actions {
   margin-top: 28rpx;
+  flex-wrap: nowrap;
+}
+
+.form-actions button {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
 }

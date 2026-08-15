@@ -18,7 +18,7 @@ function preparePathway(pathway) {
   for (const field of PATHWAY_FIELDS) {
     payload[field] = pathway[field] === undefined || pathway[field] === null ? '' : pathway[field];
   }
-  payload.searchText = [payload.code, payload.fullLabelEn, payload.fullLabelZh, payload.objectiveEn, payload.objectiveZh]
+  payload.searchText = [payload.code, payload.level, payload.fullLabelEn, payload.fullLabelZh, payload.objectiveEn, payload.objectiveZh]
     .filter(Boolean).join(' ').toLowerCase();
   return payload;
 }

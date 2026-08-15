@@ -6,7 +6,7 @@ const common = require('agenda-common');
  * 为什么添加：管理员维护 Pathways 时需要按代码或项目名称快速定位记录。
  */
 function buildSearchText(pathway) {
-  const parts = [pathway.code, pathway.fullLabelZh, pathway.fullLabelEn, pathway.objectiveZh, pathway.objectiveEn];
+  const parts = [pathway.code, pathway.level, pathway.fullLabelZh, pathway.fullLabelEn, pathway.objectiveZh, pathway.objectiveEn];
   const text = [];
   for (const part of parts) {
     if (part) {
@@ -29,7 +29,7 @@ function buildPathwayPayload(pathway) {
   for (const field of PATHWAY_FIELDS) {
     payload[field] = pathway[field] === undefined || pathway[field] === null ? '' : pathway[field];
   }
-  payload.searchText = [payload.code, payload.fullLabelEn, payload.fullLabelZh, payload.objectiveEn, payload.objectiveZh]
+  payload.searchText = [payload.code, payload.level, payload.fullLabelEn, payload.fullLabelZh, payload.objectiveEn, payload.objectiveZh]
     .filter(Boolean).join(' ').toLowerCase();
   return payload;
 }
@@ -77,6 +77,26 @@ async function getPathway(id) {
 }
 
 /**
+ * 方法是什么：按数据库原始返回顺序读取 Pathways 列表。
+ * 方法作用：分页读取路径记录，但不附加任何 orderBy 排序条件。
+ * 为什么添加：路径列表必须完全遵循数据库存储顺序，不能使用公共列表方法的默认排序。
+ */
+async function listPathways(options) {
+  const db = common.getDb();
+  const opts = options || {};
+  const page = Math.max(Number(opts.page || 1), 1);
+  const pageSize = Math.min(Math.max(Number(opts.pageSize || 20), 1), 100);
+  const query = opts.where || {};
+  const collection = db.collection('pathways');
+  const totalRes = await collection.where(query).count();
+  const listRes = await collection.where(query)
+    .skip((page - 1) * pageSize)
+    .limit(pageSize)
+    .get();
+  return { list: listRes.data || [], total: totalRes.total || 0, page, pageSize };
+}
+
+/**
  * 方法是什么：处理 Pathways 管理云函数请求。
  * 方法作用：提供列表、详情、新增、更新和删除 Pathways 数据的开放管理接口。
  * 为什么添加：Pathways 表必须在当前系统中维护，当前版本要求所有用户都能访问管理能力。
@@ -88,7 +108,7 @@ async function main(event) {
     const db = common.getDb();
     await common.requireAdmin(common.getOpenid());
     if (action === 'list') {
-      return common.ok(await common.listCollection('pathways', Object.assign({}, event || {}, { orderBy: 'code', order: 'asc' })));
+      return common.ok(await listPathways(event));
     }
     if (action === 'get') {
       return common.ok({ record: await getPathway(event.id) });

@@ -153,14 +153,5 @@ Page({
     } catch (error) {
       cloud.showError(error);
     }
-  },
-
-  /**
-   * 方法是什么：刷新路径列表。
-   * 方法作用：手动重新加载 Pathways 数据。
-   * 为什么添加：用户需要在数据变化后主动刷新当前列表。
-   */
-  async refreshRecords() {
-    await this.loadRecords();
   }
 });
