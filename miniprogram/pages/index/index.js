@@ -14,26 +14,6 @@ Page({
   },
 
   /**
-   * 方法是什么：打开全局模板编辑器。
-   * 方法作用：让管理员维护固定内容、素材和议程规则。
-   * 为什么添加：模板编辑必须由真实管理员身份控制。
-   */
-  openTemplateEditor() {
-    if (!this.data.isAdmin) {
-      return;
-    }
-    wx.navigateTo({ url: '/pages/template-editor/template-editor' });
-  },
-  /**
-   * 方法是什么：打开解析 Tab。
-   * 方法作用：切换到底部解析议程表页面。
-   * 为什么添加：首页主操作需要直达解析入口。
-   */
-  openParseTab() {
-    wx.switchTab({ url: '/pages/parse/parse' });
-  },
-
-  /**
    * 方法是什么：打开时间牌。
    * 方法作用：进入时间牌占位页面。
    * 为什么添加：首页需要保留会议工具入口。
