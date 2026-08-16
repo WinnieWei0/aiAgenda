@@ -43,7 +43,11 @@ function buildMemberPayload(member) {
   if (member.role && !common.MEMBERSHIP_ROLES.includes(member.role)) {
     throw Object.assign(new Error('会员角色无效'), { code: 'INVALID_MEMBERSHIP_ROLE' });
   }
+  if (payload.status && !['active', 'history'].includes(payload.status)) {
+    throw Object.assign(new Error('会员状态无效'), { code: 'INVALID_MEMBERSHIP_STATUS' });
+  }
   payload.role = common.normalizeMembershipRole(payload.role || 'member');
+  payload.status = payload.status || 'active';
   payload.searchText = [payload.nickName, payload.nameZh, payload.nameEn, payload.mentorName,
     payload.officerTitleZh, payload.officerTitleEn, payload.pathNameZh, payload.pathNameEn]
     .filter(Boolean).join(' ').toLowerCase();
@@ -93,6 +97,17 @@ async function getMember(id) {
 }
 
 /**
+ * 方法是什么：将会员转为历史会员。
+ * 方法作用：只更新会员状态和更新时间，不删除或清理任何资料。
+ * 为什么添加：退会需要保留身份绑定和历史业务数据。
+ */
+async function retireMember(db, id) {
+  const updatedAt = common.nowIso();
+  await db.collection('memberships').doc(id).update({ data: { status: 'history', updatedAt } });
+  return { retired: true, status: 'history', updatedAt };
+}
+
+/**
  * 方法是什么：处理 Membership 管理云函数请求。
  * 方法作用：提供列表、详情、新增、更新和删除会员数据的开放管理接口。
  * 为什么添加：Membership 必须在当前系统中以数据库表形式维护，并支持当前版本所有用户 CRUD。
@@ -116,6 +131,9 @@ async function main(event) {
       await db.collection('memberships').doc(event.id).remove();
       return common.ok({ removed: true });
     }
+    if (action === 'retire') {
+      return common.ok(await retireMember(db, event.id));
+    }
     if (action === 'clearBinding') {
       const memberRes = await db.collection('memberships').doc(event.id).get();
       const member = memberRes.data;
@@ -133,5 +151,5 @@ async function main(event) {
   }
 }
 
-module.exports = { MEMBER_FIELDS, buildMemberPayload, saveMember, main };
+module.exports = { MEMBER_FIELDS, buildMemberPayload, saveMember, retireMember, main };
 exports.main = main;

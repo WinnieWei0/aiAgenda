@@ -16,6 +16,7 @@ const exportAgendaPdf = require('../cloudfunctions/exportAgendaPdf');
 const adminMemberships = require('../cloudfunctions/adminMemberships');
 const membershipRoleMigration = require('../scripts/migrate-membership-roles');
 const memberSearch = require('../miniprogram/utils/member-search');
+const memberFilter = require('../miniprogram/utils/member-filter');
 const membershipInvites = require('../cloudfunctions/membershipInvites');
 const { PDFDocument } = require('../cloudfunctions/common/node_modules/pdf-lib');
 
@@ -619,6 +620,21 @@ function testMemberOptionsAndAgendaPayload() {
 }
 
 /**
+ * 方法是什么：测试公开会议摘要字段。
+ * 方法作用：确认宾客首页能够取得当前期数和已有报名页标识。
+ * 为什么添加：宾客不能创建报名页，只能通过摘要进入管理员已开放的报名页。
+ */
+function testPublicMeetingSummary() {
+  const summary = agendaQuery.toMeetingSummary({
+    _id: 'agenda-current',
+    signupPublicId: 'signup-public',
+    meetingSummary: { meetingNo: '888', date: '2026-08-16', startTime: '19:30', endTime: '21:30' }
+  });
+  assert.strictEqual(summary.meetingNo, '888');
+  assert.strictEqual(summary.signupPublicId, 'signup-public');
+}
+
+/**
  * 方法是什么：测试 PDF 生成能力。
  * 方法作用：用规则解析出的议程生成中文 PDF，并确认返回内容是 PDF 文件。
  * 为什么添加：导出 PDF 是核心交付物，测试可以提前发现字体、依赖或渲染器异常。
@@ -772,6 +788,37 @@ function testMembershipRolesAndSearch() {
 }
 
 /**
+ * 方法是什么：测试会员高级筛选。
+ * 方法作用：覆盖默认状态、日期闭区间、文本、布尔和角色组合条件。
+ * 为什么添加：筛选弹窗的多个条件必须稳定使用 AND 关系且保持原顺序。
+ */
+function testMemberFilters() {
+  const records = [
+    { _id: '1', nameZh: '甲', joinedAt: '2020-01-01', birthday: '1990-05-01', pathNameZh: '动态领导', educationProgress: 'L2', competitionEligible: true, isMentor: true, mentorName: '导师甲', officerTitleZh: '会长', role: 'admin', status: 'active' },
+    { _id: '2', nameZh: '乙', joinedAt: '2022-06-15', birthday: '1995-08-10', pathNameZh: '精通演讲', educationProgress: 'L1', competitionEligible: false, isMentor: false, role: 'member', status: 'history' },
+    { _id: '3', nameZh: '丙', joinedAt: '', birthday: '无效日期', role: 'member', status: 'active' }
+  ];
+  assert.deepStrictEqual(memberFilter.filterMembers(records, '', { status: 'active' }).map((item) => item._id), ['1', '3']);
+  assert.deepStrictEqual(memberFilter.filterMembers(records, '', { status: '', joinedAtStart: '2020-01-01', joinedAtEnd: '2022-06-15' }).map((item) => item._id), ['1', '2']);
+  assert.deepStrictEqual(memberFilter.filterMembers(records, '', { status: '', birthdayMonth: '05' }).map((item) => item._id), ['1']);
+  assert.deepStrictEqual(memberFilter.filterMembers(records, '', { status: 'active', competitionEligible: 'true', isMentor: 'true', role: 'admin', pathNameZh: '领导' }).map((item) => item._id), ['1']);
+}
+
+/**
+ * 方法是什么：测试会员退会更新载荷。
+ * 方法作用：确认退会只把状态改为 history 并写入更新时间。
+ * 为什么添加：退会不能误删会员数据或清除身份绑定。
+ */
+async function testRetireMember() {
+  let updatePayload = null;
+  const db = { collection() { return { doc() { return { async update(payload) { updatePayload = payload; } }; } }; } };
+  const result = await adminMemberships.retireMember(db, 'member-1');
+  assert.strictEqual(result.status, 'history');
+  assert.deepStrictEqual(Object.keys(updatePayload.data).sort(), ['status', 'updatedAt']);
+  assert.strictEqual(updatePayload.data.status, 'history');
+}
+
+/**
  * 方法是什么：测试超长议程 PDF 续页。
  * 方法作用：用八个备稿块验证渲染器会插入议程续页并保留最终资料页。
  * 为什么添加：会员可多次新增备稿，第一页溢出时绝不能裁切或覆盖计时区。
@@ -816,11 +863,14 @@ async function main() {
   testCollectionMissingError();
   testPdfExportFileName();
   testMemberOptionsAndAgendaPayload();
+  testPublicMeetingSummary();
   testPdfAgendaLineStyle();
   testPdfHeaderFrame();
   testPdfFontFallback();
   testMembershipRolesAndSearch();
+  testMemberFilters();
   await testExportRecordCollectionInitialization();
+  await testRetireMember();
   await testPdfRenderer(agenda);
   await testPdfOverflow();
   console.log('核心测试通过。');

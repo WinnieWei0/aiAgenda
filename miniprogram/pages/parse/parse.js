@@ -17,6 +17,7 @@ Page({
   data: {
     summary: null,
     isAdmin: false,
+    isGuest: true,
     identityText: '宾客',
     openingEditor: false,
     creatingSignup: false
@@ -33,6 +34,7 @@ Page({
     const localSummary = summarizeAgenda(app.globalData.currentAgenda);
     this.setData({
       isAdmin: app.isAdmin(),
+      isGuest: identity.role === 'guest',
       identityText: identity.role === 'guest' ? '宾客' : `${identity.name || '未命名会员'} · ${identity.roleLabel || '会员'}`,
       ...(localSummary ? { summary: localSummary } : {})
     });
@@ -80,6 +82,15 @@ Page({
 
   async goSignup() {
     if (this.data.openingEditor || this.data.creatingSignup) return;
+    if (this.data.isGuest) {
+      const publicId = this.data.summary && this.data.summary.signupPublicId;
+      if (!publicId) {
+        cloud.showError(new Error('当前会议尚未开放报名'));
+        return;
+      }
+      wx.navigateTo({ url: `/pages/signup/signup?publicId=${publicId}` });
+      return;
+    }
     this.setData({ creatingSignup: true });
     try {
       const agenda = await this.ensureAgenda();

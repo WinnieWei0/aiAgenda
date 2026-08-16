@@ -1,16 +1,30 @@
 const cloud = require('../../../utils/cloud');
 
+/**
+ * 方法是什么：格式化会员更新时间。
+ * 方法作用：把数据库 ISO 时间转换为本地年月日时分秒。
+ * 为什么添加：编辑页需要显示易读的更新时间。
+ */
+function formatDateTime(value) {
+  if (!value) return '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return String(value);
+  const pad = (part) => String(part).padStart(2, '0');
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
+}
+
 Page({
   data: {
     id: '',
     isEdit: false,
     saving: false,
+    formattedUpdatedAt: '',
     member: {
       birthday: '', competitionEligible: false, createdAt: '', educationAwards: '',
       educationProgress: '', educationProgressUpdatedAt: '', email: '', isMentor: false,
       joinedAt: '', menteeCount: 0, mentorName: '', nameEn: '', nameZh: '', nickName: '',
       notes: '', officerTitleEn: '', officerTitleZh: '', pathNameEn: '', pathNameZh: '',
-      phone: '', quarter: '', searchText: '', status: '', updatedAt: '', role: 'member', openid: ''
+      phone: '', quarter: '', searchText: '', status: 'active', updatedAt: '', role: 'member', openid: ''
     },
     roleOptions: [
       { code: 'super_admin', label: '超管' },
@@ -18,7 +32,13 @@ Page({
       { code: 'member', label: '会员' }
     ],
     roleLabels: ['超管', '管理员', '会员'],
-    roleIndex: 2
+    roleIndex: 2,
+    statusOptions: [
+      { code: 'active', label: '在会' },
+      { code: 'history', label: '历史会员' }
+    ],
+    statusLabels: ['在会', '历史会员'],
+    statusIndex: 0
   },
 
   /**
@@ -44,8 +64,10 @@ Page({
       const data = await cloud.callCloud('adminMemberships', { action: 'get', id });
       if (data.record) {
         const member = Object.assign({}, this.data.member, data.record);
+        member.status = member.status === 'history' ? 'history' : 'active';
         const roleIndex = Math.max(this.data.roleOptions.findIndex((item) => item.code === member.role), 0);
-        this.setData({ member, roleIndex });
+        const statusIndex = member.status === 'history' ? 1 : 0;
+        this.setData({ member, roleIndex, statusIndex, formattedUpdatedAt: formatDateTime(member.updatedAt) });
       }
     } catch (error) {
       cloud.showError(error);
@@ -80,6 +102,17 @@ Page({
     const roleIndex = Number(event.detail.value);
     const member = Object.assign({}, this.data.member, { role: this.data.roleOptions[roleIndex].code });
     this.setData({ member, roleIndex });
+  },
+
+  /**
+   * 方法是什么：切换会员状态。
+   * 方法作用：把状态 picker 的下标转换为 active 或 history。
+   * 为什么添加：会员状态只允许在会和历史会员两个稳定值。
+   */
+  handleStatusChange(event) {
+    const statusIndex = Number(event.detail.value);
+    const member = Object.assign({}, this.data.member, { status: this.data.statusOptions[statusIndex].code });
+    this.setData({ member, statusIndex });
   },
 
   async clearBinding() {

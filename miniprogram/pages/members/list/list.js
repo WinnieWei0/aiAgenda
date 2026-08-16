@@ -1,4 +1,13 @@
 const cloud = require('../../../utils/cloud');
+const memberFilter = require('../../../utils/member-filter');
+
+function defaultFilters() {
+  return {
+    joinedAtStart: '', joinedAtEnd: '', birthdayMonth: '',
+    pathNameZh: '', educationProgress: '', competitionEligible: 'all', isMentor: 'all',
+    mentorName: '', officerTitleZh: '', role: '', status: 'active'
+  };
+}
 
 Page({
   data: {
@@ -6,7 +15,17 @@ Page({
     keyword: '',
     records: [],
     filteredRecords: [],
-    total: 0
+    total: 0,
+    filterVisible: false,
+    filters: defaultFilters(),
+    draftFilters: defaultFilters(),
+    triLabels: ['全部', '是', '否'], triValues: ['all', 'true', 'false'],
+    roleLabels: ['全部', '超管', '管理员', '会员'], roleValues: ['', 'super_admin', 'admin', 'member'],
+    statusLabels: ['全部', '在会', '历史会员'], statusValues: ['', 'active', 'history'],
+    monthLabels: ['全部月份', '1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月'],
+    monthValues: ['', '01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12'],
+    birthdayMonthIndex: 0, competitionIndex: 0, mentorIndex: 0, roleIndex: 0, statusIndex: 1,
+    dateRangeVisible: false, dateRangeTarget: '', dateRangeTitle: '', dateRangeStart: '', dateRangeEnd: ''
   },
 
   /**
@@ -61,27 +80,42 @@ Page({
    * 为什么添加：当前管理列表一次加载 100 条，本地筛选能减少云函数调用并提升响应速度。
    */
   applySearch() {
-    const keyword = this.data.keyword.trim().toLowerCase();
-    if (!keyword) {
-      this.setData({ filteredRecords: this.data.records });
-      return;
-    }
-    const filteredRecords = this.data.records.filter((record) => this.buildSearchText(record).includes(keyword));
-    this.setData({ filteredRecords });
+    this.setData({ filteredRecords: memberFilter.filterMembers(this.data.records, this.data.keyword, this.data.filters) });
   },
 
-  /**
-   * 方法是什么：构建会员搜索文本。
-   * 方法作用：把会员的中文名、英文名、昵称、议程显示名和搜索字段合并成小写文本。
-   * 为什么添加：搜索需要覆盖多个常用称呼，集中构建可以保持匹配规则一致。
-   */
-  buildSearchText(record) {
-    return [
-      record.nameZh,
-      record.nameEn,
-      record.nickName,
-      record.searchText
-    ].filter(Boolean).join(' ').toLowerCase();
+  openFilter() {
+    const draftFilters = Object.assign({}, this.data.filters);
+    this.setData({ filterVisible: true, draftFilters,
+      competitionIndex: Math.max(this.data.triValues.indexOf(draftFilters.competitionEligible), 0),
+      mentorIndex: Math.max(this.data.triValues.indexOf(draftFilters.isMentor), 0),
+      birthdayMonthIndex: Math.max(this.data.monthValues.indexOf(draftFilters.birthdayMonth), 0),
+      roleIndex: Math.max(this.data.roleValues.indexOf(draftFilters.role), 0),
+      statusIndex: Math.max(this.data.statusValues.indexOf(draftFilters.status), 0) });
+  },
+  closeFilter() { this.setData({ filterVisible: false }); },
+  handleFilterInput(event) { this.setData({ [`draftFilters.${event.currentTarget.dataset.field}`]: event.detail.value }); },
+  handleTriFilter(event) {
+    const field = event.currentTarget.dataset.field;
+    const index = Number(event.detail.value);
+    this.setData({ [`draftFilters.${field}`]: this.data.triValues[index], [field === 'isMentor' ? 'mentorIndex' : 'competitionIndex']: index });
+  },
+  handleRoleFilter(event) { const roleIndex = Number(event.detail.value); this.setData({ roleIndex, 'draftFilters.role': this.data.roleValues[roleIndex] }); },
+  handleStatusFilter(event) { const statusIndex = Number(event.detail.value); this.setData({ statusIndex, 'draftFilters.status': this.data.statusValues[statusIndex] }); },
+  handleBirthdayMonth(event) { const birthdayMonthIndex = Number(event.detail.value); this.setData({ birthdayMonthIndex, 'draftFilters.birthdayMonth': this.data.monthValues[birthdayMonthIndex] }); },
+  resetFilter() {
+    const draftFilters = defaultFilters();
+    this.setData({ draftFilters, birthdayMonthIndex: 0, competitionIndex: 0, mentorIndex: 0, roleIndex: 0, statusIndex: 1 });
+  },
+  applyFilter() { this.setData({ filters: Object.assign({}, this.data.draftFilters), filterVisible: false }, () => this.applySearch()); },
+  openDateRange(event) {
+    const target = event.currentTarget.dataset.target;
+    const prefix = 'joinedAt';
+    this.setData({ dateRangeVisible: true, dateRangeTarget: prefix, dateRangeTitle: '选择加入头马时间区间', dateRangeStart: this.data.draftFilters[`${prefix}Start`], dateRangeEnd: this.data.draftFilters[`${prefix}End`] });
+  },
+  closeDateRange() { this.setData({ dateRangeVisible: false }); },
+  confirmDateRange(event) {
+    const prefix = this.data.dateRangeTarget;
+    this.setData({ dateRangeVisible: false, [`draftFilters.${prefix}Start`]: event.detail.start, [`draftFilters.${prefix}End`]: event.detail.end });
   },
 
   /**
@@ -151,5 +185,22 @@ Page({
     } catch (error) {
       cloud.showError(error);
     }
+  },
+
+  async confirmRetire(event) {
+    const id = event.currentTarget.dataset.id;
+    const name = event.currentTarget.dataset.name || '该会员';
+    const result = await this.showRetireConfirm(name);
+    if (!result.confirm) return;
+    try {
+      await cloud.callCloud('adminMemberships', { action: 'retire', id });
+      cloud.showSuccess('已转为历史会员');
+      await this.loadRecords();
+    } catch (error) { cloud.showError(error); }
+  },
+  showRetireConfirm(name) {
+    return new Promise((resolve) => wx.showModal({ title: '确认退会', content: `确认将 ${name} 转为历史会员吗？`, success: resolve, fail: () => resolve({ confirm: false }) }));
+  },
+  noop() {
   }
 });

@@ -42,6 +42,7 @@ function toMeetingSummary(record) {
   const info = record.meetingSummary || record.agenda && record.agenda.meetingInfo || record.meetingInfo || {};
   return {
     _id: record._id || '',
+    signupPublicId: record.signupPublicId || '',
     meetingNo: info.meetingNo || '',
     date: info.date || '',
     startTime: info.startTime || '',
@@ -49,13 +50,30 @@ function toMeetingSummary(record) {
   };
 }
 
+/**
+ * 方法是什么：查询最新开放报名的公共会议摘要。
+ * 方法作用：从带有 signupPublicId 的会议中返回最近更新的一期。
+ * 为什么添加：未绑定宾客没有个人议程，首页仍需要显示当前期数并进入公开报名页。
+ */
+async function getPublicCurrentSummary(collection) {
+  const publicResult = await collection.field({ meetingSummary: true, signupPublicId: true, updatedAt: true }).get();
+  const publicRecords = (publicResult.data || [])
+    .filter((record) => Boolean(record.signupPublicId))
+    .sort((left, right) => String(right.updatedAt || '').localeCompare(String(left.updatedAt || '')));
+  return publicRecords.length ? toMeetingSummary(publicRecords[0]) : null;
+}
+
 async function getCurrentSummary(openid) {
   const collection = await common.ensureCollection('agendas');
-  const result = await collection.where({ ownerOpenid: openid }).field({ meetingSummary: true, updatedAt: true }).get();
+  const membership = await common.getMembershipByOpenid(openid);
+  if (!membership) return getPublicCurrentSummary(collection);
+  const result = await collection.where({ ownerOpenid: openid }).field({ meetingSummary: true, signupPublicId: true, updatedAt: true }).get();
   const records = (result.data || []).sort((left, right) => String(right.updatedAt || '').localeCompare(String(left.updatedAt || '')));
-  if (!records.length) return null;
-  if (records[0].meetingSummary) return toMeetingSummary(records[0]);
-  return toMeetingSummary(await getCurrentDraft(openid));
+  if (records.length) {
+    if (records[0].meetingSummary) return toMeetingSummary(records[0]);
+    return toMeetingSummary(await getCurrentDraft(openid));
+  }
+  return getPublicCurrentSummary(collection);
 }
 
 /**

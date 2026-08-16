@@ -1,0 +1,8 @@
+.range-mask{position:fixed;inset:0;z-index:500;display:flex;align-items:center;justify-content:center;padding:28rpx;background:rgba(0,0,0,.48)}
+.range-dialog{box-sizing:border-box;width:100%;max-width:680rpx;padding:28rpx;background:#fff;border-radius:8rpx}
+.range-title{margin-bottom:22rpx;font-size:32rpx;font-weight:700;text-align:center}
+.month-nav{display:flex;justify-content:center;gap:48rpx;margin-bottom:20rpx}.month-nav view{padding:12rpx 24rpx;border:1rpx solid #cbd5e1;border-radius:6rpx}
+.week-row,.days-grid{display:grid;grid-template-columns:repeat(7,1fr)}.week-row text{padding:10rpx 0;color:#64748b;font-size:24rpx;text-align:center}
+.day{display:flex;align-items:center;justify-content:center;height:68rpx;font-size:26rpx}.day.in-range{background:#dcfce7}.day.selected{border-radius:50%;background:#0f766e;color:#fff}.day.empty{background:transparent}
+.range-value{margin:20rpx 0;padding:16rpx;background:#f8fafc;color:#475569;text-align:center}
+.range-actions{display:flex;gap:12rpx}.range-actions button{flex:1;margin:0;font-size:26rpx}

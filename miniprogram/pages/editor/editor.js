@@ -34,6 +34,11 @@ Page({
    */
   async onLoad(options) {
     await app.login();
+    if ((app.globalData.identity || {}).role === 'guest') {
+      wx.showToast({ title: '宾客仅可访问报名页', icon: 'none' });
+      wx.redirectTo({ url: '/pages/parse/parse' });
+      return;
+    }
     this.setData({ isAdmin: app.isAdmin() });
     await Promise.all([this.loadTemplate(), this.loadMembers(), this.loadPathways()]);
     if (options && options.id) {

@@ -1,0 +1,15 @@
+<view wx:if="{{visible}}" class="range-mask" bindtap="cancel" catchtouchmove="noop">
+  <view class="range-dialog" catchtap="noop">
+    <view class="range-title">{{title}}</view>
+    <view class="month-nav">
+      <picker range="{{years}}" value="{{yearIndex}}" bindchange="handleYearChange"><view>{{year}}年 ⌄</view></picker>
+      <picker range="{{months}}" value="{{monthIndex}}" bindchange="handleMonthChange"><view>{{month}}月 ⌄</view></picker>
+    </view>
+    <view class="week-row"><text>日</text><text>一</text><text>二</text><text>三</text><text>四</text><text>五</text><text>六</text></view>
+    <view class="days-grid">
+      <view wx:for="{{days}}" wx:key="key" class="day {{item.empty ? 'empty' : ''}} {{item.inRange ? 'in-range' : ''}} {{item.selected ? 'selected' : ''}}" data-value="{{item.value}}" bindtap="chooseDay">{{item.day}}</view>
+    </view>
+    <view class="range-value">{{pendingStart || '开始日期'}} ~ {{pendingEnd || '结束日期'}}</view>
+    <view class="range-actions"><button bindtap="clear">清空</button><button bindtap="cancel">取消</button><button type="primary" disabled="{{pendingStart && !pendingEnd}}" bindtap="confirm">确认</button></view>
+  </view>
+</view>

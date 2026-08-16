@@ -5,6 +5,7 @@
     <input placeholder="搜索中文名、英文名、昵称" value="{{keyword}}" bindinput="handleKeywordInput" />
     <view class="button-row actions">
       <button type="primary" bindtap="openCreate">新增会员</button>
+      <button bindtap="openFilter">筛选</button>
     </view>
   </view>
 
@@ -19,8 +20,30 @@
       <view wx:if="{{item.nickName}}" class="muted">{{item.nickName}}</view>
       <view class="button-row card-actions">
         <button size="mini" data-id="{{item._id}}" bindtap="editRecord">编辑会员</button>
+        <button wx:if="{{item.status === 'active'}}" size="mini" data-id="{{item._id}}" data-name="{{item.nameZh || item.nameEn || item.nickName}}" bindtap="confirmRetire">退会</button>
         <button size="mini" type="warn" data-id="{{item._id}}" data-name="{{item.nameZh || item.nameEn || item.nickName}}" bindtap="confirmDelete">删除</button>
       </view>
     </view>
   </view>
+
+  <view wx:if="{{filterVisible}}" class="filter-mask" bindtap="closeFilter" catchtouchmove="noop">
+    <view class="filter-dialog" catchtap="noop">
+      <view class="filter-title">筛选会员</view>
+      <scroll-view scroll-y class="filter-body">
+        <view class="filter-field"><text>加入头马时间</text><view class="range-trigger" data-target="joinedAt" bindtap="openDateRange">{{draftFilters.joinedAtStart ? draftFilters.joinedAtStart + ' ~ ' + draftFilters.joinedAtEnd : '选择日期区间'}}</view></view>
+        <view class="filter-field"><text>生日</text><picker range="{{monthLabels}}" value="{{birthdayMonthIndex}}" bindchange="handleBirthdayMonth"><view class="filter-picker">{{monthLabels[birthdayMonthIndex]}}</view></picker></view>
+        <view class="filter-field"><text>路径中文名</text><input always-embed="{{true}}" value="{{draftFilters.pathNameZh}}" data-field="pathNameZh" bindinput="handleFilterInput" /></view>
+        <view class="filter-field"><text>教育进度</text><input always-embed="{{true}}" value="{{draftFilters.educationProgress}}" data-field="educationProgress" bindinput="handleFilterInput" /></view>
+        <view class="filter-field"><text>符合参赛资格</text><picker range="{{triLabels}}" value="{{competitionIndex}}" data-field="competitionEligible" bindchange="handleTriFilter"><view class="filter-picker">{{triLabels[competitionIndex]}}</view></picker></view>
+        <view class="filter-field"><text>是否导师</text><picker range="{{triLabels}}" value="{{mentorIndex}}" data-field="isMentor" bindchange="handleTriFilter"><view class="filter-picker">{{triLabels[mentorIndex]}}</view></picker></view>
+        <view class="filter-field"><text>导师名</text><input always-embed="{{true}}" value="{{draftFilters.mentorName}}" data-field="mentorName" bindinput="handleFilterInput" /></view>
+        <view class="filter-field"><text>干事名称中文</text><input always-embed="{{true}}" value="{{draftFilters.officerTitleZh}}" data-field="officerTitleZh" bindinput="handleFilterInput" /></view>
+        <view class="filter-field"><text>系统角色</text><picker range="{{roleLabels}}" value="{{roleIndex}}" bindchange="handleRoleFilter"><view class="filter-picker">{{roleLabels[roleIndex]}}</view></picker></view>
+        <view class="filter-field"><text>状态</text><picker range="{{statusLabels}}" value="{{statusIndex}}" bindchange="handleStatusFilter"><view class="filter-picker">{{statusLabels[statusIndex]}}</view></picker></view>
+      </scroll-view>
+      <view class="filter-actions"><button bindtap="resetFilter">重置</button><button bindtap="closeFilter">取消</button><button type="primary" bindtap="applyFilter">应用</button></view>
+    </view>
+  </view>
+
+  <date-range-picker visible="{{dateRangeVisible}}" title="{{dateRangeTitle}}" start="{{dateRangeStart}}" end="{{dateRangeEnd}}" bindcancel="closeDateRange" bindconfirm="confirmDateRange" />
 </view>

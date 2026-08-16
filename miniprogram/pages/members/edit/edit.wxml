@@ -5,35 +5,30 @@
 
   <view class="section panel form-panel">
     <view class="readonly-field"><text>id</text><text>{{member._id}}</text></view>
+    <view class="form-row"><text>中文名</text><input value="{{member.nameZh}}" data-field="nameZh" bindinput="handleInput" /></view>
+    <view class="form-row"><text>英文名</text><input value="{{member.nameEn}}" data-field="nameEn" bindinput="handleInput" /></view>
+    <view class="form-row"><text>邮箱</text><input value="{{member.email}}" data-field="email" bindinput="handleInput" /></view>
+    <view class="form-row"><text>电话号码</text><input value="{{member.phone}}" data-field="phone" bindinput="handleInput" /></view>
+    <view class="form-row"><text>加入头马时间</text><input value="{{member.joinedAt}}" data-field="joinedAt" bindinput="handleInput" /></view>
+    <view class="form-row"><text>生日</text><input value="{{member.birthday}}" data-field="birthday" bindinput="handleInput" /></view>
+    <view class="form-row"><text>路径中文名</text><input value="{{member.pathNameZh}}" data-field="pathNameZh" bindinput="handleInput" /></view>
+    <view class="form-row"><text>路径英文名</text><input value="{{member.pathNameEn}}" data-field="pathNameEn" bindinput="handleInput" /></view>
+    <view class="form-row"><text>教育进度</text><input value="{{member.educationProgress}}" data-field="educationProgress" bindinput="handleInput" /></view>
+    <view class="switch-row"><text>符合参赛资格</text><switch checked="{{member.competitionEligible}}" data-field="competitionEligible" bindchange="handleSwitch" /></view>
+    <view class="switch-row"><text>是否导师</text><switch checked="{{member.isMentor}}" data-field="isMentor" bindchange="handleSwitch" /></view>
+    <view wx:if="{{member.isMentor}}" class="form-row"><text>学员数量</text><input type="number" value="{{member.menteeCount}}" data-field="menteeCount" bindinput="handleInput" /></view>
+    <view class="form-row"><text>导师名</text><input value="{{member.mentorName}}" data-field="mentorName" bindinput="handleInput" /></view>
+    <view class="form-row"><text>干事名称中文</text><input value="{{member.officerTitleZh}}" data-field="officerTitleZh" bindinput="handleInput" /></view>
+    <view class="form-row"><text>干事名称英文</text><input value="{{member.officerTitleEn}}" data-field="officerTitleEn" bindinput="handleInput" /></view>
     <view class="form-row"><text>系统角色</text><picker range="{{roleLabels}}" value="{{roleIndex}}" bindchange="handleRoleChange"><view class="role-picker">{{roleLabels[roleIndex]}}</view></picker></view>
     <view class="readonly-field"><text>身份绑定</text><text>{{member.openid || '未绑定'}}</text></view>
     <button wx:if="{{member.openid}}" class="clear-binding" bindtap="clearBinding">清除身份绑定</button>
-    <view class="form-row"><text>生日</text><input value="{{member.birthday}}" data-field="birthday" bindinput="handleInput" /></view>
-    <view class="switch-row"><text>符合参赛资格</text><switch checked="{{member.competitionEligible}}" data-field="competitionEligible" bindchange="handleSwitch" /></view>
-    <view class="readonly-field"><text>创建时间</text><text>{{member.createdAt}}</text></view>
-    <view class="form-row"><text>教育路径</text><textarea value="{{member.educationAwards}}" data-field="educationAwards" bindinput="handleInput" /></view>
-    <view class="form-row"><text>教育进度</text><input value="{{member.educationProgress}}" data-field="educationProgress" bindinput="handleInput" /></view>
-    <view class="form-row"><text>教育进度更新时间</text><input value="{{member.educationProgressUpdatedAt}}" data-field="educationProgressUpdatedAt" bindinput="handleInput" /></view>
-    <view class="form-row"><text>邮箱</text><input value="{{member.email}}" data-field="email" bindinput="handleInput" /></view>
-    <view class="switch-row"><text>是否导师</text><switch checked="{{member.isMentor}}" data-field="isMentor" bindchange="handleSwitch" /></view>
-    <view class="form-row"><text>加入头马时间</text><input value="{{member.joinedAt}}" data-field="joinedAt" bindinput="handleInput" /></view>
-    <view class="form-row"><text>学员数量</text><input type="number" value="{{member.menteeCount}}" data-field="menteeCount" bindinput="handleInput" /></view>
-    <view class="form-row"><text>导师名</text><input value="{{member.mentorName}}" data-field="mentorName" bindinput="handleInput" /></view>
-    <view class="form-row"><text>英文名</text><input value="{{member.nameEn}}" data-field="nameEn" bindinput="handleInput" /></view>
-    <view class="form-row"><text>中文名</text><input value="{{member.nameZh}}" data-field="nameZh" bindinput="handleInput" /></view>
-    <view class="form-row"><text>昵称</text><input value="{{member.nickName}}" data-field="nickName" bindinput="handleInput" /></view>
-    <view class="form-row"><text>备注</text><textarea value="{{member.notes}}" data-field="notes" bindinput="handleInput" /></view>
-    <view class="form-row"><text>干事名称英文</text><input value="{{member.officerTitleEn}}" data-field="officerTitleEn" bindinput="handleInput" /></view>
-    <view class="form-row"><text>干事名称中文</text><input value="{{member.officerTitleZh}}" data-field="officerTitleZh" bindinput="handleInput" /></view>
-    <view class="form-row"><text>路径英文名</text><input value="{{member.pathNameEn}}" data-field="pathNameEn" bindinput="handleInput" /></view>
-    <view class="form-row"><text>路径中文名</text><input value="{{member.pathNameZh}}" data-field="pathNameZh" bindinput="handleInput" /></view>
-    <view class="form-row"><text>电话号码</text><input value="{{member.phone}}" data-field="phone" bindinput="handleInput" /></view>
-    <view class="form-row"><text>第几季度</text><input type="number" value="{{member.quarter}}" data-field="quarter" bindinput="handleInput" /></view>
-    <view class="form-row"><text>当前状态</text><input value="{{member.status}}" data-field="status" bindinput="handleInput" /></view>
-    <view class="readonly-field"><text>更新时间</text><text>{{member.updatedAt}}</text></view>
+    <view class="form-row"><text>状态</text><picker range="{{statusLabels}}" value="{{statusIndex}}" bindchange="handleStatusChange"><view class="role-picker">{{statusLabels[statusIndex]}}</view></picker></view>
+    <view class="form-row"><text>备注</text><textarea class="notes-input" value="{{member.notes}}" data-field="notes" bindinput="handleInput" /></view>
+    <view class="readonly-field"><text>更新时间</text><text>{{formattedUpdatedAt}}</text></view>
     <view class="button-row form-actions">
-      <button type="primary" loading="{{saving}}" bindtap="saveMember">保存</button>
       <button bindtap="cancelEdit">取消</button>
+      <button type="primary" loading="{{saving}}" bindtap="saveMember">保存</button>
     </view>
   </view>
 </view>
