@@ -72,7 +72,7 @@
 
   <view wx:if="{{addModuleOptions.length}}" class="panel add-module-panel"><text class="panel-title">新增模块</text><picker range="{{addModuleLabels}}" bindchange="addDynamicModule"><view class="add-module-picker">选择要新增的模块<text class="picker-arrow">⌄</text></view></picker></view>
 
-  <view class="panel qr-panel"><view class="qr-row"><text class="panel-title">例会群二维码</text><button size="mini" bindtap="chooseMeetingGroupQr">替换图片</button></view><button class="reset-button" bindtap="resetMeeting">重置当前会议</button></view>
+  <view class="panel qr-panel"><view class="qr-row"><text class="panel-title">例会群二维码</text><button size="mini" bindtap="chooseMeetingGroupQr">替换图片</button></view><button wx:if="{{isAdmin}}" class="reset-button" bindtap="resetMeeting">重置当前会议</button></view>
   <view class="bottom-actions"><button class="signup-generate-button" disabled="{{saving || previewing}}" bindtap="openSignupPage">{{saving ? '保存中...' : '生成报名页'}}</button><button class="preview-button" disabled="{{saving || previewing}}" bindtap="goPreview">{{previewing ? '生成中...' : '预览'}}</button></view>
 
   <view wx:if="{{validationDialogVisible}}" class="validation-mask">

@@ -48,6 +48,7 @@ Page({
    */
   async onLoad(options) {
     const id = options && options.id ? options.id : '';
+    wx.setNavigationBarTitle({ title: id ? '编辑会员' : '新增会员' });
     this.setData({ id, isEdit: Boolean(id) });
     if (id) {
       await this.loadMember(id);

@@ -1,4 +1,6 @@
 const assert = require('assert');
+const fs = require('fs');
+const path = require('path');
 const parser = require('../cloudfunctions/common/parser');
 const pdfRenderer = require('../cloudfunctions/common/pdf-renderer');
 const workbookParser = require('../cloudfunctions/seedWorkbookData/workbook-parser');
@@ -18,6 +20,7 @@ const membershipRoleMigration = require('../scripts/migrate-membership-roles');
 const memberSearch = require('../miniprogram/utils/member-search');
 const memberFilter = require('../miniprogram/utils/member-filter');
 const membershipInvites = require('../cloudfunctions/membershipInvites');
+const singletonAgendaMigration = require('../scripts/migrate-singleton-agenda');
 const { PDFDocument } = require('../cloudfunctions/common/node_modules/pdf-lib');
 
 let memberships = [];
@@ -626,12 +629,35 @@ function testMemberOptionsAndAgendaPayload() {
  */
 function testPublicMeetingSummary() {
   const summary = agendaQuery.toMeetingSummary({
-    _id: 'agenda-current',
-    signupPublicId: 'signup-public',
+    _id: common.CURRENT_AGENDA_ID,
+    signupPublicId: common.CURRENT_AGENDA_ID,
     meetingSummary: { meetingNo: '888', date: '2026-08-16', startTime: '19:30', endTime: '21:30' }
   });
   assert.strictEqual(summary.meetingNo, '888');
-  assert.strictEqual(summary.signupPublicId, 'signup-public');
+  assert.strictEqual(summary._id, 'current');
+  assert.strictEqual(summary.signupPublicId, 'current');
+}
+
+/**
+ * 方法是什么：测试全局单例记录和固定报名页路由。
+ * 方法作用：确认迁移生成 current 文档，前端入口与分享均不再携带会议参数。
+ * 为什么添加：固定链接必须在管理员重置会议后继续指向同一份全局数据。
+ */
+function testSingletonAgendaAndSignupRoute() {
+  assert.strictEqual(common.CURRENT_AGENDA_ID, 'current');
+  assert.strictEqual(singletonAgendaMigration.CURRENT_AGENDA_ID, 'current');
+  const record = singletonAgendaMigration.buildCurrentRecord(agendaUtil.createDefaultTemplate(), '2026-08-16T08:00:00.000Z');
+  assert.strictEqual(record.signupPublicId, 'current');
+  assert.deepStrictEqual(record.signupSlots, []);
+  assert.strictEqual(Object.prototype.hasOwnProperty.call(record, 'expiresAt'), false);
+
+  const files = [
+    '../miniprogram/pages/signup/signup.js',
+    '../miniprogram/pages/parse/parse.js',
+    '../miniprogram/pages/editor/editor.js'
+  ].map((file) => fs.readFileSync(path.resolve(__dirname, file), 'utf8')).join('\n');
+  assert.strictEqual(files.includes('?publicId='), false, '报名页入口不应携带 publicId');
+  assert.ok(files.includes("path: '/pages/signup/signup'"), '分享路径应使用固定报名页');
 }
 
 /**
@@ -864,6 +890,7 @@ async function main() {
   testPdfExportFileName();
   testMemberOptionsAndAgendaPayload();
   testPublicMeetingSummary();
+  testSingletonAgendaAndSignupRoute();
   testPdfAgendaLineStyle();
   testPdfHeaderFrame();
   testPdfFontFallback();

@@ -5,14 +5,14 @@ const common = require('agenda-common');
  * 方法作用：从 `agendas` 集合读取用户要导出的议程。
  * 为什么添加：PDF 导出必须以服务器保存的数据为准，避免前端临时数据和数据库不一致。
  */
-async function loadAgenda(agendaId) {
+async function loadAgenda() {
   const db = common.getDb();
-  const res = await db.collection('agendas').doc(agendaId).get();
+  const res = await db.collection('agendas').doc(common.CURRENT_AGENDA_ID).get();
   if (!res.data) {
     return null;
   }
   return res.data.agenda
-    ? Object.assign({}, res.data.agenda, { _id: res.data._id, ownerOpenid: res.data.ownerOpenid, expiresAt: res.data.expiresAt })
+    ? Object.assign({}, res.data.agenda, { _id: res.data._id, ownerOpenid: res.data.ownerOpenid })
     : res.data;
 }
 
@@ -219,11 +219,8 @@ async function main(event) {
   try {
     common.initCloud();
     const openid = common.getOpenid();
-    const agendaId = event && event.agendaId ? event.agendaId : '';
-    if (!agendaId) {
-      return common.fail('EMPTY_AGENDA_ID', '缺少议程 ID');
-    }
-    const agenda = await loadAgenda(agendaId);
+    const agendaId = common.CURRENT_AGENDA_ID;
+    const agenda = await loadAgenda();
     if (!agenda) {
       return common.fail('AGENDA_NOT_FOUND', '议程不存在');
     }

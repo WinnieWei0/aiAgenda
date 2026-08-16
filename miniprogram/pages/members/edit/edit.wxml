@@ -1,8 +1,4 @@
 <view class="page">
-  <view class="section panel">
-    <view class="title">{{isEdit ? '编辑会员' : '新增会员'}}</view>
-  </view>
-
   <view class="section panel form-panel">
     <view class="readonly-field"><text>id</text><text>{{member._id}}</text></view>
     <view class="form-row"><text>中文名</text><input value="{{member.nameZh}}" data-field="nameZh" bindinput="handleInput" /></view>

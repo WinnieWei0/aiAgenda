@@ -75,7 +75,7 @@ Page({
 
   async loadSignupData() {
     try {
-      const signupData = await cloud.callCloud('signupService', { action: 'get', publicId: this.data.agenda.signupPublicId });
+      const signupData = await cloud.callCloud('signupService', { action: 'get' });
       this.setData({ signupData });
     } catch (error) {
       this.setData({ signupData: null });
@@ -700,7 +700,7 @@ Page({
     if (!confirmed) return false;
     try {
       for (const slot of occupied) {
-        await cloud.callCloud('signupService', { action: 'cancelSlot', publicId: this.data.agenda.signupPublicId, slotId: slot.id });
+        await cloud.callCloud('signupService', { action: 'cancelSlot', slotId: slot.id });
       }
       await this.loadSignupData();
       return true;
@@ -789,9 +789,9 @@ Page({
     const agenda = await this.saveAgenda({ silent: true });
     if (!agenda) return;
     try {
-      const data = await cloud.callCloud('signupService', { action: 'create', agendaId: agenda._id });
+      const data = await cloud.callCloud('signupService', { action: 'create' });
       this.setData({ signupData: data, 'agenda.signupPublicId': data.publicId, 'agenda.signupSlots': data.slots });
-      wx.navigateTo({ url: `/pages/signup/signup?publicId=${data.publicId}` });
+      wx.navigateTo({ url: '/pages/signup/signup' });
     } catch (error) { cloud.showError(error); }
   },
 
@@ -800,7 +800,7 @@ Page({
     wx.showModal({ title: '取消角色', content: '确认清空该角色报名并释放名额吗？', success: async (res) => {
       if (!res.confirm) return;
       try {
-        const data = await cloud.callCloud('signupService', { action: 'cancelSlot', publicId: this.data.agenda.signupPublicId, slotId });
+        const data = await cloud.callCloud('signupService', { action: 'cancelSlot', slotId });
         this.setData({ signupData: data });
         await this.loadAgendaById(this.data.agenda._id);
         cloud.showSuccess('已取消');
@@ -812,7 +812,7 @@ Page({
     wx.showModal({ title: '重置当前会议', content: '将清空本期议程和全部报名，原报名链接立即失效。此操作不可撤销。', confirmColor: '#b91c1c', success: async (res) => {
       if (!res.confirm) return;
       try {
-        const data = await cloud.callCloud('signupService', { action: 'reset', agendaId: this.data.agenda._id });
+        const data = await cloud.callCloud('signupService', { action: 'reset' });
         this.setData({ signupData: null });
         this.setAgenda(data.agenda);
         cloud.showSuccess('会议已重置');

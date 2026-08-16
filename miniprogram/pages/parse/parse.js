@@ -83,19 +83,18 @@ Page({
   async goSignup() {
     if (this.data.openingEditor || this.data.creatingSignup) return;
     if (this.data.isGuest) {
-      const publicId = this.data.summary && this.data.summary.signupPublicId;
-      if (!publicId) {
+      if (!this.data.summary) {
         cloud.showError(new Error('当前会议尚未开放报名'));
         return;
       }
-      wx.navigateTo({ url: `/pages/signup/signup?publicId=${publicId}` });
+      wx.navigateTo({ url: '/pages/signup/signup' });
       return;
     }
     this.setData({ creatingSignup: true });
     try {
       const agenda = await this.ensureAgenda();
-      const data = await cloud.callCloud('signupService', { action: 'create', agendaId: agenda._id });
-      wx.navigateTo({ url: `/pages/signup/signup?publicId=${data.publicId}` });
+      await cloud.callCloud('signupService', { action: 'create' });
+      wx.navigateTo({ url: '/pages/signup/signup' });
     } catch (error) {
       cloud.showError(error);
     } finally {

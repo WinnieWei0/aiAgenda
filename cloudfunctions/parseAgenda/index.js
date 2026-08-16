@@ -1,9 +1,8 @@
 const common = require('agenda-common');
 
-const DRAFT_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 const LEGACY_FIELDS = [
   'rawText', 'meetingInfo', 'items', 'sections', 'participants', 'warnings', 'unresolvedNames',
-  'confidence', 'source'
+  'confidence', 'source', 'expiresAt'
 ];
 
 /**
@@ -30,45 +29,43 @@ async function loadAll(collectionName) {
 
 /**
  * 方法是什么：构建当前草稿数据。
- * 方法作用：保存用户、JSON 议程、更新时间和七天过期时间。
- * 为什么添加：解析成功必须立即形成可恢复的数据库草稿。
+ * 方法作用：保存编辑人、JSON 议程和更新时间。
+ * 为什么添加：解析成功必须立即覆盖全局唯一的长期有效议程。
  */
 function buildDraftPayload(agenda, openid, now) {
+  const info = agenda && agenda.meetingInfo || {};
   return {
     ownerOpenid: openid,
     agenda,
-    expiresAt: new Date(now.getTime() + DRAFT_TTL_MS).toISOString(),
+    meetingSummary: { meetingNo: info.meetingNo || '', date: info.date || '', startTime: info.startTime || '', endTime: info.endTime || '' },
+    signupPublicId: common.CURRENT_AGENDA_ID,
     updatedAt: now.toISOString()
   };
 }
 
 /**
  * 方法是什么：保存当前用户草稿。
- * 方法作用：更新最新草稿、清理重复记录并移除旧平面字段。
- * 为什么添加：每个用户只允许保留一份当前议程。
+ * 方法作用：更新固定 current 文档并移除旧平面字段。
+ * 为什么添加：系统只允许保留一份全局当前议程。
  */
 async function saveCurrentDraft(db, openid, agenda) {
   const now = new Date();
   const collection = await common.ensureCollection('agendas');
-  const existing = await collection.where({ ownerOpenid: openid }).get();
+  const existing = await collection.where({ _id: common.CURRENT_AGENDA_ID }).limit(1).get();
   const payload = buildDraftPayload(agenda, openid, now);
-  const records = (existing.data || []).sort((left, right) => String(right.updatedAt || '').localeCompare(String(left.updatedAt || '')));
-  if (records.length) {
-    const record = records[0];
-    for (const duplicate of records.slice(1)) {
-      await collection.doc(duplicate._id).remove();
-    }
+  const record = existing.data && existing.data[0];
+  if (record) {
+    payload.signupSlots = common.signup.mergeSlots(record.signupSlots, agenda);
+    payload.signupVersion = Number(record.signupVersion || 0);
     const updateData = Object.assign({}, payload);
     LEGACY_FIELDS.forEach((field) => {
       updateData[field] = db.command.remove();
     });
-    await collection.doc(record._id).update({ data: updateData });
-    return { _id: record._id, expiresAt: payload.expiresAt };
+    await collection.doc(common.CURRENT_AGENDA_ID).update({ data: updateData });
+    return { _id: common.CURRENT_AGENDA_ID };
   }
-  const result = await collection.add({
-    data: Object.assign({}, payload, { createdAt: now.toISOString() })
-  });
-  return { _id: result._id, expiresAt: payload.expiresAt };
+  await collection.doc(common.CURRENT_AGENDA_ID).set({ data: Object.assign({}, payload, { signupSlots: [], signupVersion: 0, createdAt: now.toISOString() }) });
+  return { _id: common.CURRENT_AGENDA_ID };
 }
 
 /**
@@ -99,12 +96,12 @@ async function main(event) {
     const agenda = common.parser.buildAgendaFromAi(aiResult, memberships, pathways, template);
     const validated = common.parser.validateAgenda(Object.assign({}, agenda, { rawText }));
     const draft = await saveCurrentDraft(common.getDb(), openid, validated);
-    const savedAgenda = Object.assign({}, validated, { _id: draft._id, expiresAt: draft.expiresAt });
-    return common.ok({ agenda: savedAgenda, aiUsed: true, expiresAt: draft.expiresAt });
+    const savedAgenda = Object.assign({}, validated, { _id: draft._id, signupPublicId: common.CURRENT_AGENDA_ID });
+    return common.ok({ agenda: savedAgenda, aiUsed: true });
   } catch (error) {
     return common.handleError(error);
   }
 }
 
-module.exports = { DRAFT_TTL_MS, buildDraftPayload, saveCurrentDraft, main };
+module.exports = { buildDraftPayload, saveCurrentDraft, main };
 exports.main = main;

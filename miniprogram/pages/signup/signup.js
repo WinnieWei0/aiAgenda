@@ -1,23 +1,22 @@
 const cloud = require('../../utils/cloud');
 
 Page({
-  data: { publicId: '', data: null, loading: true, modal: false, selectedSlot: null, personType: 'member', allowMember: true, allowClub: true, allowGuest: true, members: [], memberLabels: [], memberIndex: -1, memberSelectorVisible: false, name: '', club: '', submitting: false },
-  onLoad(options) {
+  data: { data: null, loading: true, loadError: '', modal: false, selectedSlot: null, personType: 'member', allowMember: true, allowClub: true, allowGuest: true, members: [], memberLabels: [], memberIndex: -1, memberSelectorVisible: false, name: '', club: '', submitting: false },
+  onLoad() {
     this.initialLoadStarted = true;
-    this.setData({ publicId: options.publicId || '' });
     this.load();
     this.loadMembers();
   },
   onShow() {
-    if (this.refreshOnShow && this.data.publicId) {
+    if (this.refreshOnShow) {
       this.refreshOnShow = false;
       this.load();
     }
   },
   onHide() { this.refreshOnShow = true; },
   onPullDownRefresh() { this.load().finally(() => wx.stopPullDownRefresh()); },
-  onShareAppMessage() { const info = this.data.data && this.data.data.meetingInfo || {}; return { title: `第${info.meetingNo || ''}期会议角色报名`, path: `/pages/signup/signup?publicId=${this.data.publicId}` }; },
-  async load() { try { const data = await cloud.callCloud('signupService', { action: 'get', publicId: this.data.publicId }); this.setData({ data }); } catch (error) { cloud.showError(error); } finally { this.setData({ loading: false }); } },
+  onShareAppMessage() { const info = this.data.data && this.data.data.meetingInfo || {}; return { title: `第${info.meetingNo || ''}期会议角色报名`, path: '/pages/signup/signup' }; },
+  async load() { try { const data = await cloud.callCloud('signupService', { action: 'get' }); this.setData({ data, loadError: '' }); } catch (error) { this.setData({ data: null, loadError: '当前会议尚未开放报名' }); } finally { this.setData({ loading: false }); } },
   async loadMembers() { try { const result = await cloud.callCloud('lookupOptions', { type: 'memberships', keyword: '' }); const members = result.list || []; this.setData({ members, memberLabels: members.map((m) => m.nameZh || m.nameEn || m.nickName || '未命名会员') }); } catch (error) { cloud.showError(error); } },
   openSignup(event) {
     const slotId = event.currentTarget.dataset.slotId || '';
@@ -42,7 +41,7 @@ Page({
       wx.showToast({ title: '请选择会员', icon: 'none' });
       return;
     }
-    const payload = { action: 'signup', publicId: this.data.publicId, slotId: this.data.selectedSlot && this.data.selectedSlot.id || '', personType: this.data.personType, memberId: member && member._id || '', name: this.data.name, club: this.data.club };
+    const payload = { action: 'signup', slotId: this.data.selectedSlot && this.data.selectedSlot.id || '', personType: this.data.personType, memberId: member && member._id || '', name: this.data.name, club: this.data.club };
     this.setData({ submitting: true });
     try {
       const data = await cloud.callCloud('signupService', payload);
@@ -56,5 +55,5 @@ Page({
       }
     }
   },
-  cancelSignup(event) { const signupId = event.currentTarget.dataset.id; wx.showModal({ title:'取消报名', content:'确认取消这项报名吗？', success: async (res) => { if (!res.confirm) return; try { const data = await cloud.callCloud('signupService', { action:'cancel', publicId:this.data.publicId, signupId }); this.setData({ data }); cloud.showSuccess('已取消'); } catch (error) { cloud.showError(error); } } }); }
+  cancelSignup(event) { const signupId = event.currentTarget.dataset.id; wx.showModal({ title:'取消报名', content:'确认取消这项报名吗？', success: async (res) => { if (!res.confirm) return; try { const data = await cloud.callCloud('signupService', { action:'cancel', signupId }); this.setData({ data }); cloud.showSuccess('已取消'); } catch (error) { cloud.showError(error); } } }); }
 });

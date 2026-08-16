@@ -2,7 +2,7 @@ const common = require('agenda-common');
 
 const LEGACY_FIELDS = [
   'rawText', 'meetingInfo', 'items', 'sections', 'participants', 'warnings', 'unresolvedNames',
-  'confidence', 'source'
+  'confidence', 'source', 'expiresAt'
 ];
 
 /**
@@ -14,7 +14,7 @@ function buildAgendaPayload(agenda, template) {
   const normalized = common.agendaModel.normalizeAgenda(agenda, template || common.agendaModel.createDefaultTemplate());
   normalized.items = common.agendaModel.flattenAgendaRows(normalized);
   delete normalized._id;
-    delete normalized.expiresAt;
+  delete normalized.expiresAt;
   return normalized;
 }
 
@@ -45,7 +45,7 @@ function getAgendaFromRecord(record) {
 
 /**
  * 方法是什么：处理议程保存请求。
- * 方法作用：更新当前用户唯一的长期有效会议议程。
+ * 方法作用：更新全局唯一的长期有效会议议程。
  * 为什么添加：报名流程以组织者主动重置为生命周期终点。
  */
 async function main(event) {
@@ -58,16 +58,12 @@ async function main(event) {
     }
     const db = common.getDb();
     const collection = await common.ensureCollection('agendas');
-    const existingResult = await collection.where({ ownerOpenid: openid }).get();
-    const existingRecords = (existingResult.data || []).sort((left, right) => String(right.updatedAt || '').localeCompare(String(left.updatedAt || '')));
-    const existing = existingRecords.length ? existingRecords[0] : null;
-    for (const duplicate of existingRecords.slice(1)) {
-      await collection.doc(duplicate._id).remove();
-    }
+    const existingResult = await collection.where({ _id: common.CURRENT_AGENDA_ID }).limit(1).get();
+    const existing = existingResult.data && existingResult.data[0] || null;
     const now = new Date();
     const template = await common.getAgendaTemplate();
     const agenda = buildAgendaPayload(submitted, template);
-    const signupSlots = existing && existing.signupPublicId
+    const signupSlots = existing
       ? (common.signup && typeof common.signup.mergeSlots === 'function'
         ? common.signup.mergeSlots(existing.signupSlots, agenda)
         : (existing.signupSlots || []))
@@ -76,7 +72,9 @@ async function main(event) {
       ownerOpenid: openid,
       agenda,
       meetingSummary: buildMeetingSummary(agenda),
+      signupPublicId: common.CURRENT_AGENDA_ID,
       signupSlots,
+      signupVersion: Number(existing && existing.signupVersion || 0),
       updatedAt: now.toISOString()
     };
     if (existing) {
@@ -85,12 +83,10 @@ async function main(event) {
         updateData[field] = db.command.remove();
       });
       await collection.doc(existing._id).update({ data: updateData });
-      return common.ok({ _id: existing._id, action: 'updated', agenda: Object.assign({}, agenda, { _id: existing._id, signupPublicId: existing.signupPublicId || '', signupSlots }) });
+      return common.ok({ _id: common.CURRENT_AGENDA_ID, action: 'updated', agenda: Object.assign({}, agenda, { _id: common.CURRENT_AGENDA_ID, signupPublicId: common.CURRENT_AGENDA_ID, signupSlots }) });
     }
-    const addResult = await collection.add({
-      data: Object.assign({}, payload, { createdAt: now.toISOString() })
-    });
-    return common.ok({ _id: addResult._id, action: 'created', agenda: Object.assign({}, agenda, { _id: addResult._id }) });
+    await collection.doc(common.CURRENT_AGENDA_ID).set({ data: Object.assign({}, payload, { createdAt: now.toISOString() }) });
+    return common.ok({ _id: common.CURRENT_AGENDA_ID, action: 'created', agenda: Object.assign({}, agenda, { _id: common.CURRENT_AGENDA_ID, signupPublicId: common.CURRENT_AGENDA_ID, signupSlots }) });
   } catch (error) {
     return common.handleError(error);
   }

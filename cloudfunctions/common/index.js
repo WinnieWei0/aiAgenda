@@ -329,6 +329,7 @@ function handleError(error) {
 }
 
 const commonExports = {
+  CURRENT_AGENDA_ID: 'current',
   cloud,
   parser,
   deepseek,

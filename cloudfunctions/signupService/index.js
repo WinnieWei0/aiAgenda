@@ -1,8 +1,5 @@
 const common = require('agenda-common');
-
-function publicId() {
-  return `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 10)}`;
-}
+const CURRENT_AGENDA_ID = common.CURRENT_AGENDA_ID || 'current';
 
 function profileFromEvent(event, member) {
   const kind = event.personType;
@@ -17,10 +14,14 @@ function profileFromEvent(event, member) {
   return { personType: kind, memberId: '', name, club: kind === 'club' ? club : '宾客', clubEn: kind === 'club' ? club : 'Guest' };
 }
 
-async function getAgendaByPublicId(db, id) {
-  const res = await db.collection('agendas').where({ signupPublicId: id }).limit(1).get();
-  if (!res.data || !res.data.length) throw Object.assign(new Error('报名页面不存在或已重置'), { code: 'SIGNUP_NOT_FOUND' });
-  return res.data[0];
+async function getCurrentAgenda(db, options = {}) {
+  const res = await db.collection('agendas').where({ _id: CURRENT_AGENDA_ID }).limit(1).get();
+  const record = res.data && res.data[0];
+  const meetingNo = record && record.agenda && record.agenda.meetingInfo && String(record.agenda.meetingInfo.meetingNo || '').trim();
+  if (!record || !options.allowEmpty && !meetingNo) {
+    throw Object.assign(new Error('当前会议尚未开放报名'), { code: 'SIGNUP_NOT_FOUND' });
+  }
+  return Object.assign({}, record, { _id: CURRENT_AGENDA_ID });
 }
 
 async function response(db, record, openid) {
@@ -31,7 +32,9 @@ async function response(db, record, openid) {
   for (const claim of claimResult.data || []) {
     const hasSignup = list.some((item) => item.claimId === claim._id || item.slotId === claim.slotId);
     const age = claim.createdAt ? Date.now() - new Date(claim.createdAt).getTime() : Infinity;
-    if (!hasSignup && age > 30000) await db.collection('agenda_signup_claims').doc(claim._id).remove();
+    if (!hasSignup && age > 30000 && (typeof claim._id === 'string' || typeof claim._id === 'number')) {
+      await db.collection('agenda_signup_claims').doc(claim._id).remove();
+    }
   }
   const people = new Map();
   list.forEach((item) => {
@@ -67,21 +70,19 @@ async function response(db, record, openid) {
   const language = record.agenda.meetingInfo && record.agenda.meetingInfo.language === 'en' ? 'en' : 'zh';
   const locale = template.locales && template.locales[language] || {};
   const templateVenue = locale.fixedContent && locale.fixedContent.venue || '';
-  return { publicId: record.signupPublicId, agendaId: record._id, meetingInfo: record.agenda.meetingInfo, templateVenue, meetingManagerName: manager.displayNameZh || manager.rawName || '待填写', slots, remainingRoles: slots.filter((s) => !s.occupied).length, attendeeCount: people.size, people: Array.from(people.values()), myOpenid: openid };
+  return { publicId: CURRENT_AGENDA_ID, agendaId: CURRENT_AGENDA_ID, meetingInfo: record.agenda.meetingInfo, templateVenue, meetingManagerName: manager.displayNameZh || manager.rawName || '待填写', slots, remainingRoles: slots.filter((s) => !s.occupied).length, attendeeCount: people.size, people: Array.from(people.values()), myOpenid: openid };
 }
 
-async function createSession(db, openid, agendaId) {
-  const result = await db.collection('agendas').doc(agendaId).get();
-  const record = result.data;
+async function createSession(db, openid) {
+  const record = await getCurrentAgenda(db);
   if (!record || record.ownerOpenid !== openid && !(await common.isAdmin(openid))) throw Object.assign(new Error('无权创建报名页'), { code: 'FORBIDDEN' });
   const slots = common.signup.mergeSlots(record.signupSlots, record.agenda);
-  const id = record.signupPublicId || publicId();
-  await db.collection('agendas').doc(agendaId).update({ data: { signupPublicId: id, signupSlots: slots, signupVersion: Number(record.signupVersion || 0) + 1, updatedAt: new Date().toISOString() } });
-  return response(db, Object.assign({}, record, { signupPublicId: id, signupSlots: slots }), openid);
+  await db.collection('agendas').doc(CURRENT_AGENDA_ID).update({ data: { signupPublicId: CURRENT_AGENDA_ID, signupSlots: slots, signupVersion: Number(record.signupVersion || 0) + 1, updatedAt: new Date().toISOString() } });
+  return response(db, Object.assign({}, record, { _id: CURRENT_AGENDA_ID, signupPublicId: CURRENT_AGENDA_ID, signupSlots: slots }), openid);
 }
 
 async function signup(db, openid, event) {
-  const record = await getAgendaByPublicId(db, event.publicId);
+  const record = await getCurrentAgenda(db);
   let member = null;
   if (event.personType === 'member') { const res = await db.collection('memberships').doc(event.memberId).get(); member = res.data; }
   const profile = profileFromEvent(event, member);
@@ -113,7 +114,7 @@ async function signup(db, openid, event) {
 }
 
 async function cancel(db, openid, event) {
-  const record = await getAgendaByPublicId(db, event.publicId);
+  const record = await getCurrentAgenda(db);
   const signupResult = await db.collection('agenda_signups').doc(event.signupId).get();
   const item = signupResult.data;
   const manage = record.ownerOpenid === openid || await common.isAdmin(openid);
@@ -130,7 +131,7 @@ async function cancel(db, openid, event) {
 }
 
 async function cancelSlot(db, openid, event) {
-  const record = await getAgendaByPublicId(db, event.publicId);
+  const record = await getCurrentAgenda(db);
   if (record.ownerOpenid !== openid && !(await common.isAdmin(openid))) throw Object.assign(new Error('无权取消该角色'), { code: 'FORBIDDEN' });
   const slot = (record.signupSlots || []).find((item) => item.id === event.slotId);
   if (!slot) return response(db, record, openid);
@@ -145,14 +146,17 @@ async function cancelSlot(db, openid, event) {
   return response(db, Object.assign({}, record, { agenda }), openid);
 }
 
-async function reset(db, openid, agendaId) {
-  const result = await db.collection('agendas').doc(agendaId).get(); const record = result.data;
-  if (!record || record.ownerOpenid !== openid && !(await common.isAdmin(openid))) throw Object.assign(new Error('无权重置会议'), { code: 'FORBIDDEN' });
+async function reset(db, openid) {
+  await common.requireAdmin(openid);
+  const record = await getCurrentAgenda(db, { allowEmpty: true });
+  const agendaId = CURRENT_AGENDA_ID;
   await db.collection('agenda_signups').where({ agendaId }).remove();
   await db.collection('agenda_signup_claims').where({ agendaId }).remove();
   const agenda = common.agendaModel.createAgendaFromFacts({}, await common.getAgendaTemplate());
-  await db.collection('agendas').doc(agendaId).update({ data: { agenda, expiresAt: common.getDb().command.remove(), signupPublicId: common.getDb().command.remove(), signupSlots: [], signupVersion: Number(record.signupVersion || 0) + 1, updatedAt: new Date().toISOString() } });
-  return { agenda: Object.assign({}, agenda, { _id: agendaId }) };
+  const info = agenda.meetingInfo || {};
+  const meetingSummary = { meetingNo: info.meetingNo || '', date: info.date || '', startTime: info.startTime || '', endTime: info.endTime || '' };
+  await db.collection('agendas').doc(agendaId).update({ data: { agenda, meetingSummary, expiresAt: db.command.remove(), signupPublicId: CURRENT_AGENDA_ID, signupSlots: [], signupVersion: Number(record.signupVersion || 0) + 1, updatedAt: new Date().toISOString() } });
+  return { agenda: Object.assign({}, agenda, { _id: agendaId, signupPublicId: CURRENT_AGENDA_ID, signupSlots: [] }) };
 }
 
 async function main(event) {
@@ -161,15 +165,15 @@ async function main(event) {
     await common.ensureCollection('agenda_signups');
     await common.ensureCollection('agenda_signup_claims');
     const db = common.getDb(); const openid = common.getOpenid(); const action = event.action;
-    if (action === 'create') return common.ok(await createSession(db, openid, event.agendaId));
-    if (action === 'get') return common.ok(await response(db, await getAgendaByPublicId(db, event.publicId), openid));
+    if (action === 'create') return common.ok(await createSession(db, openid));
+    if (action === 'get') return common.ok(await response(db, await getCurrentAgenda(db), openid));
     if (action === 'signup') return common.ok(await signup(db, openid, event));
     if (action === 'cancel') return common.ok(await cancel(db, openid, event));
     if (action === 'cancelSlot') return common.ok(await cancelSlot(db, openid, event));
-    if (action === 'reset') return common.ok(await reset(db, openid, event.agendaId));
+    if (action === 'reset') return common.ok(await reset(db, openid));
     return common.fail('UNKNOWN_ACTION', '不支持的报名操作');
   } catch (error) { return common.handleError(error); }
 }
 
-module.exports = { profileFromEvent, response, main };
+module.exports = { profileFromEvent, getCurrentAgenda, response, main };
 exports.main = main;

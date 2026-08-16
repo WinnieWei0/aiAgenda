@@ -8,6 +8,7 @@
     "install:cloudfunctions": "node scripts/install-cloudfunctions.js",
     "import:membership": "node scripts/import-membership.js",
     "migrate:membership-roles": "node scripts/migrate-membership-roles.js",
+    "migrate:singleton-agenda": "node scripts/migrate-singleton-agenda.js",
     "import:pathways": "node scripts/import-pathways.js",
     "test": "node tests/run-tests.js",
     "verify": "npm run check:comments && npm test"

@@ -1,4 +1,5 @@
 <view wx:if="{{loading && !data}}" class="page-loading"><view class="loading-card"><text class="loading-title">角色报名</text><text class="loading-text">正在加载会议信息...</text></view></view>
+<view wx:if="{{!loading && !data}}" class="page-loading"><view class="loading-card"><text class="loading-title">角色报名</text><text class="loading-text">{{loadError || '当前会议尚未开放报名'}}</text></view></view>
 <view class="signup-page" wx:if="{{data}}">
   <view class="meeting-hero">
     <text class="club-name">广州双语国际演讲俱乐部</text>
