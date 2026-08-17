@@ -4,6 +4,21 @@ const { PDFDocument, rgb } = require('pdf-lib');
 const fontkit = require('@pdf-lib/fontkit');
 const agendaModel = require('./agenda-model');
 
+const EN_ROLE_LABELS = {
+  guestReception: 'SAA（Guest）', memberReception: 'SAA（Member）', photographer: 'Photographer',
+  ahCounter: 'Ah-Counter', toastmaster: 'TOM', timer: 'Timer', grammarian: 'Grammarian',
+  generalEvaluator: 'General Evaluator', tableTopicsMaster: 'Table Topics Master',
+  tableTopicsEvaluator: 'Table Topics Evaluator', preparedSpeaker: 'Prepared Speaker',
+  preparedEvaluator: 'IE', icebreaker: 'Icebreaker', workshop: 'Workshop Facilitator'
+};
+
+function getLocalizedRoleTitle(row, language) {
+  if (language !== 'en') return row.titleZh || '';
+  if (row.roleKey && EN_ROLE_LABELS[row.roleKey]) return EN_ROLE_LABELS[row.roleKey];
+  if (row.dynamic && row.moduleKind && EN_ROLE_LABELS[row.moduleKind]) return EN_ROLE_LABELS[row.moduleKind];
+  return row.titleEn || row.titleZh || '';
+}
+
 const PAGE = { width: 595.28, height: 841.89, margin: 26 };
 const BLACK = rgb(0.05, 0.05, 0.05);
 const BORDER = rgb(0.12, 0.12, 0.12);
@@ -36,8 +51,8 @@ function resolveFontPath() {
 
 /**
  * 方法是什么：嵌入议程中文字体。
- * 方法作用：注册 fontkit 并返回支持中英文的子集字体。
- * 为什么添加：默认 PDF 字体无法正确绘制中文模板内容。
+ * 方法作用：注册 fontkit 并返回完整的中英文字体。
+ * 为什么添加：当前 fontkit 子集化在大量中英文重复绘制时会生成错误字形映射，导致 PDF 只显示零散字母。
  */
 async function embedAgendaFont(pdfDoc) {
   const fontPath = resolveFontPath();
@@ -45,7 +60,7 @@ async function embedAgendaFont(pdfDoc) {
     throw new Error('缺少中文字体 common/fonts/NotoSerifSC-Medium.ttf');
   }
   pdfDoc.registerFontkit(fontkit);
-  return pdfDoc.embedFont(fs.readFileSync(fontPath), { subset: true });
+  return pdfDoc.embedFont(fs.readFileSync(fontPath), { subset: false });
 }
 
 /**
@@ -419,7 +434,7 @@ function drawAgendaRow(page, font, row, table, y, language, forcedHeight) {
   const height = forcedHeight || getAgendaRowHeight(row, language);
   const fill = row.id === 'topicNote' ? '#d8d8d8' : '';
   const duration = row.duration ? `${row.duration} ${language === 'en' ? 'min' : '分钟'}` : '';
-  let title = language === 'en' ? row.titleEn || row.titleZh || '' : row.titleZh || '';
+  let title = getLocalizedRoleTitle(row, language);
   let projectName = '';
   let objective = '';
   if (row.type === 'preparedSpeechBlock') {
@@ -773,6 +788,7 @@ async function renderAgendaPdf(agendaValue, language, templateValue) {
 }
 
 module.exports = {
+  getLocalizedRoleTitle,
   hexToRgb,
   resolveFontPath,
   embedAgendaFont,

@@ -15,7 +15,7 @@ Page({
   },
   onHide() { this.refreshOnShow = true; },
   onPullDownRefresh() { this.load().finally(() => wx.stopPullDownRefresh()); },
-  onShareAppMessage() { const info = this.data.data && this.data.data.meetingInfo || {}; return { title: `第${info.meetingNo || ''}期会议角色报名`, path: '/pages/signup/signup' }; },
+  onShareAppMessage() { const info = this.data.data && this.data.data.meetingInfo || {}; const english = this.data.data && this.data.data.language === 'en'; return { title: english ? `Meeting No. ${info.meetingNo || ''} Role Sign-up` : `第${info.meetingNo || ''}期会议角色报名`, path: '/pages/signup/signup' }; },
   async load() { try { const data = await cloud.callCloud('signupService', { action: 'get' }); this.setData({ data, loadError: '' }); } catch (error) { this.setData({ data: null, loadError: '当前会议尚未开放报名' }); } finally { this.setData({ loading: false }); } },
   async loadMembers() { try { const result = await cloud.callCloud('lookupOptions', { type: 'memberships', keyword: '' }); const members = result.list || []; this.setData({ members, memberLabels: members.map((m) => m.nameZh || m.nameEn || m.nickName || '未命名会员') }); } catch (error) { cloud.showError(error); } },
   openSignup(event) {

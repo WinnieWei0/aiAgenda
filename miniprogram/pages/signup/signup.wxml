@@ -2,29 +2,29 @@
 <view wx:if="{{!loading && !data}}" class="page-loading"><view class="loading-card"><text class="loading-title">角色报名</text><text class="loading-text">{{loadError || '当前会议尚未开放报名'}}</text></view></view>
 <view class="signup-page" wx:if="{{data}}">
   <view class="meeting-hero">
-    <text class="club-name">广州双语国际演讲俱乐部</text>
-    <text class="meeting-name">第{{data.meetingInfo.meetingNo || '--'}}次会议</text>
+    <text class="club-name">{{data.language === 'en' ? 'GZ Bilingual Toastmasters Club' : '广州双语国际演讲俱乐部'}}</text>
+    <text class="meeting-name">{{data.language === 'en' ? 'Meeting No. ' : '第'}}{{data.meetingInfo.meetingNo || '--'}}{{data.language === 'en' ? '' : '次会议'}}</text>
   </view>
 
   <view class="card meeting-card">
-    <text class="card-title">会议信息</text>
-    <view class="info-row"><text class="info-label">日期</text><text class="info-value">{{data.meetingInfo.date || '待填写'}}</text></view>
-    <view class="info-row"><text class="info-label">时间</text><text class="info-value">{{data.meetingInfo.startTime}}~{{data.meetingInfo.endTime}}</text></view>
-    <view class="info-row"><text class="info-label">地点</text><text class="info-value">{{data.templateVenue || '待填写'}}</text></view>
+    <text class="card-title">{{data.language === 'en' ? 'Meeting Information' : '会议信息'}}</text>
+    <view class="info-row"><text class="info-label">{{data.language === 'en' ? 'Date' : '日期'}}</text><text class="info-value">{{data.meetingInfo.date || (data.language === 'en' ? 'To be filled' : '待填写')}}</text></view>
+    <view class="info-row"><text class="info-label">{{data.language === 'en' ? 'Time' : '时间'}}</text><text class="info-value">{{data.meetingInfo.startTime}}~{{data.meetingInfo.endTime}}</text></view>
+    <view class="info-row"><text class="info-label">{{data.language === 'en' ? 'Venue' : '地点'}}</text><text class="info-value">{{data.templateVenue || (data.language === 'en' ? 'To be filled' : '待填写')}}</text></view>
     <view class="info-row"><text class="info-label">MM</text><text class="info-value">{{data.meetingManagerName}}</text></view>
   </view>
 
   <view class="metrics">
-    <view class="metric"><text class="number">{{data.remainingRoles}}</text><text class="metric-label">剩余角色</text></view>
-    <view class="metric"><text class="number">{{data.attendeeCount}}</text><text class="metric-label">参会人数</text></view>
+    <view class="metric"><text class="number">{{data.remainingRoles}}</text><text class="metric-label">{{data.language === 'en' ? 'Roles Available' : '剩余角色'}}</text></view>
+    <view class="metric"><text class="number">{{data.attendeeCount}}</text><text class="metric-label">{{data.language === 'en' ? 'Attendees' : '参会人数'}}</text></view>
   </view>
 
   <view class="card roles-card">
-    <view class="card-heading"><text class="card-title">角色报名</text><button class="attend-button" size="mini" data-slot-id="" bindtap="openSignup">仅参会</button></view>
+    <view class="card-heading"><text class="card-title">{{data.language === 'en' ? 'Role Sign-up' : '角色报名'}}</text><button class="attend-button" size="mini" data-slot-id="" bindtap="openSignup">{{data.language === 'en' ? 'Attend Only' : '仅参会'}}</button></view>
     <block wx:for="{{data.slots}}" wx:key="id">
       <view class="role-row {{item.occupied ? 'claimed' : ''}}">
-        <view class="role-copy"><view class="role-name-line"><text class="status-dot"></text><text class="role-name">{{item.label}}</text><text class="access-tag">{{item.accessLabel}}</text></view></view>
-        <button wx:if="{{!item.occupied}}" class="claim-button" size="mini" data-slot-id="{{item.id}}" bindtap="openSignup">报名</button>
+        <view class="role-copy"><view class="role-name-line"><text class="status-dot"></text><text class="role-name">{{item.displayLabel || item.label}}</text><text class="access-tag">{{data.language === 'en' ? (item.allowedPersonTypes.indexOf('guest') >= 0 ? 'Member/Guest' : 'Member') : item.accessLabel}}</text></view></view>
+        <button wx:if="{{!item.occupied}}" class="claim-button" size="mini" data-slot-id="{{item.id}}" bindtap="openSignup">{{data.language === 'en' ? 'Sign up' : '报名'}}</button>
         <view wx:elif="{{item.mine}}" class="claimed-actions"><text class="claimed-name">{{item.person.displayNameZh || item.person.rawName}}</text><button class="x-button" size="mini" data-id="{{item.signupId}}" bindtap="cancelSignup">X</button></view>
         <text wx:else class="claimed-name">{{item.person.displayNameZh || item.person.rawName}}</text>
       </view>
@@ -32,16 +32,16 @@
   </view>
 
   <view class="card people-card">
-    <text class="card-title">已报名人员</text>
-    <view wx:if="{{!data.people.length}}" class="empty">暂无报名</view>
+    <text class="card-title">{{data.language === 'en' ? 'Signed-up People' : '已报名人员'}}</text>
+    <view wx:if="{{!data.people.length}}" class="empty">{{data.language === 'en' ? 'No sign-ups yet' : '暂无报名'}}</view>
     <view wx:for="{{data.people}}" wx:key="key" class="person">
-      <view class="person-identity"><text class="person-name">{{item.name}}</text><text wx:if="{{item.personType === 'club' && item.club}}" class="club-tag">{{item.club}}</text><text wx:if="{{item.personType === 'guest'}}" class="club-tag">宾客</text><text wx:if="{{item.personType === 'preset' && item.club && item.club !== '广州双语'}}" class="club-tag">{{item.club}}</text></view>
+      <view class="person-identity"><text class="person-name">{{item.name}}</text><text wx:if="{{item.personType === 'club' && item.club}}" class="club-tag">{{item.club}}</text><text wx:if="{{item.personType === 'guest'}}" class="club-tag">{{data.language === 'en' ? 'Guest' : '宾客'}}</text><text wx:if="{{item.personType === 'preset' && item.club && item.club !== '广州双语'}}" class="club-tag">{{item.club}}</text></view>
       <view wx:if="{{item.roles.length}}" class="person-role-labels"><text wx:for="{{item.roles}}" wx:for-item="role" wx:key="slotId" class="role-label">{{role.label}}</text></view>
       <button wx:elif="{{item.attendanceOnly && item.mine}}" class="x-button" size="mini" data-id="{{item.attendanceSignupId}}" bindtap="cancelSignup">X</button>
-      <text wx:else class="attendance-label">仅参会</text>
+      <text wx:else class="attendance-label">{{data.language === 'en' ? 'Attend Only' : '仅参会'}}</text>
     </view>
   </view>
 </view>
 
-<view wx:if="{{modal}}" class="mask" bindtap="closeModal"><view class="modal" catchtap="noop"><text class="modal-title">{{selectedSlot ? selectedSlot.label : '仅参会'}}</text><view class="types"><button wx:if="{{allowMember}}" disabled="{{submitting}}" class="{{personType === 'member' ? 'active' : ''}}" data-type="member" bindtap="chooseType">双语会员</button><button wx:if="{{allowClub}}" disabled="{{submitting}}" class="{{personType === 'club' ? 'active' : ''}}" data-type="club" bindtap="chooseType">友会</button><button wx:if="{{allowGuest}}" disabled="{{submitting}}" class="{{personType === 'guest' ? 'active' : ''}}" data-type="guest" bindtap="chooseType">宾客</button></view><button wx:if="{{personType === 'member'}}" class="picker member-select-button" disabled="{{submitting}}" bindtap="openMemberSelector">{{memberLabels[memberIndex] || '请选择会员'}}</button><input wx:else disabled="{{submitting}}" value="{{name}}" placeholder="姓名" bindinput="inputName"/><input wx:if="{{personType === 'club'}}" disabled="{{submitting}}" value="{{club}}" placeholder="俱乐部" bindinput="inputClub"/><button class="submit" disabled="{{submitting}}" bindtap="submitSignup">{{submitting ? '报名中...' : '确认报名'}}</button></view></view>
+<view wx:if="{{modal}}" class="mask" bindtap="closeModal"><view class="modal" catchtap="noop"><text class="modal-title">{{selectedSlot ? (selectedSlot.displayLabel || selectedSlot.label) : (data.language === 'en' ? 'Attend Only' : '仅参会')}}</text><view class="types"><button wx:if="{{allowMember}}" disabled="{{submitting}}" class="{{personType === 'member' ? 'active' : ''}}" data-type="member" bindtap="chooseType">{{data.language === 'en' ? 'Member' : '双语会员'}}</button><button wx:if="{{allowClub}}" disabled="{{submitting}}" class="{{personType === 'club' ? 'active' : ''}}" data-type="club" bindtap="chooseType">{{data.language === 'en' ? 'Club' : '友会'}}</button><button wx:if="{{allowGuest}}" disabled="{{submitting}}" class="{{personType === 'guest' ? 'active' : ''}}" data-type="guest" bindtap="chooseType">{{data.language === 'en' ? 'Guest' : '宾客'}}</button></view><button wx:if="{{personType === 'member'}}" class="picker member-select-button" disabled="{{submitting}}" bindtap="openMemberSelector">{{memberLabels[memberIndex] || (data.language === 'en' ? 'Select a member' : '请选择会员')}}</button><input wx:else disabled="{{submitting}}" value="{{name}}" placeholder="{{data.language === 'en' ? 'Name' : '姓名'}}" bindinput="inputName"/><input wx:if="{{personType === 'club'}}" disabled="{{submitting}}" value="{{club}}" placeholder="{{data.language === 'en' ? 'Club' : '俱乐部'}}" bindinput="inputClub"/><button class="submit" disabled="{{submitting}}" bindtap="submitSignup">{{submitting ? (data.language === 'en' ? 'Signing up...' : '报名中...') : (data.language === 'en' ? 'Confirm sign-up' : '确认报名')}}</button></view></view>
 <member-selector visible="{{memberSelectorVisible}}" members="{{members}}" bindcancel="closeMemberSelector" bindconfirm="confirmMemberSelector" />

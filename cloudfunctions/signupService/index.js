@@ -1,6 +1,21 @@
 const common = require('agenda-common');
 const CURRENT_AGENDA_ID = common.CURRENT_AGENDA_ID || 'current';
 
+const EN_ROLE_LABELS = {
+  guestReception: 'SAA（Guest）', memberReception: 'SAA（Member）', photographer: 'Photographer',
+  ahCounter: 'Ah-Counter', toastmaster: 'TOM', timer: 'Timer', grammarian: 'Grammarian',
+  generalEvaluator: 'General Evaluator', tableTopicsMaster: 'Table Topics Master',
+  tableTopicsEvaluator: 'Table Topics Evaluator', preparedSpeaker: 'Prepared Speaker',
+  preparedEvaluator: 'IE', icebreaker: 'Icebreaker', workshop: 'Workshop Facilitator'
+};
+
+function displayRoleLabel(roleKey, label, language) {
+  if (common.signup && typeof common.signup.displayRoleLabel === 'function') {
+    return common.signup.displayRoleLabel(roleKey, label, language);
+  }
+  return language === 'en' ? EN_ROLE_LABELS[roleKey] || label : label;
+}
+
 function profileFromEvent(event, member) {
   const kind = event.personType;
   if (!['member', 'club', 'guest'].includes(kind)) throw Object.assign(new Error('请选择报名身份'), { code: 'INVALID_PROFILE' });
@@ -36,11 +51,15 @@ async function response(db, record, openid) {
       await db.collection('agenda_signup_claims').doc(claim._id).remove();
     }
   }
+  const language = record.agenda.meetingInfo && record.agenda.meetingInfo.language === 'en' ? 'en' : 'zh';
   const people = new Map();
   list.forEach((item) => {
     const key = common.signup.signupPersonKey(item);
-    const current = people.get(key) || { key, name: item.name, memberId: item.memberId || '', personType: item.personType, club: item.club, roles: [], attendanceOnly: false, mine: item.openid === openid };
-    if (item.slotId) current.roles.push({ signupId: item._id, slotId: item.slotId, label: item.roleLabel, mine: current.mine });
+    const current = people.get(key) || { key, name: language === 'en' ? item.displayNameEn || item.name : item.name, memberId: item.memberId || '', personType: item.personType, club: language === 'en' ? item.clubEn || item.club : item.club, roles: [], attendanceOnly: false, mine: item.openid === openid };
+    if (item.slotId) {
+      const slot = (record.signupSlots || []).find((value) => value.id === item.slotId);
+      current.roles.push({ signupId: item._id, slotId: item.slotId, label: displayRoleLabel(slot && slot.roleKey, item.roleLabel, language), mine: current.mine });
+    }
     else { current.attendanceOnly = true; current.attendanceSignupId = item._id; }
     people.set(key, current);
   });
@@ -53,24 +72,26 @@ async function response(db, record, openid) {
       signupOpenid: signupItem && signupItem.openid || slot.signupOpenid || '',
       mine: Boolean(signupItem && signupItem.openid === openid),
       person: signupItem ? common.signup.personFromProfile(signupItem) : slot.person,
+      displayLabel: displayRoleLabel(slot.roleKey, slot.label, language),
       allowedPersonTypes: common.signup.allowedPersonTypes(slot.roleKey),
-      accessLabel: common.signup.allowedPersonTypes(slot.roleKey).includes('guest') ? '会员/宾客' : '会员'
+      accessLabel: language === 'en'
+        ? (common.signup.allowedPersonTypes(slot.roleKey).includes('guest') ? 'Member/Guest' : 'Member')
+        : (common.signup.allowedPersonTypes(slot.roleKey).includes('guest') ? '会员/宾客' : '会员')
     });
   });
   slots.filter((slot) => slot.preset && slot.occupied && slot.person).forEach((slot) => {
-    const name = slot.person.displayNameZh || slot.person.rawName || '组织者预设';
+    const name = language === 'en' ? slot.person.displayNameEn || slot.person.rawName || 'Organizer preset' : slot.person.displayNameZh || slot.person.rawName || '组织者预设';
     const key = `preset:${name}`;
-    const current = people.get(key) || { key, name, personType: 'preset', club: slot.person.clubZh || '', roles: [], attendanceOnly: false, mine: false };
-    current.roles.push({ slotId: slot.id, label: slot.label, mine: false });
+    const current = people.get(key) || { key, name, personType: 'preset', club: language === 'en' ? slot.person.clubEn || '' : slot.person.clubZh || '', roles: [], attendanceOnly: false, mine: false };
+    current.roles.push({ slotId: slot.id, label: displayRoleLabel(slot.roleKey, slot.label, language), mine: false });
     people.set(key, current);
   });
   const preparation = (record.agenda.sections || []).find((section) => section.id === 'preparation');
   const manager = preparation && preparation.row && preparation.row.person || {};
   const template = await common.getAgendaTemplate();
-  const language = record.agenda.meetingInfo && record.agenda.meetingInfo.language === 'en' ? 'en' : 'zh';
   const locale = template.locales && template.locales[language] || {};
   const templateVenue = locale.fixedContent && locale.fixedContent.venue || '';
-  return { publicId: CURRENT_AGENDA_ID, agendaId: CURRENT_AGENDA_ID, meetingInfo: record.agenda.meetingInfo, templateVenue, meetingManagerName: manager.displayNameZh || manager.rawName || '待填写', slots, remainingRoles: slots.filter((s) => !s.occupied).length, attendeeCount: people.size, people: Array.from(people.values()), myOpenid: openid };
+  return { publicId: CURRENT_AGENDA_ID, agendaId: CURRENT_AGENDA_ID, meetingInfo: record.agenda.meetingInfo, language, templateVenue, meetingManagerName: language === 'en' ? manager.displayNameEn || manager.rawName || 'To be filled' : manager.displayNameZh || manager.rawName || '待填写', slots, remainingRoles: slots.filter((s) => !s.occupied).length, attendeeCount: people.size, people: Array.from(people.values()), myOpenid: openid };
 }
 
 async function createSession(db, openid) {

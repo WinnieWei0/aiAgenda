@@ -251,6 +251,12 @@ function testSignupRoleSlots() {
   updated.sections.forEach((section) => (section.children || []).forEach((row) => { if (row.roleKey === 'timer') timerRows.push(row); }));
   assert.strictEqual(timerRows.length, 2, '时间官介绍与报告应共享角色');
   assert.ok(timerRows.every((row) => row.person.rawName === '时间官甲'));
+  assert.strictEqual(signupModel.displayRoleLabel('guestReception', '宾客 SAA', 'en'), 'SAA（Guest）');
+  assert.strictEqual(signupModel.displayRoleLabel('memberReception', '会员 SAA', 'en'), 'SAA（Member）');
+  assert.strictEqual(signupModel.displayRoleLabel('toastmaster', '总主持人', 'en'), 'TOM');
+  assert.strictEqual(signupModel.displayRoleLabel('preparedEvaluator', '备稿点评师 1', 'en'), 'IE');
+  assert.strictEqual(signupModel.displayRoleLabel('workshop', '工作坊主持人', 'en'), 'Workshop Facilitator');
+  assert.strictEqual(signupModel.displayRoleLabel('timer', '时间官', 'zh'), '时间官');
 }
 
 function testSignupProfiles() {
@@ -793,6 +799,13 @@ function testPdfFontFallback() {
   assert.ok(pdfRenderer.resolveFontPath().endsWith('NotoSerifSC-Medium.ttf'));
 }
 
+function testEnglishRoleLabels() {
+  assert.strictEqual(pdfRenderer.getLocalizedRoleTitle({ roleKey: 'guestReception', titleZh: '宾客 SAA' }, 'en'), 'SAA（Guest）');
+  assert.strictEqual(pdfRenderer.getLocalizedRoleTitle({ roleKey: 'toastmaster', titleZh: '总主持人' }, 'en'), 'TOM');
+  assert.strictEqual(pdfRenderer.getLocalizedRoleTitle({ roleKey: 'preparedEvaluator', titleZh: '备稿点评师' }, 'en'), 'IE');
+  assert.strictEqual(pdfRenderer.getLocalizedRoleTitle({ roleKey: 'timer', titleZh: '时间官' }, 'zh'), '时间官');
+}
+
 function testMembershipRolesAndSearch() {
   assert.strictEqual(membershipRoleMigration.roleForName('韦文耐'), 'super_admin');
   assert.strictEqual(membershipRoleMigration.roleForName('冉桂竹'), 'admin');
@@ -894,6 +907,7 @@ async function main() {
   testPdfAgendaLineStyle();
   testPdfHeaderFrame();
   testPdfFontFallback();
+  testEnglishRoleLabels();
   testMembershipRolesAndSearch();
   testMemberFilters();
   await testExportRecordCollectionInitialization();

@@ -11,6 +11,14 @@ const ROLE_DEFINITIONS = {
   tableTopicsEvaluator: '即兴点评师'
 };
 
+const ROLE_DEFINITIONS_EN = {
+  guestReception: 'SAA（Guest）', memberReception: 'SAA（Member）', photographer: 'Photographer',
+  ahCounter: 'Ah-Counter', toastmaster: 'TOM', timer: 'Timer', grammarian: 'Grammarian',
+  generalEvaluator: 'General Evaluator', tableTopicsMaster: 'Table Topics Master',
+  tableTopicsEvaluator: 'Table Topics Evaluator', preparedSpeaker: 'Prepared Speaker',
+  preparedEvaluator: 'IE', icebreaker: 'Icebreaker', workshop: 'Workshop Facilitator'
+};
+
 const GUEST_ROLE_KEYS = ['guestReception', 'ahCounter', 'photographer'];
 
 function allowedPersonTypes(roleKey) {
@@ -19,6 +27,10 @@ function allowedPersonTypes(roleKey) {
 
 function canSignupAs(roleKey, personType) {
   return allowedPersonTypes(roleKey).includes(personType);
+}
+
+function displayRoleLabel(roleKey, label, language) {
+  return language === 'en' ? ROLE_DEFINITIONS_EN[roleKey] || label : label;
 }
 
 function signupPersonKey(item) {
@@ -128,4 +140,4 @@ function mergeSlots(existing, agenda) {
   });
 }
 
-module.exports = { ROLE_DEFINITIONS, GUEST_ROLE_KEYS, allowedPersonTypes, canSignupAs, signupPersonKey, buildRoleSlots, writeSlotPerson, mergeSlots, personFromProfile, hasPerson };
+module.exports = { ROLE_DEFINITIONS, ROLE_DEFINITIONS_EN, GUEST_ROLE_KEYS, allowedPersonTypes, canSignupAs, displayRoleLabel, signupPersonKey, buildRoleSlots, writeSlotPerson, mergeSlots, personFromProfile, hasPerson };
