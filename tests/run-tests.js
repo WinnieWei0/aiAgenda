@@ -432,7 +432,12 @@ function testDynamicAgendaModules() {
   const order = agenda.sections.map((section) => section.moduleKind || section.id);
   assert.ok(order.indexOf('freeTalk') < order.indexOf('break'));
   assert.ok(order.indexOf('break') < order.indexOf('workshop'));
-  assert.strictEqual(agenda.sections.find((section) => section.moduleKind === 'freeTalk').row.duration, 10);
+  const freeTalkRow = agenda.sections.find((section) => section.moduleKind === 'freeTalk').row;
+  assert.strictEqual(freeTalkRow.duration, 10);
+  assert.strictEqual(freeTalkRow.personMode, 'none');
+  assert.strictEqual(freeTalkRow.clubMode, 'none');
+  assert.strictEqual(freeTalkRow.person.rawName, '');
+  assert.strictEqual(freeTalkRow.person.clubEn, '');
   assert.strictEqual(agenda.sections.find((section) => section.moduleKind === 'workshop').row.duration, 30);
   assert.strictEqual(agenda.sections.find((section) => section.moduleKind === 'educationAward').row.duration, 10);
   const facilitator = agenda.sections.find((section) => section.id === 'facilitatorIntroduction');
@@ -461,6 +466,32 @@ function testDynamicAgendaModules() {
   assert.strictEqual(flattened.find((row) => row.id === 'vote').isGroup, true);
   assert.strictEqual(flattened.find((row) => row.moduleKind === 'educationAward').isGroup, true);
   assert.strictEqual(flattened.find((row) => row.moduleKind === 'memberInterview').isGroup, true);
+}
+
+function testEnglishAgendaCompatibility() {
+  const template = agendaUtil.createDefaultTemplate();
+  let agenda = agendaUtil.createAgendaFromFacts({ meetingInfo: { language: 'en' } }, template);
+  assert.strictEqual(agenda.sections.filter((section) => section.moduleKind === 'freeTalk').length, 1, '英文会议应自动增加一个 Free Talk');
+  assert.ok(agenda.sections.findIndex((section) => section.moduleKind === 'freeTalk') < agenda.sections.findIndex((section) => section.id === 'break'), 'Free Talk 应位于休息前');
+
+  agenda.sections = agenda.sections.filter((section) => section.moduleKind !== 'freeTalk');
+  agenda = agendaUtil.normalizeAgenda(agenda, template);
+  assert.strictEqual(agenda.sections.some((section) => section.moduleKind === 'freeTalk'), false, '当前会议删除 Free Talk 后不应重新补入');
+
+  const legacyEnglish = agendaUtil.createAgendaFromFacts({ meetingInfo: { language: 'en' } }, template);
+  legacyEnglish.sections = legacyEnglish.sections.filter((section) => section.moduleKind !== 'freeTalk');
+  delete legacyEnglish.autoModules;
+  const upgraded = agendaUtil.normalizeAgenda(legacyEnglish, template);
+  assert.strictEqual(upgraded.sections.filter((section) => section.moduleKind === 'freeTalk').length, 1, '旧英文会议应首次自动补入 Free Talk');
+
+  const introduction = upgraded.sections.find((section) => section.id === 'facilitatorIntroduction');
+  introduction.children.find((row) => row.roleKey === 'timer').person = agendaUtil.createPerson({ rawName: '时间官', displayNameEn: 'Timer Person' });
+  const synced = agendaUtil.calculateAgenda(upgraded, template);
+  const report = synced.sections.find((section) => section.id === 'facilitatorReport');
+  assert.strictEqual(report.children.find((row) => row.roleKey === 'timer').person.displayNameEn, 'Timer Person', '促进者报告应同步介绍环节人员');
+  const topics = synced.sections.find((section) => section.id === 'tableTopics');
+  assert.strictEqual(topics.children.find((row) => row.id === 'tableTopicsSpeech').person.displayNameEn, 'Random speakers');
+  assert.strictEqual(synced.sections.find((section) => section.id === 'vote').row.person.clubEn, 'All');
 }
 
 /**
@@ -552,6 +583,7 @@ function testCollectionMissingError() {
  */
 function testPdfExportFileName() {
   assert.strictEqual(exportAgendaPdf.buildPdfFileName(Date.UTC(2026, 7, 4, 16, 0, 0)), 'Bilingual-Aganda-20260805.pdf');
+  assert.strictEqual(exportAgendaPdf.buildPdfCloudPath('Bilingual-Aganda-20260805.pdf', 123), 'agenda-pdfs/123-Bilingual-Aganda-20260805.pdf');
 }
 
 /**
@@ -903,6 +935,7 @@ async function main() {
   testTemplateAndLegacyUpgrade();
   testLocalizedTemplateAndAnchors();
   testDynamicAgendaModules();
+  testEnglishAgendaCompatibility();
   testMeetingLanguageDetection();
   testEmptyRolePlaceholders();
   testCollectionMissingError();

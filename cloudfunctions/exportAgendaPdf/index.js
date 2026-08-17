@@ -21,9 +21,13 @@ async function loadAgenda() {
  * 方法作用：把生成的 PDF 存到 `agenda-pdfs/` 路径并返回 fileID。
  * 为什么添加：小程序预览和分享 PDF 都需要先把文件保存到云存储。
  */
-async function uploadPdf(buffer, fileName) {
+function buildPdfCloudPath(fileName, timestamp) {
+  return `agenda-pdfs/${timestamp === undefined ? Date.now() : Number(timestamp)}-${fileName}`;
+}
+
+async function uploadPdf(buffer, fileName, timestamp) {
   const cloud = common.initCloud();
-  const cloudPath = `agenda-pdfs/${fileName}`;
+  const cloudPath = buildPdfCloudPath(fileName, timestamp);
   const res = await cloud.uploadFile({ cloudPath, fileContent: buffer });
   return res.fileID;
 }
@@ -244,5 +248,6 @@ async function main(event) {
 exports.main = main;
 exports.saveExportRecord = saveExportRecord;
 exports.buildPdfFileName = buildPdfFileName;
+exports.buildPdfCloudPath = buildPdfCloudPath;
 exports.hydrateAgendaMembers = hydrateAgendaMembers;
 exports.hydrateAgendaMembers = hydrateAgendaMembers;

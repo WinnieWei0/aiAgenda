@@ -437,7 +437,7 @@ function createAgendaFromFacts(factsValue, templateValue) {
     { id: 'venueIntroduction', type: 'row', anchorTime: '19:30', children: [], row: createRow(template, 'venueIntroduction', { person: rolePerson(facts, 'venueIntroduction') }) },
     { id: 'opening', type: 'group', titleZh: '开场白', titleEn: 'Opening Remark', transitionPolicy: 'none', children: [
       createOpeningRemarksRow(template, facts.meetingInfo && facts.meetingInfo.language),
-      createRow(template, 'guestIntroduction', { person: createPerson({ rawName: '宾客', clubZh: '宾客', clubEn: 'Guest' }), personMode: 'fixed' })
+      createRow(template, 'guestIntroduction', { person: createPerson({ rawName: '宾客', displayNameEn: 'Guest', clubZh: '宾客', clubEn: 'Guest' }), personMode: 'fixed' })
     ] },
     { id: 'facilitatorIntroduction', type: 'group', titleZh: '会议促进者介绍', titleEn: 'Meeting Facilitators', transitionPolicy: 'betweenChildren', children: [
       createRow(template, 'host', { person: rolePerson(facts, 'toastmaster'), roleKey: 'toastmaster' }),
@@ -449,7 +449,7 @@ function createAgendaFromFacts(factsValue, templateValue) {
     ] },
     { id: 'tableTopics', type: 'group', titleZh: '即兴演讲环节', titleEn: 'Table Topics Section', transitionPolicy: 'none', children: [
       createRow(template, 'topicExplanation', { person: ttMaster, roleKey: 'tableTopicsMaster' }),
-      createRow(template, 'tableTopicsSpeech', { person: createPerson({ rawName: '随机演讲者', clubZh: '全部', clubEn: 'All' }) }),
+      createRow(template, 'tableTopicsSpeech', { person: createPerson({ rawName: '随机演讲者', displayNameEn: 'Random speakers', clubZh: '全部', clubEn: 'All' }) }),
       createRow(template, 'topicNote', { type: 'note', personMode: 'none', showDuration: false }),
       createRow(template, 'topicSummary', { person: ttMaster, roleKey: 'tableTopicsMaster' }),
       createRow(template, 'tableTopicsEvaluation', { person: rolePerson(facts, 'tableTopicsEvaluator'), roleKey: 'tableTopicsEvaluator' })
@@ -463,7 +463,7 @@ function createAgendaFromFacts(factsValue, templateValue) {
       createRow(template, 'timerReport', { person: rolePerson(facts, 'timer'), roleKey: 'timer' }),
       createRow(template, 'generalEvaluatorReport', { person: rolePerson(facts, 'generalEvaluator'), roleKey: 'generalEvaluator' })
     ] },
-    { id: 'vote', type: 'row', children: [], row: createRow(template, 'vote', { person: createPerson({ rawName: '全部', clubZh: '', clubEn: '' }), personMode: 'fixed' }) },
+    { id: 'vote', type: 'row', children: [], row: createRow(template, 'vote', { person: createPerson({ rawName: '全部', clubZh: '', clubEn: 'All' }), personMode: 'fixed' }) },
     { id: 'closing', type: 'group', titleZh: '会议尾声', titleEn: 'Closing Remark', transitionPolicy: 'none', children: [
       createRow(template, 'feedback', { person: president }),
       createRow(template, 'award', { person: president }),
@@ -487,9 +487,26 @@ function createAgendaFromFacts(factsValue, templateValue) {
       role: '',
       evaluator: ''
     },
-    assets: { meetingGroupQr: template.assets.meetingGroupQr }
+    assets: { meetingGroupQr: template.assets.meetingGroupQr },
+    autoModules: {}
   };
+  if (normalizeLanguage(agenda.meetingInfo.language) === 'en') {
+    const withFreeTalk = addDynamicModule(agenda, 'freeTalk');
+    withFreeTalk.autoModules.freeTalkHandled = true;
+    return calculateAgenda(withFreeTalk, template);
+  }
   return calculateAgenda(agenda, template);
+}
+
+function syncFacilitatorReport(agenda) {
+  const introduction = (agenda.sections || []).find((section) => section.id === 'facilitatorIntroduction');
+  const report = (agenda.sections || []).find((section) => section.id === 'facilitatorReport');
+  if (!introduction || !report) return agenda;
+  const peopleByRole = new Map((introduction.children || []).filter((row) => row.roleKey).map((row) => [row.roleKey, row.person]));
+  (report.children || []).forEach((row) => {
+    if (row.roleKey && peopleByRole.has(row.roleKey)) row.person = createPerson(peopleByRole.get(row.roleKey));
+  });
+  return agenda;
 }
 
 /**
@@ -564,6 +581,7 @@ function calculateAgenda(agendaValue, templateValue) {
   const template = normalizeTemplate(templateValue);
   syncGuestReceptionSignup(agenda);
   syncEvaluationSection(agenda, template);
+  syncFacilitatorReport(agenda);
   const language = normalizeLanguage(agenda.meetingInfo && agenda.meetingInfo.language);
   const mainStart = parseTime(template.settings.mainStartTime) === null ? parseTime('19:30') : parseTime(template.settings.mainStartTime);
   const signInTime = parseTime(template.settings.signInTime) === null ? '19:00' : formatTime(parseTime(template.settings.signInTime));
@@ -689,6 +707,7 @@ function normalizeAgenda(value, templateValue) {
   agenda.meetingInfo = Object.assign({}, createAgendaFromFacts({}, template).meetingInfo, agenda.meetingInfo || {});
   agenda.assets = Object.assign({ meetingGroupQr: template.assets.meetingGroupQr }, agenda.assets || {});
   agenda.bestAwards = Object.assign({ preparedSpeech: '', tableTopics: '', role: '', evaluator: '' }, agenda.bestAwards || {});
+  agenda.autoModules = Object.assign({}, agenda.autoModules || {});
   agenda.warnings = Array.isArray(agenda.warnings) ? agenda.warnings : [];
   agenda.sections.forEach((section) => {
     if (section.row) {
@@ -728,6 +747,30 @@ function normalizeAgenda(value, templateValue) {
     }
   });
   agenda.sections = agenda.sections.filter((section) => section.id !== 'specialSession');
+  agenda.sections.filter((section) => section.moduleKind === 'freeTalk' && section.row).forEach((section) => {
+    section.row.person = createPerson({ clubZh: '', clubEn: '' });
+    section.row.persons = [];
+    section.row.personMode = 'none';
+    section.row.clubMode = 'none';
+    section.row.clubZh = '';
+    section.row.clubEn = '';
+    section.row.permissions = Object.assign({}, section.row.permissions, { memberPerson: false, memberClub: false });
+  });
+  const topics = agenda.sections.find((section) => section.id === 'tableTopics');
+  const randomSpeakers = topics && (topics.children || []).find((row) => row.id === 'tableTopicsSpeech');
+  if (randomSpeakers) {
+    randomSpeakers.person = createPerson(Object.assign({}, randomSpeakers.person, { displayNameEn: 'Random speakers', clubEn: 'All' }));
+  }
+  const vote = agenda.sections.find((section) => section.id === 'vote');
+  if (vote && vote.row) vote.row.person = createPerson(Object.assign({}, vote.row.person, { clubEn: 'All' }));
+  const hasFreeTalk = agenda.sections.some((section) => section.moduleKind === 'freeTalk');
+  if (hasFreeTalk) agenda.autoModules.freeTalkHandled = true;
+  if (normalizeLanguage(agenda.meetingInfo.language) === 'en' && !agenda.autoModules.freeTalkHandled) {
+    const upgraded = addDynamicModule(agenda, 'freeTalk');
+    upgraded.autoModules.freeTalkHandled = true;
+    applyTemplateRules(upgraded, template);
+    return calculateAgenda(upgraded, template);
+  }
   applyTemplateRules(agenda, template);
   return calculateAgenda(agenda, template);
 }
@@ -751,6 +794,7 @@ function createDynamicRow(kind, index) {
   if (!spec) {
     return null;
   }
+  const hasPerson = kind !== 'freeTalk';
   return {
     id: `dynamic-${kind}-${Date.now()}-${index || 0}`,
     type: 'row',
@@ -761,11 +805,11 @@ function createDynamicRow(kind, index) {
     duration: spec.duration,
     person: createPerson({ clubZh: '', clubEn: '' }),
     persons: [],
-    personMode: 'editable',
-    clubMode: 'person',
+    personMode: hasPerson ? 'editable' : 'none',
+    clubMode: hasPerson ? 'person' : 'none',
     clubZh: '',
     showDuration: true,
-    permissions: { memberTitle: true, memberDuration: true, memberPerson: true, memberClub: true, memberStructure: true }
+    permissions: { memberTitle: true, memberDuration: true, memberPerson: hasPerson, memberClub: hasPerson, memberStructure: true }
   };
 }
 
@@ -883,6 +927,7 @@ module.exports = {
   calculateAgenda,
   calculateSectionDuration,
   syncEvaluationSection,
+  syncFacilitatorReport,
   applyTemplateRules,
   moveItem,
   flattenAgendaRows,

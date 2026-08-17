@@ -316,6 +316,9 @@ function formatPersonName(person, language) {
 }
 
 function getRowPersonName(row, language) {
+  if (language === 'en' && row.id === 'vote') {
+    return '';
+  }
   if (row.type === 'preparedSpeechBlock') {
     return formatPersonName(row.speaker, language);
   }
@@ -352,7 +355,7 @@ function getAgendaRowHeight(row, language) {
     return objective.length > 90 ? 38 : 31;
   }
   if (row.type === 'note') {
-    return language === 'en' ? 18 : 11;
+    return 11;
   }
   return row.isGroup ? 10.5 : 10;
 }
@@ -363,16 +366,16 @@ function getAgendaRowHeight(row, language) {
  * 为什么添加：源 PDF 的品牌识别和基础信息必须成为固定模板的一部分。
  */
 function drawFirstPageHeader(page, font, template, agenda, images, language) {
-  const fixed = template.fixedContent;
+  const fixed = template.locales && template.locales.zh && template.locales.zh.fixedContent || template.fixedContent;
   drawText(page, font, fixed.clubTitle, PAGE.margin + 65, 46, { width: 410, height: 22, fontSize: 15, align: 'center', bold: true });
   drawText(page, font, fixed.clubSubtitle, PAGE.margin + 80, 69, { width: 380, height: 18, fontSize: 12.5, align: 'center', bold: true });
   drawText(page, font, fixed.charter, 487, 70, { width: 72, height: 24, fontSize: 4.8, align: 'right' });
   drawImageFit(page, images.logo, PAGE.margin + 4, 103, 47, 49);
   const cards = [
-    { x: PAGE.margin + 55, w: 100, title: language === 'en' ? 'Meeting Time' : '会议时间 Time', value: fixed.meetingTime },
-    { x: PAGE.margin + 159, w: 132, title: language === 'en' ? 'Venue' : '会议地址 Venue', value: fixed.venue },
-    { x: PAGE.margin + 295, w: 148, title: language === 'en' ? 'Fees' : '费用说明 Fees', value: fixed.fees },
-    { x: PAGE.margin + 447, w: 88, title: language === 'en' ? 'Taboo Topics' : '禁忌话题 Taboo Topics', value: fixed.tabooTopics }
+    { x: PAGE.margin + 55, w: 100, title: '会议时间 Time', value: fixed.meetingTime },
+    { x: PAGE.margin + 159, w: 132, title: '会议地址 Venue', value: fixed.venue },
+    { x: PAGE.margin + 295, w: 148, title: '费用说明 Fees', value: fixed.fees },
+    { x: PAGE.margin + 447, w: 88, title: '禁忌话题 Taboo Topics', value: fixed.tabooTopics }
   ];
   cards.forEach((card) => {
     drawRoundedCell(page, font, card.x, 99, card.w, 55, '', {
@@ -457,7 +460,7 @@ function drawAgendaRow(page, font, row, table, y, language, forcedHeight) {
     projectName = isOtherPathway ? '' : language === 'en' ? pathway.fullLabelEn || pathway.fullLabelZh : pathway.fullLabelZh;
     objective = language === 'en' ? pathway.objectiveEn || pathway.objectiveZh : pathway.objectiveZh;
   }
-  const values = [row.startTime || '', [title, projectName].filter(Boolean).join('\n'), duration, getRowPersonName(row, language), getRowClub(row, language)];
+  const values = [row.startTime || '', title, duration, getRowPersonName(row, language), row.id === 'topicNote' ? '' : getRowClub(row, language)];
   const tableWidth = table.widths.reduce((total, width) => total + width, 0);
   if (row.type === 'preparedSpeechBlock') {
     const backgroundOverlap = row.firstPreparedSpeech ? 0 : 0.6;
@@ -479,8 +482,12 @@ function drawAgendaRow(page, font, row, table, y, language, forcedHeight) {
     });
   }
   let cursor = table.x;
+  const preparedTitleHeight = 10;
+  const topicNoteMerged = language === 'en' && row.id === 'topicNote';
   values.forEach((value, index) => {
-    drawCell(page, font, cursor, y, table.widths[index], height, value, {
+    const cellValue = topicNoteMerged && index === 1 ? '' : value;
+    const cellHeight = row.type === 'preparedSpeechBlock' ? preparedTitleHeight : height;
+    drawCell(page, font, cursor, y, table.widths[index], cellHeight, cellValue, {
       fill,
       border: false,
       fontSize: 7.2,
@@ -488,12 +495,32 @@ function drawAgendaRow(page, font, row, table, y, language, forcedHeight) {
       align: index === 2 ? 'right' : 'left',
       bold: row.isGroup,
       paddingRight: index === 2 ? 10 : 2.5,
-      verticalAlign: row.type === 'preparedSpeechBlock' ? undefined : 'middle'
+      verticalAlign: 'middle'
     });
     cursor += table.widths[index];
   });
+  if (topicNoteMerged) {
+    const mergedX = table.x + table.widths[0];
+    const mergedWidth = table.widths.slice(1, 4).reduce((total, width) => total + width, 0);
+    drawCell(page, font, mergedX, y, mergedWidth, height, title, {
+      border: false,
+      fontSize: 7.2,
+      lineHeight: 8,
+      verticalAlign: 'middle'
+    });
+  }
+  if (row.type === 'preparedSpeechBlock' && projectName) {
+    const projectX = table.x + table.widths[0];
+    const projectWidth = table.widths.slice(1, 4).reduce((total, width) => total + width, 0);
+    drawCell(page, font, projectX, y + preparedTitleHeight, projectWidth, 9, projectName, {
+      border: false,
+      fontSize: 6.8,
+      lineHeight: 7.5,
+      verticalAlign: 'middle'
+    });
+  }
   if (row.type === 'preparedSpeechBlock' && objective) {
-    const objectiveY = y + (projectName ? 16 : 10);
+    const objectiveY = y + (projectName ? 19 : 10);
     const objectiveX = table.x + table.widths[0];
     const objectiveWidth = table.widths.slice(1, 4).reduce((total, width) => total + width, 0);
     drawCell(page, font, objectiveX, objectiveY, objectiveWidth, height - (objectiveY - y), objective, {

@@ -201,9 +201,6 @@ Page({
    */
   decorateAgenda(agenda) {
     const language = agendaUtil.normalizeLanguage(agenda.meetingInfo && agenda.meetingInfo.language);
-    const groupTitles = {
-      opening: 'Opening', facilitatorIntroduction: 'Meeting Facilitator Introductions', tableTopics: 'Table Topics', preparedSpeech: 'Prepared Speeches', evaluation: 'Prepared Speech Evaluations', facilitatorReport: 'Meeting Facilitator Reports', closing: 'Closing', end: 'Meeting Adjourned'
-    };
     const decorateRow = (row) => {
       if (!row) {
         return;
@@ -212,11 +209,11 @@ Page({
       row.canEditDuration = this.data.isAdmin || Boolean(row.permissions && row.permissions.memberDuration);
       row.canEditPerson = this.data.isAdmin || Boolean(row.permissions && row.permissions.memberPerson);
       row.canEditClub = this.data.isAdmin || Boolean(row.permissions && row.permissions.memberClub);
-      row.displayTitle = language === 'en' ? (row.titleEn || row.titleZh) : row.titleZh;
-      if (row.id === 'topicExplanation' && language === 'zh') {
+      row.displayTitle = row.titleZh;
+      if (row.id === 'topicExplanation') {
         row.displayTitle = '即兴主持人';
       }
-      if (row.id === 'tableTopicsSpeech' && language === 'zh') {
+      if (row.id === 'tableTopicsSpeech') {
         row.displayTitle = '即兴演讲时间';
       }
       row.person = this.decoratePerson(row.person);
@@ -236,7 +233,7 @@ Page({
       }
     };
     agenda.sections.forEach((section) => {
-      section.displayTitle = language === 'en' ? (section.titleEn || groupTitles[section.id] || section.titleZh || section.row && section.row.titleEn) : (section.titleZh || section.row && section.row.titleZh);
+      section.displayTitle = section.titleZh || section.row && section.row.titleZh;
       decorateRow(section.row);
       (section.children || []).forEach(decorateRow);
     });
@@ -279,11 +276,11 @@ Page({
       });
     });
     const labels = {
-      icebreaker: language === 'en' ? 'Icebreaker' : '破冰',
+      icebreaker: '破冰',
       freeTalk: 'Free Talk',
-      workshop: language === 'en' ? 'Workshop' : '工作坊',
-      educationAward: language === 'en' ? 'Education Credit Awards' : '教育积分颁奖',
-      memberInterview: language === 'en' ? 'New Member Interview' : '新会员面试'
+      workshop: '工作坊',
+      educationAward: '教育积分颁奖',
+      memberInterview: '新会员面试'
     };
     return Object.keys(agendaUtil.DYNAMIC_MODULES).filter((kind) => !existing.has(kind) && (kind !== 'freeTalk' || language === 'en')).map((kind) => ({ kind, label: labels[kind] }));
   },
