@@ -124,16 +124,16 @@ function createEnglishLocale() {
       { label: 'Best Evaluator', value: 'Kathrine' }
     ] },
     timerRules: [
-      ['Timing Signal', 'Green', 'Yellow', 'Red', 'Applause'],
-      ['Speech up to 3 min', '1 min left', '30 sec left', 'Time', '15 sec overtime'],
-      ['Speech over 3 min', '2 min left', '1 min left', 'Time', '30 sec overtime']
+      ['Timer Signals', 'Green Card', 'Yellow Card', 'Red Card', 'Applause'],
+      ['Speeches within 3 mins', '1 min left', '30 secs left', 'Time is up', '15 secs overtime'],
+      ['Speeches over 3 mins', '2 mins left', '1 min left', 'Time is up', '30 secs overtime']
     ],
     page2: {
-      updatesTitle: 'Club Updates',
+      updatesTitle: 'Bilingual News',
       notesTitle: 'Notes',
-      educationTitle: 'Toastmasters Education Program',
+      educationTitle: 'Toastmasters Education System',
       pathways: ['Dynamic Leadership', 'Engaging Humor', 'Motivational Strategies', 'Persuasive Influence', 'Presentation Mastery', 'Visionary Communication'],
-      goal: 'Ultimate Goal: Distinguished Toastmaster',
+      goal: 'Final Goal: Distinguished Toastmaster (DTM)',
       achievements: ['The first Toastmasters club in Guangzhou named Bilingual', 'Select Distinguished Club 2010-2011', 'Distinguished Club 2013-2014', 'President’s Distinguished Club 2012-2013, 2015-2025', 'A cradle for District leaders', 'Beat the Clock Awards 2013, 2017', 'Smedley Awards 2014, 2016-2020, 2024'],
       meetingFlow: ['Opening and facilitator introductions', 'Table Topics', 'Prepared speeches', 'Speech evaluations', 'Facilitator reports', 'Awards and role booking'],
       benefits: ['Follow a proven learning path', 'Learn with members from diverse industries', 'Serve as a club or District officer', 'Receive feedback from mentors and experienced members', 'Learn to give feedback and mentor others', 'Join speech contests', 'Practice different meeting roles', 'Visit other Toastmasters clubs'],
@@ -216,7 +216,7 @@ function createDefaultTemplate() {
       mainStartTime: '19:30'
     },
     agendaRules: [
-      { id: 'preparation', titleZh: '会议筹备', titleEn: 'Meeting Preparation', duration: 0, memberPersonEditable: true },
+      { id: 'preparation', titleZh: '会议筹备', titleEn: 'Meeting Manager', duration: 0, memberPersonEditable: true },
       { id: 'signIn', titleZh: '签到、欢迎来宾', duration: 0, memberPersonEditable: true },
       { id: 'venueIntroduction', titleZh: '会场秩序介绍', duration: 2, memberPersonEditable: true },
       { id: 'openingIcebreaker', titleZh: '破冰', duration: 3 },
@@ -244,7 +244,7 @@ function createDefaultTemplate() {
     ]
   };
   const titleEnMap = {
-    signIn: 'Registration and Welcome', venueIntroduction: 'Guest SAA Briefing', openingIcebreaker: 'Icebreaker', guestIntroduction: 'Guest Introductions', host: 'Toastmaster of the Evening', photographer: 'Photographer', timerIntro: 'Timer', ahCounterIntro: 'Ah-Counter', grammarianIntro: 'Grammarian', generalEvaluatorIntro: 'General Evaluator', topicExplanation: 'Table Topics Master', tableTopicsSpeech: 'Table Topics Time', topicNote: 'A Different Topic for Each Speaker', topicSummary: 'Summary', tableTopicsEvaluation: 'Table Topics Evaluation',  break: 'Break and Group Photo', grammarianReport: 'Grammarian Report', ahCounterReport: 'Ah-Counter Report', timerReport: 'Timer Report', generalEvaluatorReport: 'General Evaluator Report', vote: 'Best Speaker Voting', feedback: 'Guest and Member Feedback', award: 'Awards', roleBooking: 'Next Meeting Role Booking'
+    signIn: 'Sign In &Welcome Guests', venueIntroduction: 'Call Meeting Order', openingIcebreaker: 'Icebreaker', guestIntroduction: 'Guest Self-introduction', host: 'Toastmaster of the Meeting', photographer: 'Photo Master', timerIntro: 'Timer', ahCounterIntro: 'Ah-counter', grammarianIntro: 'Grammarian', generalEvaluatorIntro: 'General Evaluator', topicExplanation: 'Explain Table Topics and the Theme', tableTopicsSpeech: 'Impromptu Speaking in 2 mins', topicNote: 'Each speaker may be given an individual subject. Think on your feet and speak for 1-2 minutes', topicSummary: 'Conclude the Table Topics', tableTopicsEvaluation: 'Table Topics Evaluator', break: 'Break+Photograph', grammarianReport: 'Grammarian', ahCounterReport: 'Ah-counter', timerReport: 'Timer', generalEvaluatorReport: 'General Evaluator', vote: 'Voting', feedback: 'Feedback', award: 'Present Awards to Best Speakers', roleBooking: 'Role Booking Time'
   };
   template.agendaRules = template.agendaRules.map((rule) => Object.assign({}, rule, { titleEn: rule.titleEn || titleEnMap[rule.id] || rule.titleZh }));
   template.locales = {
@@ -342,7 +342,7 @@ function createPresidentPerson(template, language) {
 function createOpeningRemarksRow(template, language) {
   const row = createRow(template, 'openingRemarks', {
     titleZh: '开场白',
-    titleEn: 'Opening',
+    titleEn: 'Introduction',
     duration: 3,
     person: createPresidentPerson(template, language)
   });
@@ -435,11 +435,11 @@ function createAgendaFromFacts(factsValue, templateValue) {
     { id: 'preparation', type: 'row', anchorTime: '', children: [], row: createRow(template, 'preparation', { person: rolePerson(facts, 'meetingManager'), roleKey: 'meetingManager' }) },
     { id: 'signIn', type: 'row', anchorTime: '19:00', children: [], row: createRow(template, 'signIn', { persons: [rolePerson(facts, 'guestReception'), rolePerson(facts, 'memberReception')], personMode: 'multiple', clubMode: 'manual', memberClubEditable: true }) },
     { id: 'venueIntroduction', type: 'row', anchorTime: '19:30', children: [], row: createRow(template, 'venueIntroduction', { person: rolePerson(facts, 'venueIntroduction') }) },
-    { id: 'opening', type: 'group', titleZh: '开场白', titleEn: 'Opening', transitionPolicy: 'none', children: [
+    { id: 'opening', type: 'group', titleZh: '开场白', titleEn: 'Opening Remark', transitionPolicy: 'none', children: [
       createOpeningRemarksRow(template, facts.meetingInfo && facts.meetingInfo.language),
       createRow(template, 'guestIntroduction', { person: createPerson({ rawName: '宾客', clubZh: '宾客', clubEn: 'Guest' }), personMode: 'fixed' })
     ] },
-    { id: 'facilitatorIntroduction', type: 'group', titleZh: '会议促进者介绍', titleEn: 'Meeting Facilitator Introductions', transitionPolicy: 'betweenChildren', children: [
+    { id: 'facilitatorIntroduction', type: 'group', titleZh: '会议促进者介绍', titleEn: 'Meeting Facilitators', transitionPolicy: 'betweenChildren', children: [
       createRow(template, 'host', { person: rolePerson(facts, 'toastmaster'), roleKey: 'toastmaster' }),
       createRow(template, 'photographer', { person: rolePerson(facts, 'photographer'), roleKey: 'photographer', showDuration: false, transitionExempt: true }),
       createRow(template, 'timerIntro', { person: rolePerson(facts, 'timer'), roleKey: 'timer' }),
@@ -447,24 +447,24 @@ function createAgendaFromFacts(factsValue, templateValue) {
       createRow(template, 'grammarianIntro', { person: rolePerson(facts, 'grammarian'), roleKey: 'grammarian' }),
       createRow(template, 'generalEvaluatorIntro', { person: rolePerson(facts, 'generalEvaluator'), roleKey: 'generalEvaluator' })
     ] },
-    { id: 'tableTopics', type: 'group', titleZh: '即兴演讲环节', titleEn: 'Table Topics', transitionPolicy: 'none', children: [
+    { id: 'tableTopics', type: 'group', titleZh: '即兴演讲环节', titleEn: 'Table Topics Section', transitionPolicy: 'none', children: [
       createRow(template, 'topicExplanation', { person: ttMaster, roleKey: 'tableTopicsMaster' }),
       createRow(template, 'tableTopicsSpeech', { person: createPerson({ rawName: '随机演讲者', clubZh: '全部', clubEn: 'All' }) }),
       createRow(template, 'topicNote', { type: 'note', personMode: 'none', showDuration: false }),
       createRow(template, 'topicSummary', { person: ttMaster, roleKey: 'tableTopicsMaster' }),
       createRow(template, 'tableTopicsEvaluation', { person: rolePerson(facts, 'tableTopicsEvaluator'), roleKey: 'tableTopicsEvaluator' })
     ] },
-    { id: 'preparedSpeech', type: 'group', titleZh: '有准备的演讲环节', titleEn: 'Prepared Speeches', transitionPolicy: 'betweenChildren', children: (facts.preparedSpeeches || []).map((item, index) => createPreparedBlock(item, index, template)) },
+    { id: 'preparedSpeech', type: 'group', titleZh: '有准备的演讲环节', titleEn: 'Prepared Speeches Section', transitionPolicy: 'betweenChildren', children: (facts.preparedSpeeches || []).map((item, index) => createPreparedBlock(item, index, template)) },
     { id: 'break', type: 'row', children: [], row: createRow(template, 'break', { personMode: 'none', clubMode: 'fixed', clubZh: '全体参会人员欢聚' }) },
-    { id: 'evaluation', type: 'group', titleZh: '备稿演讲点评', titleEn: 'Prepared Speech Evaluations', transitionPolicy: 'betweenChildren', derived: true, children: [] },
-    { id: 'facilitatorReport', type: 'group', titleZh: '会议促进者报告', titleEn: 'Meeting Facilitator Reports', transitionPolicy: 'betweenChildren', children: [
+    { id: 'evaluation', type: 'group', titleZh: '备稿演讲点评', titleEn: 'Individual Evaluation', transitionPolicy: 'betweenChildren', derived: true, children: [] },
+    { id: 'facilitatorReport', type: 'group', titleZh: '会议促进者报告', titleEn: "Facilitators' Report", transitionPolicy: 'betweenChildren', children: [
       createRow(template, 'grammarianReport', { person: rolePerson(facts, 'grammarian'), roleKey: 'grammarian' }),
       createRow(template, 'ahCounterReport', { person: rolePerson(facts, 'ahCounter'), roleKey: 'ahCounter' }),
       createRow(template, 'timerReport', { person: rolePerson(facts, 'timer'), roleKey: 'timer' }),
       createRow(template, 'generalEvaluatorReport', { person: rolePerson(facts, 'generalEvaluator'), roleKey: 'generalEvaluator' })
     ] },
     { id: 'vote', type: 'row', children: [], row: createRow(template, 'vote', { person: createPerson({ rawName: '全部', clubZh: '', clubEn: '' }), personMode: 'fixed' }) },
-    { id: 'closing', type: 'group', titleZh: '会议尾声', titleEn: 'Closing', transitionPolicy: 'none', children: [
+    { id: 'closing', type: 'group', titleZh: '会议尾声', titleEn: 'Closing Remark', transitionPolicy: 'none', children: [
       createRow(template, 'feedback', { person: president }),
       createRow(template, 'award', { person: president }),
       createRow(template, 'roleBooking', { person: rolePerson(facts, 'nextMeetingHost') })
@@ -508,7 +508,7 @@ function syncEvaluationSection(agenda, template) {
     id: `evaluation-${block.id || index}`,
     type: 'row',
     titleZh: `对${block.speaker.displayNameZh || block.speaker.rawName || `演讲者${index + 1}`}的点评`,
-    titleEn: `Evaluation ${index + 1}`,
+    titleEn: `Evaluation for ${block.speaker.displayNameEn || block.speaker.rawName || `Speaker ${index + 1}`}`,
     duration,
     person: createPerson(block.evaluator),
     persons: [],
@@ -851,7 +851,7 @@ function flattenAgendaRows(agendaValue) {
       rows.push(Object.assign({}, section.row, { startTime: section.startTime, duration: section.duration, isGroup: isSectionHeading }));
       return;
     }
-    rows.push({ id: section.id, type: section.type, titleZh: section.titleZh, startTime: section.startTime, duration: section.duration, isGroup: true, personMode: 'none' });
+    rows.push({ id: section.id, type: section.type, titleZh: section.titleZh, titleEn: section.titleEn, startTime: section.startTime, duration: section.duration, isGroup: true, personMode: 'none' });
     (section.children || []).forEach((child) => {
       if (child.id !== 'openingIcebreaker' || child.dynamic) {
         rows.push(Object.assign({}, child, { startTime: '', isGroup: false }));

@@ -16,6 +16,10 @@ function displayRoleLabel(roleKey, label, language) {
   return language === 'en' ? EN_ROLE_LABELS[roleKey] || label : label;
 }
 
+function canCreateSession(record, openid, membership, admin) {
+  return Boolean(record && (membership || record.ownerOpenid === openid || admin));
+}
+
 function profileFromEvent(event, member) {
   const kind = event.personType;
   if (!['member', 'club', 'guest'].includes(kind)) throw Object.assign(new Error('请选择报名身份'), { code: 'INVALID_PROFILE' });
@@ -96,7 +100,8 @@ async function response(db, record, openid) {
 
 async function createSession(db, openid) {
   const record = await getCurrentAgenda(db);
-  if (!record || record.ownerOpenid !== openid && !(await common.isAdmin(openid))) throw Object.assign(new Error('无权创建报名页'), { code: 'FORBIDDEN' });
+  const membership = await common.getMembershipByOpenid(openid);
+  if (!canCreateSession(record, openid, membership, await common.isAdmin(openid))) throw Object.assign(new Error('无权创建报名页'), { code: 'FORBIDDEN' });
   const slots = common.signup.mergeSlots(record.signupSlots, record.agenda);
   await db.collection('agendas').doc(CURRENT_AGENDA_ID).update({ data: { signupPublicId: CURRENT_AGENDA_ID, signupSlots: slots, signupVersion: Number(record.signupVersion || 0) + 1, updatedAt: new Date().toISOString() } });
   return response(db, Object.assign({}, record, { _id: CURRENT_AGENDA_ID, signupPublicId: CURRENT_AGENDA_ID, signupSlots: slots }), openid);
@@ -196,5 +201,5 @@ async function main(event) {
   } catch (error) { return common.handleError(error); }
 }
 
-module.exports = { profileFromEvent, getCurrentAgenda, response, main };
+module.exports = { profileFromEvent, canCreateSession, getCurrentAgenda, response, main };
 exports.main = main;

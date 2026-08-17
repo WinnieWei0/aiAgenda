@@ -265,6 +265,8 @@ function testSignupProfiles() {
   assert.strictEqual(signupService.profileFromEvent({ personType: 'club', name: '友会甲', club: '友会俱乐部' }).club, '友会俱乐部');
   assert.strictEqual(signupService.profileFromEvent({ personType: 'guest', name: '宾客甲' }).club, '宾客');
   assert.throws(() => signupService.profileFromEvent({ personType: 'club', name: '无俱乐部' }), /姓名和俱乐部/);
+  assert.strictEqual(signupService.canCreateSession({ ownerOpenid: 'owner' }, 'member-openid', { _id: 'member-1' }, false), true);
+  assert.strictEqual(signupService.canCreateSession({ ownerOpenid: 'owner' }, 'guest-openid', null, false), false);
 }
 
 /**
@@ -394,7 +396,7 @@ function testLocalizedTemplateAndAnchors() {
   assert.ok(migrated.locales.en.fixedContent.clubTitle.includes('Bilingual'));
   const englishView = agendaUtil.resolveTemplateLocale(migrated, 'en');
   assert.strictEqual(englishView.activeLanguage, 'en');
-  assert.ok(englishView.timerRules[0][0].includes('Timing'));
+  assert.strictEqual(englishView.timerRules[0][0], 'Timer Signals');
 
   const template = agendaUtil.createDefaultTemplate();
   template.settings.signInTime = '18:45';
@@ -800,10 +802,14 @@ function testPdfFontFallback() {
 }
 
 function testEnglishRoleLabels() {
-  assert.strictEqual(pdfRenderer.getLocalizedRoleTitle({ roleKey: 'guestReception', titleZh: '宾客 SAA' }, 'en'), 'SAA（Guest）');
-  assert.strictEqual(pdfRenderer.getLocalizedRoleTitle({ roleKey: 'toastmaster', titleZh: '总主持人' }, 'en'), 'TOM');
-  assert.strictEqual(pdfRenderer.getLocalizedRoleTitle({ roleKey: 'preparedEvaluator', titleZh: '备稿点评师' }, 'en'), 'IE');
+  assert.strictEqual(pdfRenderer.getLocalizedRoleTitle({ id: 'preparation', titleZh: '会议筹备' }, 'en'), 'Meeting Manager');
+  assert.strictEqual(pdfRenderer.getLocalizedRoleTitle({ id: 'signIn', titleZh: '签到' }, 'en'), 'Sign In &Welcome Guests');
+  assert.strictEqual(pdfRenderer.getLocalizedRoleTitle({ id: 'venueIntroduction', titleZh: '会场秩序介绍' }, 'en'), 'Call Meeting Order');
+  assert.strictEqual(pdfRenderer.getLocalizedRoleTitle({ id: 'opening', titleZh: '开场白' }, 'en'), 'Opening Remark');
   assert.strictEqual(pdfRenderer.getLocalizedRoleTitle({ roleKey: 'timer', titleZh: '时间官' }, 'zh'), '时间官');
+  const template = agendaUtil.createDefaultTemplate();
+  assert.strictEqual(template.agendaRules.find((rule) => rule.id === 'preparation').titleEn, 'Meeting Manager');
+  assert.deepStrictEqual(template.locales.en.timerRules[0], ['Timer Signals', 'Green Card', 'Yellow Card', 'Red Card', 'Applause']);
 }
 
 function testMembershipRolesAndSearch() {

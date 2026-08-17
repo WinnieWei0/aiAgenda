@@ -1,6 +1,7 @@
 Page({
   data: {
-    isAdmin: false
+    isAdmin: false,
+    welcomeName: '宾客'
   },
 
   /**
@@ -9,8 +10,14 @@ Page({
    * 为什么添加：管理入口必须随会员绑定状态更新。
    */
   async onShow() {
-    await getApp().login();
-    this.setData({ isAdmin: getApp().isAdmin() });
+    const app = getApp();
+    await app.login();
+    const identity = app.globalData.identity || {};
+    const user = app.globalData.user || {};
+    this.setData({
+      isAdmin: app.isAdmin(),
+      welcomeName: identity.name || user.nickName || '宾客'
+    });
   },
 
   /**

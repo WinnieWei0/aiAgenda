@@ -1,22 +1,28 @@
 const fs = require('fs');
 const path = require('path');
-const { PDFDocument, rgb } = require('pdf-lib');
+const { PDFDocument, StandardFonts, rgb } = require('pdf-lib');
 const fontkit = require('@pdf-lib/fontkit');
 const agendaModel = require('./agenda-model');
 
-const EN_ROLE_LABELS = {
-  guestReception: 'SAA（Guest）', memberReception: 'SAA（Member）', photographer: 'Photographer',
-  ahCounter: 'Ah-Counter', toastmaster: 'TOM', timer: 'Timer', grammarian: 'Grammarian',
-  generalEvaluator: 'General Evaluator', tableTopicsMaster: 'Table Topics Master',
-  tableTopicsEvaluator: 'Table Topics Evaluator', preparedSpeaker: 'Prepared Speaker',
-  preparedEvaluator: 'IE', icebreaker: 'Icebreaker', workshop: 'Workshop Facilitator'
+const LATIN_FONTS = new WeakMap();
+const PDF_EN_TITLES = {
+  preparation: 'Meeting Manager', signIn: 'Sign In &Welcome Guests', venueIntroduction: 'Call Meeting Order',
+  opening: 'Opening Remark', openingRemarks: 'Introduction', guestIntroduction: 'Guest Self-introduction',
+  facilitatorIntroduction: 'Meeting Facilitators', host: 'Toastmaster of the Meeting', photographer: 'Photo Master',
+  timerIntro: 'Timer', ahCounterIntro: 'Ah-counter', grammarianIntro: 'Grammarian', generalEvaluatorIntro: 'General Evaluator',
+  tableTopics: 'Table Topics Section', topicExplanation: 'Explain Table Topics and the Theme',
+  tableTopicsSpeech: 'Impromptu Speaking in 2 mins',
+  topicNote: 'Each speaker may be given an individual subject. Think on your feet and speak for 1-2 minutes',
+  topicSummary: 'Conclude the Table Topics', tableTopicsEvaluation: 'Table Topics Evaluator',
+  preparedSpeech: 'Prepared Speeches Section', break: 'Break+Photograph', evaluation: 'Individual Evaluation',
+  facilitatorReport: "Facilitators' Report", grammarianReport: 'Grammarian', ahCounterReport: 'Ah-counter',
+  timerReport: 'Timer', generalEvaluatorReport: 'General Evaluator', vote: 'Voting', closing: 'Closing Remark',
+  feedback: 'Feedback', award: 'Present Awards to Best Speakers', roleBooking: 'Role Booking Time', end: 'Meeting Adjourned'
 };
 
 function getLocalizedRoleTitle(row, language) {
   if (language !== 'en') return row.titleZh || '';
-  if (row.roleKey && EN_ROLE_LABELS[row.roleKey]) return EN_ROLE_LABELS[row.roleKey];
-  if (row.dynamic && row.moduleKind && EN_ROLE_LABELS[row.moduleKind]) return EN_ROLE_LABELS[row.moduleKind];
-  return row.titleEn || row.titleZh || '';
+  return PDF_EN_TITLES[row.id] || row.titleEn || row.titleZh || '';
 }
 
 const PAGE = { width: 595.28, height: 841.89, margin: 26 };
@@ -60,7 +66,13 @@ async function embedAgendaFont(pdfDoc) {
     throw new Error('缺少中文字体 common/fonts/NotoSerifSC-Medium.ttf');
   }
   pdfDoc.registerFontkit(fontkit);
-  return pdfDoc.embedFont(fs.readFileSync(fontPath), { subset: false });
+  const font = await pdfDoc.embedFont(fs.readFileSync(fontPath), { subset: false });
+  LATIN_FONTS.set(font, await pdfDoc.embedFont(StandardFonts.TimesRoman));
+  return font;
+}
+
+function fontForText(font, text) {
+  return /^[\x00-\x7F]*$/.test(String(text || '')) ? LATIN_FONTS.get(font) || font : font;
 }
 
 /**
@@ -81,10 +93,11 @@ function wrapText(text, font, fontSize, maxWidth) {
   const value = String(text || '');
   const lines = [];
   for (const paragraph of value.split('\n')) {
+    const paragraphFont = fontForText(font, paragraph);
     let current = '';
     for (const char of paragraph) {
       const next = current + char;
-      if (!current || font.widthOfTextAtSize(next, fontSize) <= maxWidth) {
+      if (!current || paragraphFont.widthOfTextAtSize(next, fontSize) <= maxWidth) {
         current = next;
       } else {
         lines.push(current);
@@ -116,9 +129,10 @@ function drawText(page, font, text, x, y, options) {
     if (cursorY < topY(y, height)) {
       break;
     }
-    const lineWidth = font.widthOfTextAtSize(line, fontSize);
+    const lineFont = fontForText(font, line);
+    const lineWidth = lineFont.widthOfTextAtSize(line, fontSize);
     const offset = opts.align === 'center' ? Math.max((width - lineWidth) / 2, 0) : opts.align === 'right' ? Math.max(width - lineWidth, 0) : 0;
-    const textOptions = { x: x + offset, y: cursorY, size: fontSize, font, color: opts.color || BLACK };
+    const textOptions = { x: x + offset, y: cursorY, size: fontSize, font: lineFont, color: opts.color || BLACK };
     page.drawText(line, textOptions);
     if (opts.bold) {
       page.drawText(line, Object.assign({}, textOptions, { x: textOptions.x + 0.18 }));
@@ -338,7 +352,7 @@ function getAgendaRowHeight(row, language) {
     return objective.length > 90 ? 38 : 31;
   }
   if (row.type === 'note') {
-    return 11;
+    return language === 'en' ? 18 : 11;
   }
   return row.isGroup ? 10.5 : 10;
 }
@@ -405,7 +419,7 @@ function drawAgendaHeader(page, font, y, language, drawRightBoundaryValue) {
   const x = PAGE.margin;
   const widths = [26, 140, 68, 115, 71];
   const headerHeight = 13;
-  const labels = language === 'en' ? ['', 'Agenda', 'Limit', 'Speaker', 'Club'] : ['', '会议促进者', '限时', '演讲者', '俱乐部'];
+  const labels = language === 'en' ? ['', 'Meeting Facilitators', 'Duration', 'Speaker', 'Club'] : ['', '会议促进者', '限时', '演讲者', '俱乐部'];
   let cursor = x;
   labels.forEach((label, index) => {
     drawCell(page, font, cursor, y, widths[index], headerHeight, label, { fill: '#9bdcf6', align: index === 2 ? 'right' : 'left', fontSize: 7.5, border: false, bold: true, paddingRight: index === 2 ? 10 : 2.5, verticalAlign: 'middle' });
@@ -433,7 +447,7 @@ function drawAgendaHeader(page, font, y, language, drawRightBoundaryValue) {
 function drawAgendaRow(page, font, row, table, y, language, forcedHeight) {
   const height = forcedHeight || getAgendaRowHeight(row, language);
   const fill = row.id === 'topicNote' ? '#d8d8d8' : '';
-  const duration = row.duration ? `${row.duration} ${language === 'en' ? 'min' : '分钟'}` : '';
+  const duration = row.duration ? `${row.duration} ${language === 'en' ? 'mins' : '分钟'}` : '';
   let title = getLocalizedRoleTitle(row, language);
   let projectName = '';
   let objective = '';
@@ -538,7 +552,7 @@ function drawSidebar(page, font, template, agenda, images, y, height, language) 
     }
     page.drawLine({ start: { x, y: topY(headingY + headingHeight, 0) }, end: { x: x + width, y: topY(headingY + headingHeight, 0) }, thickness: 0.25, color: BORDER });
   };
-  drawHeading(y, language === 'en' ? 'Last Meeting Awards' : '上周最佳演讲者', 7.6, false);
+  drawHeading(y, language === 'en' ? 'Best Speakers for Last Week' : '上周最佳演讲者', 7.6, false);
   let cursorY = y + headingHeight;
   resolveSidebarWinners(template, agenda).forEach((winner) => {
     drawText(page, font, winner.label, x + 4, cursorY + 3, { width: 65, height: 13, fontSize: 6.2 });
@@ -572,7 +586,7 @@ function drawSidebar(page, font, template, agenda, images, y, height, language) 
  */
 function drawTimerRules(page, font, template, language) {
   const titleY = 711;
-  drawText(page, font, language === 'en' ? 'Timing Rules' : '计时规则（请有效利用你在台上有限的时间）', PAGE.margin, titleY - 1, { width: PAGE.width - PAGE.margin * 2, height: 11, fontSize: 8.2, align: 'center', bold: true });
+  drawText(page, font, language === 'en' ? 'Timing Rules (Please EFFECTIVELY Use Your LIMITED Stage Time)' : '计时规则（请有效利用你在台上有限的时间）', PAGE.margin, titleY - 1, { width: PAGE.width - PAGE.margin * 2, height: 11, fontSize: 8.2, align: 'center', bold: true });
   const rows = template.timerRules || [];
   const widths = [132, 91, 91, 91, 91];
   const headerColors = ['#d0d0d0', '#008000', '#ffff00', '#ff0000', '#8c8c8c'];

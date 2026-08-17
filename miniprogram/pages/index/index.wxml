@@ -1,6 +1,12 @@
 <view class="page home-page">
-  <button class="home-button secondary-button" disabled>时间牌</button>
-  <button wx:if="{{isAdmin}}" class="home-button secondary-button" bindtap="openMembersList">会员列表</button>
-  <button wx:if="{{isAdmin}}" class="home-button secondary-button" bindtap="openPathwaysList">路径列表</button>
-  <button wx:if="{{isAdmin}}" class="home-button invite-button" bindtap="openMembershipInvite">邀请绑定</button>
+  <block wx:if="{{isAdmin}}">
+    <button class="home-button secondary-button" disabled>时间牌</button>
+    <button class="home-button secondary-button" bindtap="openMembersList">会员列表</button>
+    <button class="home-button secondary-button" bindtap="openPathwaysList">路径列表</button>
+    <button class="home-button invite-button" bindtap="openMembershipInvite">邀请绑定</button>
+  </block>
+  <view wx:else class="welcome-copy">
+    <text class="club-title">广州双语国际演讲俱乐部</text>
+    <text class="welcome-text">欢迎你，{{welcomeName}}</text>
+  </view>
 </view>

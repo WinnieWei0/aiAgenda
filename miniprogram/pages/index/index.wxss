@@ -24,3 +24,24 @@
 }
 
 .invite-button { color: #ffffff; background: #0f766e; }
+
+.welcome-copy {
+  display: flex;
+  min-height: 55vh;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 24rpx;
+  text-align: center;
+}
+
+.club-title {
+  color: #0f766e;
+  font-size: 38rpx;
+  font-weight: 700;
+}
+
+.welcome-text {
+  color: #374151;
+  font-size: 30rpx;
+}
