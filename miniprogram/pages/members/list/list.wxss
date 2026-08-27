@@ -6,13 +6,15 @@
 
 .record-card {
   background: #ffffff;
-  border: 1rpx solid #dde3ea;
-  border-radius: 8rpx;
-  padding: 18rpx;
+  border: 1rpx solid #d8e0e5;
+  border-left: 5rpx solid #004165;
+  border-radius: 12rpx;
+  padding: 20rpx;
   margin-bottom: 16rpx;
 }
 
 .record-title {
+  color: #004165;
   font-weight: 700;
   min-width: 0;
   overflow-wrap: anywhere;
@@ -28,7 +30,7 @@
 
 .officer-title {
   flex-shrink: 0;
-  color: #475569;
+  color: #772432;
   font-size: 24rpx;
   text-align: right;
 }
@@ -37,8 +39,8 @@
   margin-top: 14rpx;
 }
 .filter-mask{position:fixed;inset:0;z-index:300;display:flex;align-items:center;justify-content:center;padding:28rpx;background:rgba(0,0,0,.48)}
-.filter-dialog{box-sizing:border-box;width:100%;max-width:680rpx;padding:24rpx;background:#fff;border-radius:8rpx}
-.filter-title{margin-bottom:18rpx;font-size:32rpx;font-weight:700;text-align:center}.filter-body{max-height:68vh}
-.filter-field{margin-bottom:18rpx}.filter-field>text{display:block;margin-bottom:8rpx;color:#475569;font-size:24rpx}
-.range-trigger,.filter-picker{box-sizing:border-box;width:100%;min-height:72rpx;margin:0;padding:14rpx;border:1rpx solid #cbd5e1;border-radius:8rpx;background:#fff;color:#1f2937;font-size:28rpx;text-align:left;line-height:42rpx}
+.filter-dialog{box-sizing:border-box;width:100%;max-width:680rpx;padding:26rpx;border-top:6rpx solid #772432;background:#fff;border-radius:12rpx}
+.filter-title{margin-bottom:18rpx;color:#004165;font-size:32rpx;font-weight:700;text-align:center}.filter-body{max-height:68vh}
+.filter-field{margin-bottom:18rpx}.filter-field>text{display:block;margin-bottom:8rpx;color:#475467;font-size:24rpx}
+.range-trigger,.filter-picker{box-sizing:border-box;width:100%;min-height:72rpx;margin:0;padding:14rpx;border:1rpx solid #c6d0d6;border-radius:10rpx;background:#fff;color:#1f2937;font-size:28rpx;text-align:left;line-height:42rpx}
 .filter-actions{display:flex;gap:12rpx;margin-top:20rpx}.filter-actions button{flex:1;margin:0;font-size:26rpx}

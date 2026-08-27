@@ -4,13 +4,15 @@
 
 .record-card {
   background: #ffffff;
-  border: 1rpx solid #dde3ea;
-  border-radius: 8rpx;
-  padding: 18rpx;
+  border: 1rpx solid #d8e0e5;
+  border-left: 5rpx solid #772432;
+  border-radius: 12rpx;
+  padding: 20rpx;
   margin-bottom: 16rpx;
 }
 
 .record-title {
+  color: #004165;
   font-weight: 700;
   margin-bottom: 8rpx;
 }

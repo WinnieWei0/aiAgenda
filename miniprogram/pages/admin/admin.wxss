@@ -1,13 +1,26 @@
 .nav-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 12rpx;
+  gap: 14rpx;
 }
 
 .nav-button {
-  min-height: 84rpx;
-  font-size: 26rpx;
+  display: flex;
+  min-width: 0;
+  min-height: 150rpx;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12rpx;
+  margin: 0;
+  padding: 18rpx 8rpx;
+  border: 1rpx solid #d8e0e5;
+  color: #004165;
+  background: #f8fafb;
+  font-size: 25rpx;
 }
+
+.nav-icon { width:48rpx; height:48rpx; }
 
 .wide-button {
   margin-top: 16rpx;

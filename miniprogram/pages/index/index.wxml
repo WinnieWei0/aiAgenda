@@ -1,12 +1,39 @@
 <view class="page home-page">
+  <view class="brand-hero">
+    <image class="club-logo" src="/images/template/toastmasters-logo.png" mode="aspectFit" />
+    <view class="brand-copy">
+      <text class="club-title">广州双语国际演讲俱乐部</text>
+      <text class="club-title-en">Guangzhou Bilingual Toastmasters Club</text>
+      <view class="brand-rule"></view>
+      <text class="welcome-text">欢迎你，{{welcomeName}}</text>
+    </view>
+  </view>
+
   <block wx:if="{{isAdmin}}">
-    <button class="home-button secondary-button" disabled>时间牌</button>
-    <button class="home-button secondary-button" bindtap="openMembersList">会员列表</button>
-    <button class="home-button secondary-button" bindtap="openPathwaysList">路径列表</button>
-    <button class="home-button invite-button" bindtap="openMembershipInvite">邀请绑定</button>
+    <view class="section-heading">管理工具</view>
+    <view class="home-actions">
+      <button class="home-action" disabled>
+        <image class="action-icon" src="/images/icons/timer.png" mode="aspectFit" />
+        <text class="action-title">时间牌</text>
+        <text class="action-meta">即将开放</text>
+      </button>
+      <button class="home-action" bindtap="openMembersList">
+        <image class="action-icon" src="/images/icons/users.png" mode="aspectFit" />
+        <text class="action-title">会员列表</text>
+      </button>
+      <button class="home-action" bindtap="openPathwaysList">
+        <image class="action-icon" src="/images/icons/route.png" mode="aspectFit" />
+        <text class="action-title">路径列表</text>
+      </button>
+      <button class="home-action invite-action" bindtap="openMembershipInvite">
+        <image class="action-icon" src="/images/icons/user-plus-white.png" mode="aspectFit" />
+        <text class="action-title">邀请绑定</text>
+      </button>
+    </view>
   </block>
-  <view wx:else class="welcome-copy">
-    <text class="club-title">广州双语国际演讲俱乐部</text>
-    <text class="welcome-text">欢迎你，{{welcomeName}}</text>
+  <view wx:else class="guest-welcome">
+    <text class="guest-kicker">WELCOME</text>
+    <text class="guest-title">在双语舞台，遇见更好的表达</text>
+    <view class="guest-rule"></view>
   </view>
 </view>

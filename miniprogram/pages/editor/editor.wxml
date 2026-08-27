@@ -56,7 +56,7 @@
           <view wx:if="{{row.dynamic}}" class="dynamic-child-meta"><button size="mini" type="warn" data-section-index="{{sectionIndex}}" data-child-index="{{childIndex}}" bindtap="deleteDynamicModule">删除</button><text class="position-note">当前位于：{{row.positionAfterLabel}}之后</text></view>
         </view>
       </block>
-      <button wx:if="{{section.id === 'preparedSpeech'}}" class="add-button" bindtap="addPreparedBlock">新增备稿演讲</button>
+      <button wx:if="{{section.id === 'preparedSpeech'}}" class="add-button icon-button" bindtap="addPreparedBlock"><image class="button-icon" src="/images/icons/plus.png" mode="aspectFit" />新增备稿演讲</button>
     </view>
   </block>
 
@@ -72,8 +72,8 @@
 
   <view wx:if="{{addModuleOptions.length}}" class="panel add-module-panel"><text class="panel-title">新增模块</text><picker range="{{addModuleLabels}}" bindchange="addDynamicModule"><view class="add-module-picker">选择要新增的模块<text class="picker-arrow">⌄</text></view></picker></view>
 
-  <view class="panel qr-panel"><view class="qr-row"><text class="panel-title">例会群二维码</text><button size="mini" bindtap="chooseMeetingGroupQr">替换图片</button></view><button wx:if="{{isAdmin}}" class="reset-button" bindtap="resetMeeting">重置当前会议</button></view>
-  <view class="bottom-actions"><button class="signup-generate-button" disabled="{{saving || previewing}}" bindtap="openSignupPage">{{saving ? '保存中...' : '生成报名页'}}</button><button class="preview-button" disabled="{{saving || previewing}}" bindtap="goPreview">{{previewing ? '生成中...' : '预览'}}</button></view>
+  <view class="panel qr-panel"><view class="qr-row"><text class="panel-title">例会群二维码</text><button class="icon-button" size="mini" bindtap="chooseMeetingGroupQr"><image class="button-icon small" src="/images/icons/upload.png" mode="aspectFit" />替换图片</button></view><button wx:if="{{isAdmin}}" class="reset-button" bindtap="resetMeeting">重置当前会议</button></view>
+  <view class="bottom-actions"><button class="save-agenda-button icon-button" disabled="{{saving || previewing}}" bindtap="saveAgendaFromButton"><image class="button-icon" src="{{agendaGenerated ? '/images/icons/save-white.png' : '/images/icons/plus-white.png'}}" mode="aspectFit" />{{saving ? '保存中...' : (agendaGenerated ? '保存' : '生成议程表')}}</button><button class="preview-button icon-button" disabled="{{saving || previewing}}" bindtap="goPreview"><image class="button-icon" src="/images/icons/eye-white.png" mode="aspectFit" />{{previewing ? '生成中...' : '预览'}}</button></view>
 
   <view wx:if="{{validationDialogVisible}}" class="validation-mask">
     <view class="validation-dialog">

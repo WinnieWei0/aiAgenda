@@ -4,8 +4,8 @@
     <view class="muted">维护 Membership 表，用于接龙姓名匹配和议程显示。</view>
     <input placeholder="搜索中文名、英文名、昵称" value="{{keyword}}" bindinput="handleKeywordInput" />
     <view class="button-row actions">
-      <button type="primary" bindtap="openCreate">新增会员</button>
-      <button bindtap="openFilter">筛选</button>
+      <button class="icon-button" type="primary" bindtap="openCreate"><image class="button-icon" src="/images/icons/user-plus-white.png" mode="aspectFit" />新增会员</button>
+      <button class="icon-button" bindtap="openFilter"><image class="button-icon" src="/images/icons/filter.png" mode="aspectFit" />筛选</button>
     </view>
   </view>
 
@@ -19,9 +19,9 @@
       </view>
       <view wx:if="{{item.nickName}}" class="muted">{{item.nickName}}</view>
       <view class="button-row card-actions">
-        <button size="mini" data-id="{{item._id}}" bindtap="editRecord">编辑会员</button>
+        <button class="icon-button" size="mini" data-id="{{item._id}}" bindtap="editRecord"><image class="button-icon small" src="/images/icons/edit.png" mode="aspectFit" />编辑会员</button>
         <button wx:if="{{item.status === 'active'}}" size="mini" data-id="{{item._id}}" data-name="{{item.nameZh || item.nameEn || item.nickName}}" bindtap="confirmRetire">退会</button>
-        <button size="mini" type="warn" data-id="{{item._id}}" data-name="{{item.nameZh || item.nameEn || item.nickName}}" bindtap="confirmDelete">删除</button>
+        <button class="icon-button" size="mini" type="warn" data-id="{{item._id}}" data-name="{{item.nameZh || item.nameEn || item.nickName}}" bindtap="confirmDelete"><image class="button-icon small" src="/images/icons/trash-danger.png" mode="aspectFit" />删除</button>
       </view>
     </view>
   </view>

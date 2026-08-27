@@ -2,8 +2,12 @@
 <view wx:if="{{!loading && !data}}" class="page-loading"><view class="loading-card"><text class="loading-title">角色报名</text><text class="loading-text">{{loadError || '当前会议尚未开放报名'}}</text></view></view>
 <view class="signup-page" wx:if="{{data}}">
   <view class="meeting-hero">
-    <text class="club-name">{{data.language === 'en' ? 'GZ Bilingual Toastmasters Club' : '广州双语国际演讲俱乐部'}}</text>
-    <text class="meeting-name">{{data.language === 'en' ? 'Meeting No. ' : '第'}}{{data.meetingInfo.meetingNo || '--'}}{{data.language === 'en' ? '' : '次会议'}}</text>
+    <image class="hero-logo" src="/images/template/toastmasters-logo.png" mode="aspectFit" />
+    <view class="hero-copy">
+      <text class="club-name">{{data.language === 'en' ? 'GZ Bilingual Toastmasters Club' : '广州双语国际演讲俱乐部'}}</text>
+      <view class="hero-rule"></view>
+      <text class="meeting-name">{{data.language === 'en' ? 'Meeting No. ' : '第'}}{{data.meetingInfo.meetingNo || '--'}}{{data.language === 'en' ? '' : '次会议'}}</text>
+    </view>
   </view>
 
   <view class="card meeting-card">
@@ -21,12 +25,17 @@
 
   <view class="card roles-card">
     <view class="card-heading"><text class="card-title">{{data.language === 'en' ? 'Role Sign-up' : '角色报名'}}</text><button class="attend-button" size="mini" data-slot-id="" bindtap="openSignup">{{data.language === 'en' ? 'Attend Only' : '仅参会'}}</button></view>
-    <block wx:for="{{data.slots}}" wx:key="id">
-      <view class="role-row {{item.occupied ? 'claimed' : ''}}">
-        <view class="role-copy"><view class="role-name-line"><text class="status-dot"></text><text class="role-name">{{item.displayLabel || item.label}}</text><text class="access-tag">{{data.language === 'en' ? (item.allowedPersonTypes.indexOf('guest') >= 0 ? 'Member/Guest' : 'Member') : item.accessLabel}}</text></view></view>
-        <button wx:if="{{!item.occupied}}" class="claim-button" size="mini" data-slot-id="{{item.id}}" bindtap="openSignup">{{data.language === 'en' ? 'Sign up' : '报名'}}</button>
-        <view wx:elif="{{item.mine}}" class="claimed-actions"><text class="claimed-name">{{item.person.displayNameZh || item.person.rawName}}</text><button class="x-button" size="mini" data-id="{{item.signupId}}" bindtap="cancelSignup">X</button></view>
-        <text wx:else class="claimed-name">{{item.person.displayNameZh || item.person.rawName}}</text>
+    <block wx:for="{{data.slotGroups}}" wx:for-item="group" wx:key="id">
+      <view class="role-group {{group.grouped ? 'grouped' : 'single'}}">
+        <view wx:if="{{group.grouped}}" class="role-group-title">{{group.title}}</view>
+        <block wx:for="{{group.slots}}" wx:for-item="slot" wx:key="id">
+          <view class="role-row {{slot.occupied ? 'claimed' : ''}}">
+            <view class="role-copy"><view class="role-name-line"><text class="status-dot"></text><text class="role-name">{{slot.displayLabel || slot.label}}</text><text class="access-tag {{slot.isGuestRole ? 'guest-access-tag' : 'member-access-tag'}}">{{slot.isGuestRole ? 'Guest' : (data.language === 'en' ? 'Member' : '会员')}}</text></view></view>
+            <button wx:if="{{!slot.occupied}}" class="claim-button" size="mini" data-slot-id="{{slot.id}}" bindtap="openSignup">{{data.language === 'en' ? 'Sign up' : '报名'}}</button>
+            <view wx:elif="{{slot.mine}}" class="claimed-actions"><text class="claimed-name">{{slot.person.displayNameZh || slot.person.rawName}}</text><button class="x-button" size="mini" data-id="{{slot.signupId}}" bindtap="cancelSignup">X</button></view>
+            <text wx:else class="claimed-name">{{slot.person.displayNameZh || slot.person.rawName}}</text>
+          </view>
+        </block>
       </view>
     </block>
   </view>

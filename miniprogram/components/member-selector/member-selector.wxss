@@ -1,15 +1,15 @@
 .selector-mask{position:fixed;inset:0;z-index:200;display:flex;align-items:flex-end;background:transparent}
-.selector-panel{box-sizing:border-box;width:100%;padding-bottom:env(safe-area-inset-bottom);background:#fff}
-.selector-header{display:flex;align-items:center;justify-content:space-between;height:96rpx;border-bottom:1rpx solid #e5e5e5}
-.selector-header button{height:96rpx;margin:0;padding:0 32rpx;color:#576b95;background:transparent;font-size:30rpx;line-height:96rpx}
+.selector-panel{box-sizing:border-box;width:100%;padding-bottom:env(safe-area-inset-bottom);border-top:6rpx solid #772432;border-radius:12rpx 12rpx 0 0;background:#fff}
+.selector-header{display:flex;align-items:center;justify-content:space-between;height:96rpx;border-bottom:1rpx solid #d8e0e5}
+.selector-header button{height:96rpx;margin:0;padding:0 32rpx;color:#004165;background:transparent;font-size:30rpx;line-height:96rpx}
 .selector-header button::after{border:0}
-.selector-header .confirm{color:#07c160}
-.selector-header .confirm[disabled]{color:#b2b2b2}
+.selector-header .confirm{color:#772432}
+.selector-header .confirm[disabled]{color:#a9b2b1}
 .search-wrap{padding:20rpx 28rpx 12rpx;background:#fff}
-.selector-search{box-sizing:border-box;width:100%;height:72rpx;padding:0 24rpx;border-radius:8rpx;background:#f2f2f2;color:#111;font-size:28rpx}
+.selector-search{box-sizing:border-box;width:100%;height:72rpx;padding:0 24rpx;border:1rpx solid #d8e0e5;border-radius:10rpx;background:#f5f7f8;color:#1f2933;font-size:28rpx}
 .selector-picker{height:432rpx;margin-top:4rpx;background:#fff}
 .picker-option{display:flex;height:96rpx;align-items:center;justify-content:center;box-sizing:border-box;padding:0 32rpx;overflow:hidden;text-align:center;white-space:nowrap}
-.primary{max-width:55%;overflow:hidden;color:#111;font-size:32rpx;text-overflow:ellipsis;white-space:nowrap}
-.secondary{max-width:38%;margin-left:16rpx;overflow:hidden;color:#888;font-size:25rpx;text-overflow:ellipsis;white-space:nowrap}
+.primary{max-width:55%;overflow:hidden;color:#004165;font-size:32rpx;text-overflow:ellipsis;white-space:nowrap}
+.secondary{max-width:38%;margin-left:16rpx;overflow:hidden;color:#667085;font-size:25rpx;text-overflow:ellipsis;white-space:nowrap}
 .picker-indicator{height:96rpx;border-top:1rpx solid #dedede;border-bottom:1rpx solid #dedede}
 .selector-empty{display:flex;height:432rpx;align-items:center;justify-content:center;color:#999;font-size:28rpx;text-align:center}

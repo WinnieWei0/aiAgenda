@@ -1,1 +1,142 @@
-.page-loading{min-height:100vh;padding:80rpx 28rpx;box-sizing:border-box;background:#f5f4f1}.loading-card{padding:36rpx 30rpx;border:1rpx solid #e1dfda;border-radius:8rpx;background:#fff}.loading-title{display:block;color:#0f766e;font-size:36rpx;font-weight:700}.loading-text{display:block;margin-top:14rpx;color:#777}.signup-page{min-height:100vh;padding:42rpx 28rpx 60rpx;box-sizing:border-box;background:#f5f4f1;color:#252525}.meeting-hero{display:flex;flex-direction:column;align-items:center;padding:22rpx 12rpx 34rpx;text-align:center}.club-name{color:#0f766e;font-size:38rpx;font-weight:700}.meeting-name{margin-top:12rpx;color:#374151;font-size:32rpx;font-weight:600}.card{margin-bottom:28rpx;padding:30rpx;border:1rpx solid #e1dfda;border-radius:8rpx;background:#fff}.card-title{font-size:32rpx;font-weight:600}.meeting-card .card-title{display:block;margin-bottom:24rpx}.info-row{display:grid;grid-template-columns:108rpx minmax(0,1fr);gap:16rpx;padding:12rpx 0;line-height:1.5}.info-label{color:#888}.info-value{word-break:break-word}.metrics{display:grid;grid-template-columns:1fr 1fr;margin:10rpx 0 34rpx}.metric{display:flex;flex-direction:column;align-items:center}.number{color:#0f766e;font-size:48rpx}.metric-label{margin-top:4rpx;color:#777}.card-heading{display:flex;align-items:center;justify-content:space-between;margin-bottom:20rpx}.attend-button{margin:0;color:#0f766e;border:1rpx solid #7bb9b1;background:#fff}.role-row{display:flex;align-items:center;gap:18rpx;min-height:94rpx;margin-top:14rpx;padding:16rpx 18rpx;box-sizing:border-box;border-radius:6rpx;background:#f8f7f4}.role-row.claimed{background:#f1f0ed;color:#777}.role-copy{min-width:0;flex:1}.role-name-line{display:flex;flex-wrap:wrap;align-items:center;gap:10rpx}.status-dot{width:14rpx;height:14rpx;flex:none;border-radius:50%;background:#3ba55d}.claimed .status-dot{background:#aaa}.role-name{font-size:29rpx;font-weight:500}.access-tag,.club-tag,.role-label{padding:3rpx 9rpx;border-radius:4rpx;color:#0f766e;background:#dff3f0;font-size:21rpx}.claimed-actions{display:flex;max-width:48%;flex:none;align-items:center;justify-content:flex-end;gap:8rpx}.claimed-name{overflow:hidden;color:#666;font-size:24rpx;text-overflow:ellipsis;white-space:nowrap}.claim-button{width:112rpx;flex:none;margin:0;color:#287a4b;border:1rpx solid #47996b;background:#fff}.claimed-mark{flex:none;color:#888;font-size:24rpx}.x-button{width:48rpx;min-width:48rpx;height:48rpx;flex:none;margin:0;padding:0;color:#b42318;border:0;background:transparent;font-weight:700;line-height:48rpx}.x-button::after{border:0}.people-card .card-title{display:block;margin-bottom:12rpx}.person{display:flex;align-items:center;gap:14rpx;min-height:68rpx;padding:14rpx 0;border-bottom:1rpx solid #eceae5}.person:last-child{border-bottom:0}.person-identity{display:flex;min-width:0;flex:1;flex-wrap:wrap;align-items:center;gap:8rpx}.person-name{font-weight:600}.person-role-labels{display:flex;max-width:52%;flex-wrap:wrap;justify-content:flex-end;gap:8rpx}.attendance-label{flex:none;color:#777;font-size:24rpx}.empty{padding:24rpx 0;color:#999}.mask{position:fixed;inset:0;z-index:20;display:flex;align-items:flex-end;background:rgba(0,0,0,.45)}.modal{width:100%;padding:30rpx 24rpx 48rpx;box-sizing:border-box;background:#fff}.modal-title{display:block;margin-bottom:20rpx;font-size:34rpx;font-weight:700}.types{display:flex;gap:12rpx}.types button{min-width:0;flex:1;margin:0;font-size:26rpx}.types .active{color:#fff;background:#0f766e}.picker,input{width:100%;margin-top:18rpx;padding:20rpx;box-sizing:border-box;border:1rpx solid #cbd5e1;border-radius:6rpx}.submit{margin-top:24rpx;color:#fff;background:#0f766e}.submit[disabled]{color:#fff;background:#5fa49d}@media(max-width:360px){.signup-page{padding-right:18rpx;padding-left:18rpx}.card{padding:24rpx 20rpx}.role-row{padding-right:12rpx;padding-left:12rpx}.role-name{font-size:27rpx}.claim-button{width:100rpx;padding:0 12rpx}.person-role-labels,.claimed-actions{max-width:48%}}
+.page-loading {
+  min-height: 100vh;
+  box-sizing: border-box;
+  padding: 80rpx 28rpx;
+  background: #f4f6f7;
+}
+
+.loading-card {
+  padding: 36rpx 30rpx;
+  border: 1rpx solid #d8e0e5;
+  border-top: 6rpx solid #772432;
+  border-radius: 12rpx;
+  background: #ffffff;
+  box-shadow: 0 6rpx 20rpx rgba(0, 65, 101, 0.07);
+}
+
+.loading-title { display:block; color:#004165; font-size:36rpx; font-weight:700; }
+.loading-text { display:block; margin-top:14rpx; color:#667085; }
+
+.signup-page {
+  min-height: 100vh;
+  box-sizing: border-box;
+  padding: 28rpx 28rpx 60rpx;
+  background: #f4f6f7;
+  color: #1f2933;
+}
+
+.meeting-hero {
+  display: flex;
+  align-items: center;
+  gap: 22rpx;
+  margin-bottom: 26rpx;
+  padding: 26rpx 28rpx;
+  border-radius: 12rpx;
+  background: #004165;
+  box-shadow: 0 8rpx 24rpx rgba(0, 65, 101, 0.13);
+}
+
+.hero-logo { width:96rpx; height:92rpx; flex:none; border-radius:6rpx; background:#fff; }
+.hero-copy { display:flex; min-width:0; flex-direction:column; align-items:flex-start; }
+.club-name { color:#fff; font-size:32rpx; font-weight:700; line-height:1.35; }
+.hero-rule { width:56rpx; height:5rpx; margin:12rpx 0 10rpx; border-radius:3rpx; background:#f2df74; }
+.meeting-name { color:#d8e8ef; font-size:25rpx; font-weight:600; }
+
+.card {
+  margin-bottom: 24rpx;
+  padding: 28rpx;
+  border: 1rpx solid #d8e0e5;
+  border-radius: 12rpx;
+  background: #ffffff;
+}
+
+.card-title { color:#004165; font-size:32rpx; font-weight:700; }
+.meeting-card { border-top:5rpx solid #772432; }
+.meeting-card .card-title { display:block; margin-bottom:20rpx; }
+.info-row { display:grid; grid-template-columns:108rpx minmax(0,1fr); gap:16rpx; padding:12rpx 0; line-height:1.5; }
+.info-label { color:#667085; }
+.info-value { color:#344054; word-break:break-word; }
+
+.metrics {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  margin: 8rpx 0 26rpx;
+  padding: 22rpx 0;
+  border-top: 1rpx solid #d8e0e5;
+  border-bottom: 1rpx solid #d8e0e5;
+  background: #ffffff;
+}
+
+.metric { display:flex; flex-direction:column; align-items:center; }
+.metric + .metric { border-left:1rpx solid #d8e0e5; }
+.number { color:#772432; font-size:48rpx; font-weight:700; }
+.metric-label { margin-top:4rpx; color:#667085; }
+.card-heading { display:flex; align-items:center; justify-content:space-between; gap:16rpx; margin-bottom:20rpx; }
+.attend-button { flex:none; margin:0; color:#168a68; border:1rpx solid #6fb59f; background:#fff; }
+
+.role-group { margin-top:14rpx; }
+.role-group.grouped { margin-top:22rpx; padding:12rpx; border-left:5rpx solid #004165; border-radius:8rpx; background:#eaf1f5; }
+.role-group-title { margin:0 4rpx 10rpx; color:#004165; font-size:23rpx; font-weight:700; }
+.role-group .role-row { margin-top:0; }
+.role-group .role-row + .role-row { margin-top:10rpx; }
+.role-group.grouped .role-row { border-left-width:3rpx; background:#fff; }
+
+.role-row {
+  display: flex;
+  min-height: 94rpx;
+  box-sizing: border-box;
+  align-items: center;
+  gap: 18rpx;
+  margin-top: 0;
+  padding: 16rpx 18rpx;
+  border-left: 5rpx solid #168a68;
+  border-radius: 8rpx;
+  background: #f6f9fa;
+}
+
+.role-row.claimed { border-left-color:#a9b2b1; background:#eef1f3; color:#667085; }
+.role-copy { min-width:0; flex:1; }
+.role-name-line { display:flex; flex-wrap:wrap; align-items:center; gap:10rpx; }
+.status-dot { width:13rpx; height:13rpx; flex:none; border-radius:50%; background:#168a68; }
+.claimed .status-dot { background:#a9b2b1; }
+.role-name { color:#263238; font-size:29rpx; font-weight:600; }
+.access-tag,.club-tag,.role-label { padding:3rpx 9rpx; border-radius:4rpx; font-size:21rpx; }
+.member-access-tag,.club-tag,.role-label { color:#772432; background:#f7edf0; }
+.guest-access-tag { color:#004165; background:#dcebf1; }
+.claimed-actions { display:flex; max-width:48%; flex:none; align-items:center; justify-content:flex-end; gap:8rpx; }
+.claimed-name { overflow:hidden; color:#667085; font-size:24rpx; text-overflow:ellipsis; white-space:nowrap; }
+.claim-button { width:112rpx; flex:none; margin:0; color:#168a68; border:1rpx solid #6fb59f; background:#fff; }
+.claimed-mark { flex:none; color:#667085; font-size:24rpx; }
+.x-button { width:48rpx; min-width:48rpx; height:48rpx; flex:none; margin:0; padding:0; color:#b42318; border:0; background:transparent; font-weight:700; line-height:48rpx; }
+.x-button::after { border:0; }
+
+.people-card .card-title { display:block; margin-bottom:12rpx; }
+.person { display:flex; min-height:68rpx; align-items:center; gap:14rpx; padding:14rpx 0; border-bottom:1rpx solid #e4e9ec; }
+.person:last-child { border-bottom:0; }
+.person-identity { display:flex; min-width:0; flex:1; flex-wrap:wrap; align-items:center; gap:8rpx; }
+.person-name { color:#344054; font-weight:600; }
+.person-role-labels { display:flex; max-width:52%; flex-wrap:wrap; justify-content:flex-end; gap:8rpx; }
+.attendance-label { flex:none; color:#667085; font-size:24rpx; }
+.empty { padding:24rpx 0; color:#8b969e; }
+
+.mask { position:fixed; inset:0; z-index:20; display:flex; align-items:flex-end; background:rgba(0,0,0,.45); }
+.modal { width:100%; box-sizing:border-box; padding:30rpx 24rpx calc(48rpx + env(safe-area-inset-bottom)); border-radius:12rpx 12rpx 0 0; background:#fff; }
+.modal-title { display:block; margin-bottom:20rpx; color:#004165; font-size:34rpx; font-weight:700; }
+.types { display:flex; gap:12rpx; }
+.types button { min-width:0; flex:1; margin:0; font-size:26rpx; }
+.types .active { color:#fff; background:#772432; }
+.picker,input { width:100%; box-sizing:border-box; margin-top:18rpx; padding:20rpx; border:1rpx solid #c6d0d6; border-radius:10rpx; }
+.submit { margin-top:24rpx; color:#fff; background:#004165; }
+.submit[disabled] { color:#fff; background:#a9b2b1; }
+
+@media (max-width: 360px) {
+  .signup-page { padding-right:18rpx; padding-left:18rpx; }
+  .meeting-hero { padding-right:20rpx; padding-left:20rpx; }
+  .hero-logo { width:82rpx; height:80rpx; }
+  .club-name { font-size:29rpx; }
+  .card { padding:24rpx 20rpx; }
+  .role-row { padding-right:12rpx; padding-left:12rpx; }
+  .role-name { font-size:27rpx; }
+  .claim-button { width:100rpx; padding:0 12rpx; }
+  .person-role-labels,.claimed-actions { max-width:48%; }
+}

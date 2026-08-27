@@ -18,7 +18,7 @@
 .readonly-field text:first-child {
   display: block;
   margin-bottom: 6rpx;
-  color: #475569;
+  color: #475467;
   font-size: 24rpx;
 }
 
@@ -27,8 +27,8 @@
   min-height: 42rpx;
   padding: 12rpx;
   box-sizing: border-box;
-  color: #64748b;
-  background: #f8fafc;
+  color: #667085;
+  background: #f5f7f8;
   border-radius: 6rpx;
   word-break: break-all;
 }

@@ -4,7 +4,7 @@
     <view class="muted">系统角色固定为超管、管理员、会员和宾客。会员角色请在会员编辑页设置。</view>
     <input placeholder="搜索角色编码、名称、描述" value="{{keyword}}" bindinput="handleKeywordInput" />
     <view class="button-row actions">
-      <button loading="{{loading}}" bindtap="refreshRecords">刷新</button>
+      <button class="icon-button" loading="{{loading}}" bindtap="refreshRecords"><image class="button-icon" src="/images/icons/refresh.png" mode="aspectFit" />刷新</button>
     </view>
   </view>
 
@@ -15,7 +15,7 @@
       <view class="record-title">{{item.code}} {{item.name}}</view>
       <view class="muted">{{item.description}}</view>
       <view class="button-row card-actions">
-        <button size="mini" data-code="{{item.code}}" bindtap="editRecord">编辑角色</button>
+        <button class="icon-button" size="mini" data-code="{{item.code}}" bindtap="editRecord"><image class="button-icon small" src="/images/icons/edit.png" mode="aspectFit" />编辑角色</button>
       </view>
     </view>
   </view>

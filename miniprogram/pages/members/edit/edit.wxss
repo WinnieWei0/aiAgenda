@@ -14,7 +14,7 @@
 .readonly-field text:first-child {
   display: block;
   margin-bottom: 6rpx;
-  color: #475569;
+  color: #475467;
   font-size: 24rpx;
 }
 
@@ -33,8 +33,8 @@
   min-height: 42rpx;
   padding: 12rpx;
   box-sizing: border-box;
-  color: #64748b;
-  background: #f8fafc;
+  color: #667085;
+  background: #f5f7f8;
   border-radius: 6rpx;
   word-break: break-all;
 }
@@ -52,5 +52,5 @@
 
 .form-panel .notes-input { height:112rpx; min-height:112rpx; line-height:36rpx; }
 
-.role-picker { box-sizing:border-box; min-height:72rpx; padding:16rpx; border:1rpx solid #cbd5e1; background:#fff; }
-.clear-binding { margin:0 0 22rpx; color:#b91c1c; border:1rpx solid #fecaca; background:#fff; }
+.role-picker { box-sizing:border-box; min-height:72rpx; padding:16rpx; border:1rpx solid #c6d0d6; border-radius:10rpx; background:#fff; }
+.clear-binding { margin:0 0 22rpx; color:#b42318; border:1rpx solid #e7b7b2; background:#fff; }

@@ -24,7 +24,8 @@ Page({
     validationDialogVisible: false,
     validationErrors: [],
     validationRemaining: 0,
-    signupData: null
+    signupData: null,
+    agendaGenerated: false
   },
 
   /**
@@ -45,6 +46,7 @@ Page({
       await this.loadAgendaById(options.id);
     } else if (app.globalData.currentAgenda) {
       this.setAgenda(app.globalData.currentAgenda);
+      this.setData({ agendaGenerated: Boolean(app.globalData.currentAgenda.meetingInfo && String(app.globalData.currentAgenda.meetingInfo.meetingNo || '').trim()) });
     } else {
       await this.loadCurrentAgenda();
     }
@@ -159,7 +161,9 @@ Page({
   async loadCurrentAgenda() {
     try {
       const data = await cloud.callCloud('agendaQuery', { action: 'current' });
-      this.setAgenda(data.agenda || agendaUtil.createEmptyAgenda());
+      const agenda = data.agenda || agendaUtil.createEmptyAgenda();
+      this.setAgenda(agenda);
+      this.setData({ agendaGenerated: Boolean(agenda.meetingInfo && String(agenda.meetingInfo.meetingNo || '').trim()) });
     } catch (error) {
       cloud.showError(error);
     }
@@ -174,6 +178,7 @@ Page({
     try {
       const data = await cloud.callCloud('agendaQuery', { action: 'get', id });
       this.setAgenda(data.agenda);
+      this.setData({ agendaGenerated: Boolean(data.agenda && data.agenda.meetingInfo && String(data.agenda.meetingInfo.meetingNo || '').trim()) });
     } catch (error) {
       cloud.showError(error);
     }
@@ -766,7 +771,8 @@ Page({
       this.setData({
         'agenda._id': savedAgenda._id || '',
         'agenda.signupPublicId': savedAgenda.signupPublicId || '',
-        'agenda.signupSlots': savedAgenda.signupSlots || []
+        'agenda.signupSlots': savedAgenda.signupSlots || [],
+        agendaGenerated: true
       });
       if (!(options && options.silent)) {
         cloud.showSuccess('已保存');
@@ -779,6 +785,19 @@ Page({
       if (manageSaving) {
         this.setData({ saving: false });
       }
+    }
+  },
+
+  /**
+   * 方法是什么：响应底部生成或保存按钮。
+   * 方法作用：首次生成和后续保存共用议程保存流程，并由保存结果更新按钮状态。
+   * 为什么添加：重置后的议程需要明确区分首次生成与后续保存。
+  */
+  async saveAgendaFromButton() {
+    const wasGenerated = this.data.agendaGenerated;
+    const agenda = await this.saveAgenda({ silent: true });
+    if (agenda) {
+      cloud.showSuccess(wasGenerated ? '已保存' : '议程表已生成');
     }
   },
 
@@ -806,11 +825,11 @@ Page({
   },
 
   resetMeeting() {
-    wx.showModal({ title: '重置当前会议', content: '将清空本期议程和全部报名，原报名链接立即失效。此操作不可撤销。', confirmColor: '#b91c1c', success: async (res) => {
+    wx.showModal({ title: '重置当前会议', content: '将清空本期议程和全部报名，原报名链接立即失效。此操作不可撤销。', confirmColor: '#b42318', success: async (res) => {
       if (!res.confirm) return;
       try {
         const data = await cloud.callCloud('signupService', { action: 'reset' });
-        this.setData({ signupData: null });
+        this.setData({ signupData: null, agendaGenerated: false });
         this.setAgenda(data.agenda);
         cloud.showSuccess('会议已重置');
       } catch (error) { cloud.showError(error); }

@@ -1,7 +1,11 @@
 <view class="page agenda-home">
-  <view class="identity-bar"><text class="identity-label">当前身份</text><text class="identity-value">{{identityText}}</text></view>
+  <view class="agenda-heading">
+    <view class="heading-copy"><text class="heading-kicker">MEETING AGENDA</text><text class="heading-title">议程工作台</text></view>
+    <view class="identity-chip"><text class="identity-label">当前身份</text><text class="identity-value">{{identityText}}</text></view>
+  </view>
   <view class="summary {{summary ? '' : 'empty'}}">
     <block wx:if="{{summary}}">
+      <text class="summary-kicker">本期例会</text>
       <text class="summary-title">第 {{summary.meetingNo || '--'}} 期</text>
       <text class="summary-meta">{{summary.date || '日期待填写'}} · {{summary.startTime || '--:--'}}~{{summary.endTime || '--:--'}}</text>
     </block>
@@ -11,7 +15,9 @@
     </block>
   </view>
 
-  <button wx:if="{{!isGuest}}" class="action-button primary" disabled="{{openingEditor || creatingSignup}}" bindtap="goEditor">编辑接龙</button>
-  <button class="action-button" disabled="{{openingEditor || creatingSignup}}" bindtap="goSignup">报名页</button>
-  <button wx:if="{{isAdmin}}" class="action-button template-button" disabled="{{openingEditor || creatingSignup}}" bindtap="goTemplate">修改议程表模板</button>
+  <view class="agenda-actions">
+    <button wx:if="{{!isGuest}}" class="action-button primary" disabled="{{openingEditor || creatingSignup}}" bindtap="goEditor"><image class="button-icon" src="/images/icons/edit-white.png" mode="aspectFit" />编辑接龙</button>
+    <button class="action-button {{isGuest ? 'primary' : 'secondary'}}" disabled="{{openingEditor || creatingSignup}}" bindtap="goSignup"><image class="button-icon" src="{{isGuest ? '/images/icons/signup-white.png' : '/images/icons/signup.png'}}" mode="aspectFit" />报名页</button>
+    <button wx:if="{{isAdmin}}" class="action-button template-button" disabled="{{openingEditor || creatingSignup}}" bindtap="goTemplate"><image class="button-icon" src="/images/icons/template-maroon.png" mode="aspectFit" />修改议程表模板</button>
+  </view>
 </view>

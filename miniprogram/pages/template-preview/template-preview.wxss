@@ -1,8 +1,8 @@
-.snapshot-page { min-height: 100vh; padding: 120rpx 36rpx; background: #f6f7f8; }
-.snapshot-status { box-sizing: border-box; width: 100%; padding: 48rpx 32rpx; border: 1rpx solid #d7dde5; border-radius: 8rpx; background: #ffffff; text-align: center; }
-.status-title { color: #111827; font-size: 34rpx; font-weight: 700; }
-.status-copy { margin-top: 16rpx; color: #64748b; font-size: 26rpx; }
+.snapshot-page { min-height: 100vh; padding: 120rpx 36rpx; background: #f4f6f7; }
+.snapshot-status { box-sizing: border-box; width: 100%; padding: 48rpx 32rpx; border: 1rpx solid #d8e0e5; border-top:6rpx solid #772432; border-radius: 12rpx; background: #ffffff; box-shadow:0 8rpx 24rpx rgba(0,65,101,.07); text-align: center; }
+.status-title { color: #004165; font-size: 34rpx; font-weight: 700; }
+.status-copy { margin-top: 16rpx; color: #667085; font-size: 26rpx; }
 .snapshot-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 18rpx; margin-top: 40rpx; }
 .snapshot-actions button, .retry-button { width: 100%; margin: 0; }
 .retry-button { margin-top: 36rpx; }
-.export-button { background: #0f766e; }
+.export-button { background: #004165; }

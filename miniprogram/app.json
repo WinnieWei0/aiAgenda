@@ -19,13 +19,13 @@
   ],
   "window": {
     "navigationBarTitleText": "AI 议程表",
-    "navigationBarBackgroundColor": "#0f766e",
+    "navigationBarBackgroundColor": "#004165",
     "navigationBarTextStyle": "white",
-    "backgroundColor": "#f6f7f8"
+    "backgroundColor": "#f4f6f7"
   },
   "tabBar": {
-    "color": "#64748b",
-    "selectedColor": "#0f766e",
+    "color": "#667085",
+    "selectedColor": "#772432",
     "backgroundColor": "#ffffff",
     "borderStyle": "black",
     "list": [

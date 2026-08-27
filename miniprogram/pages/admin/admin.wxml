@@ -6,9 +6,9 @@
 
   <view class="section panel">
     <view class="nav-grid">
-      <button class="nav-button" bindtap="openMembersList">会员列表</button>
-      <button class="nav-button" bindtap="openPathwaysList">路径列表</button>
-      <button class="nav-button" bindtap="openRolesList">角色列表</button>
+      <button class="nav-button" bindtap="openMembersList"><image class="nav-icon" src="/images/icons/users.png" mode="aspectFit" /><text>会员列表</text></button>
+      <button class="nav-button" bindtap="openPathwaysList"><image class="nav-icon" src="/images/icons/route.png" mode="aspectFit" /><text>路径列表</text></button>
+      <button class="nav-button" bindtap="openRolesList"><image class="nav-icon" src="/images/icons/shield.png" mode="aspectFit" /><text>角色列表</text></button>
     </view>
   </view>
 </view>

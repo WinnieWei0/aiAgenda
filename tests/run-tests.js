@@ -19,6 +19,7 @@ const adminMemberships = require('../cloudfunctions/adminMemberships');
 const membershipRoleMigration = require('../scripts/migrate-membership-roles');
 const memberSearch = require('../miniprogram/utils/member-search');
 const memberFilter = require('../miniprogram/utils/member-filter');
+const signupView = require('../miniprogram/utils/signup-view');
 const membershipInvites = require('../cloudfunctions/membershipInvites');
 const singletonAgendaMigration = require('../scripts/migrate-singleton-agenda');
 const { PDFDocument } = require('../cloudfunctions/common/node_modules/pdf-lib');
@@ -701,6 +702,29 @@ function testSingletonAgendaAndSignupRoute() {
 }
 
 /**
+ * 方法是什么：测试报名页槽位模块视图。
+ * 方法作用：确认宾客角色标签、即兴模块和备稿演讲者与 IE 的成对编号。
+ * 为什么添加：报名接口保持扁平槽位后，页面分组和序号必须由稳定的视图模型保证。
+ */
+function testSignupSlotGroups() {
+  const slots = [
+    { id: 'guest', roleKey: 'guestReception', displayLabel: 'SAA (Guest)' },
+    { id: 'topics-master', roleKey: 'tableTopicsMaster', displayLabel: 'Table Topics Master' },
+    { id: 'topics-evaluator', roleKey: 'tableTopicsEvaluator', displayLabel: 'Table Topics Evaluator' },
+    { id: 'speaker-a', roleKey: 'preparedSpeaker', blockId: 'a', displayLabel: 'Prepared Speaker' },
+    { id: 'evaluator-a', roleKey: 'preparedEvaluator', blockId: 'a', displayLabel: 'IE' },
+    { id: 'speaker-b', roleKey: 'preparedSpeaker', blockId: 'b', displayLabel: 'Prepared Speaker' },
+    { id: 'evaluator-b', roleKey: 'preparedEvaluator', blockId: 'b', displayLabel: 'IE' }
+  ];
+  const data = signupView.decorateSignupData({ language: 'en', slots });
+  assert.strictEqual(data.slots[0].isGuestRole, true);
+  assert.deepStrictEqual(data.slotGroups.map((group) => group.title), ['', 'Table Topics', 'Prepared Speech 1', 'Prepared Speech 2']);
+  assert.deepStrictEqual(data.slotGroups[1].slots.map((slot) => slot.roleKey), ['tableTopicsMaster', 'tableTopicsEvaluator']);
+  assert.deepStrictEqual(data.slotGroups[2].slots.map((slot) => slot.displayLabel), ['Prepared Speaker 1', 'IE 1']);
+  assert.deepStrictEqual(data.slotGroups[3].slots.map((slot) => slot.displayLabel), ['Prepared Speaker 2', 'IE 2']);
+}
+
+/**
  * 方法是什么：测试 PDF 生成能力。
  * 方法作用：用规则解析出的议程生成中文 PDF，并确认返回内容是 PDF 文件。
  * 为什么添加：导出 PDF 是核心交付物，测试可以提前发现字体、依赖或渲染器异常。
@@ -943,6 +967,7 @@ async function main() {
   testMemberOptionsAndAgendaPayload();
   testPublicMeetingSummary();
   testSingletonAgendaAndSignupRoute();
+  testSignupSlotGroups();
   testPdfAgendaLineStyle();
   testPdfHeaderFrame();
   testPdfFontFallback();

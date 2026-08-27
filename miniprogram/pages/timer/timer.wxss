@@ -9,9 +9,10 @@
   padding: 80rpx 24rpx;
   box-sizing: border-box;
   text-align: center;
-  color: #64748b;
+  color: #667085;
   background: #ffffff;
-  border: 1rpx solid #d9e2ec;
-  border-radius: 10rpx;
+  border: 1rpx solid #d8e0e5;
+  border-top: 6rpx solid #772432;
+  border-radius: 12rpx;
   font-size: 40rpx;
 }

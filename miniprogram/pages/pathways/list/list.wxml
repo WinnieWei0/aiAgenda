@@ -4,7 +4,7 @@
     <view class="muted">维护 Pathways 项目，用于备稿项目描述。</view>
     <input placeholder="搜索项目代码、中文名、英文名" value="{{keyword}}" bindinput="handleKeywordInput" />
     <view class="button-row actions">
-      <button type="primary" bindtap="openCreate">新增路径</button>
+      <button class="icon-button" type="primary" bindtap="openCreate"><image class="button-icon" src="/images/icons/plus-white.png" mode="aspectFit" />新增路径</button>
     </view>
   </view>
 
@@ -15,8 +15,8 @@
       <view class="record-title">{{item.fullLabelZh || item.code || '未命名项目'}}</view>
       <view class="muted">{{item.fullLabelEn}}</view>
       <view class="button-row card-actions">
-        <button size="mini" data-id="{{item._id}}" bindtap="editRecord">编辑路径</button>
-        <button size="mini" type="warn" data-id="{{item._id}}" data-name="{{item.code || item.fullLabelZh}}" bindtap="confirmDelete">删除</button>
+        <button class="icon-button" size="mini" data-id="{{item._id}}" bindtap="editRecord"><image class="button-icon small" src="/images/icons/edit.png" mode="aspectFit" />编辑路径</button>
+        <button class="icon-button" size="mini" type="warn" data-id="{{item._id}}" data-name="{{item.code || item.fullLabelZh}}" bindtap="confirmDelete"><image class="button-icon small" src="/images/icons/trash-danger.png" mode="aspectFit" />删除</button>
       </view>
     </view>
   </view>

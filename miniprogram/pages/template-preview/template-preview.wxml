@@ -6,15 +6,15 @@
 
   <view wx:elif="{{loadFailed}}" class="snapshot-status">
     <view class="status-title">PDF 预览生成失败</view>
-    <button class="retry-button" bindtap="createSnapshot">重新生成</button>
+    <button class="retry-button icon-button" bindtap="createSnapshot"><image class="button-icon" src="/images/icons/refresh.png" mode="aspectFit" />重新生成</button>
   </view>
 
   <view wx:else class="snapshot-status ready-status">
     <view class="status-title">PDF 预览已生成</view>
     <view class="status-copy">预览和导出将使用同一个文件</view>
     <view class="snapshot-actions">
-      <button disabled="{{opening || exporting}}" bindtap="previewPdf">{{opening ? '正在打开...' : '重新预览'}}</button>
-      <button class="export-button" type="primary" disabled="{{opening || exporting}}" bindtap="exportPdf">{{exporting ? '正在打开...' : '导出 PDF'}}</button>
+      <button class="icon-button" disabled="{{opening || exporting}}" bindtap="previewPdf"><image class="button-icon" src="/images/icons/eye.png" mode="aspectFit" />{{opening ? '正在打开...' : '重新预览'}}</button>
+      <button class="export-button icon-button" type="primary" disabled="{{opening || exporting}}" bindtap="exportPdf"><image class="button-icon" src="/images/icons/download-white.png" mode="aspectFit" />{{exporting ? '正在打开...' : '导出 PDF'}}</button>
     </view>
   </view>
 </view>
