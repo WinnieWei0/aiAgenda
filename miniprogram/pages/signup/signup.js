@@ -4,6 +4,9 @@ const signupView = require('../../utils/signup-view');
 Page({
   data: { data: null, loading: true, loadError: '', modal: false, selectedSlot: null, personType: 'member', allowMember: true, allowClub: true, allowGuest: true, members: [], memberLabels: [], memberIndex: -1, memberSelectorVisible: false, name: '', club: '', submitting: false },
   onLoad() {
+    wx.showShareMenu({
+      menus: ['shareAppMessage', 'shareTimeline']
+    });
     this.initialLoadStarted = true;
     this.load();
     this.loadMembers();
@@ -16,7 +19,36 @@ Page({
   },
   onHide() { this.refreshOnShow = true; },
   onPullDownRefresh() { this.load().finally(() => wx.stopPullDownRefresh()); },
-  onShareAppMessage() { const info = this.data.data && this.data.data.meetingInfo || {}; const english = this.data.data && this.data.data.language === 'en'; return { title: english ? `Meeting No. ${info.meetingNo || ''} Role Sign-up` : `第${info.meetingNo || ''}期会议角色报名`, path: '/pages/signup/signup' }; },
+
+  /**
+   * 方法是什么：报名页好友转发配置方法。
+   * 方法作用：根据当前会议语言和期数生成好友转发标题及公开落地页。
+   * 为什么添加：让参会者可以把当前公开报名入口直接分享给微信好友。
+   */
+  onShareAppMessage() {
+    const info = this.data.data && this.data.data.meetingInfo || {};
+    const english = this.data.data && this.data.data.language === 'en';
+    return {
+      title: english ? `Meeting No. ${info.meetingNo || ''} Role Sign-up` : `第${info.meetingNo || ''}期会议角色报名`,
+      path: '/pages/signup/signup',
+      imageUrl: '/images/template/toastmasters-logo.png'
+    };
+  },
+
+  /**
+   * 方法是什么：报名页朋友圈分享配置方法。
+   * 方法作用：根据当前会议语言和期数生成朋友圈标题和品牌缩略图。
+   * 为什么添加：让公开报名页支持朋友圈分享并保持与好友转发一致的会议信息。
+   */
+  onShareTimeline() {
+    const info = this.data.data && this.data.data.meetingInfo || {};
+    const english = this.data.data && this.data.data.language === 'en';
+    return {
+      title: english ? `Meeting No. ${info.meetingNo || ''} Role Sign-up` : `第${info.meetingNo || ''}期会议角色报名`,
+      query: '',
+      imageUrl: '/images/template/toastmasters-logo.png'
+    };
+  },
   async load() { try { const data = await cloud.callCloud('signupService', { action: 'get' }); this.setData({ data: signupView.decorateSignupData(data), loadError: '' }); } catch (error) { this.setData({ data: null, loadError: '当前会议尚未开放报名' }); } finally { this.setData({ loading: false }); } },
   async loadMembers() { try { const result = await cloud.callCloud('lookupOptions', { type: 'memberships', keyword: '' }); const members = result.list || []; this.setData({ members, memberLabels: members.map((m) => m.nameZh || m.nameEn || m.nickName || '未命名会员') }); } catch (error) { cloud.showError(error); } },
   openSignup(event) {
