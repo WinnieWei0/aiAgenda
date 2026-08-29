@@ -19,6 +19,10 @@ Page({
     isEdit: false,
     saving: false,
     formattedUpdatedAt: '',
+    privacyNeeded: false,
+    privacyReady: false,
+    privacyContractName: '《小程序用户隐私保护指引》',
+    personalInfoAuthorized: false,
     member: {
       birthday: '', competitionEligible: false, createdAt: '', educationAwards: '',
       educationProgress: '', educationProgressUpdatedAt: '', email: '', isMentor: false,
@@ -50,9 +54,77 @@ Page({
     const id = options && options.id ? options.id : '';
     wx.setNavigationBarTitle({ title: id ? '编辑会员' : '新增会员' });
     this.setData({ id, isEdit: Boolean(id) });
+    await this.checkPrivacyAuthorization();
     if (id) {
       await this.loadMember(id);
     }
+  },
+
+  /**
+   * 方法是什么：查询微信侧隐私协议授权状态。
+   * 方法作用：在展示个人信息输入框前确认当前用户是否已同意平台登记的隐私保护指引。
+   * 为什么添加：手机号、邮箱和生日只能在用户了解收集规则并完成授权后录入。
+   */
+  async checkPrivacyAuthorization() {
+    if (!wx.getPrivacySetting) {
+      this.setData({ privacyNeeded: false, privacyReady: true });
+      return;
+    }
+    await new Promise((resolve) => {
+      wx.getPrivacySetting({
+        success: (result) => {
+          this.setData({
+            privacyNeeded: Boolean(result.needAuthorization),
+            privacyReady: !result.needAuthorization,
+            privacyContractName: result.privacyContractName || '《小程序用户隐私保护指引》'
+          });
+        },
+        fail: () => this.setData({ privacyNeeded: true, privacyReady: false }),
+        complete: resolve
+      });
+    });
+  },
+
+  /**
+   * 方法是什么：处理微信隐私协议同意事件。
+   * 方法作用：在微信记录用户同意后开放本页的个人信息授权确认步骤。
+   * 为什么添加：平台要求开发者在处理个人信息前同步用户已阅读并同意隐私规则。
+   */
+  handlePrivacyAgree() {
+    this.setData({ privacyNeeded: false, privacyReady: true });
+  },
+
+  /**
+   * 方法是什么：切换会员本人授权确认状态。
+   * 方法作用：记录管理员是否确认已取得该会员对个人信息处理的明确授权。
+   * 为什么添加：管理员不能仅凭自身同意代替手机号等个人信息主体的授权。
+   */
+  handlePersonalInfoAuthorization(event) {
+    this.setData({ personalInfoAuthorized: (event.detail.value || []).includes('authorized') });
+  },
+
+  /**
+   * 方法是什么：打开用户服务协议页面。
+   * 方法作用：让信息录入人员在授权前查看本小程序的服务规则。
+   * 为什么添加：审核要求在收集个人信息前提供清晰可访问的用户服务协议。
+   */
+  openServiceAgreement() {
+    wx.navigateTo({ url: '/pages/legal/legal?type=service' });
+  },
+
+  /**
+   * 方法是什么：打开隐私政策页面。
+   * 方法作用：优先展示微信后台登记的隐私保护指引，不支持时打开本地隐私政策。
+   * 为什么添加：用户需要在授权前了解个人信息的收集目的、用途和权利路径。
+   */
+  openPrivacyPolicy() {
+    if (wx.openPrivacyContract) {
+      wx.openPrivacyContract({
+        fail: () => wx.navigateTo({ url: '/pages/legal/legal?type=privacy' })
+      });
+      return;
+    }
+    wx.navigateTo({ url: '/pages/legal/legal?type=privacy' });
   },
 
   /**
@@ -132,9 +204,18 @@ Page({
    * 为什么添加：编辑结果必须写回 Membership 集合。
    */
   async saveMember() {
+    const hasPersonalInfo = ['phone', 'email', 'birthday'].some((field) => String(this.data.member[field] || '').trim());
+    if (hasPersonalInfo && (!this.data.privacyReady || !this.data.personalInfoAuthorized)) {
+      wx.showToast({ title: '请先完成个人信息授权确认', icon: 'none' });
+      return;
+    }
     this.setData({ saving: true });
     try {
-      await cloud.callCloud('adminMemberships', { action: 'save', member: this.data.member });
+      await cloud.callCloud('adminMemberships', {
+        action: 'save',
+        member: this.data.member,
+        personalInfoAuthorized: !hasPersonalInfo || this.data.privacyReady && this.data.personalInfoAuthorized
+      });
       cloud.showSuccess('已保存');
       wx.navigateBack();
     } catch (error) {

@@ -3,10 +3,26 @@
     <view class="readonly-field"><text>id</text><text>{{member._id}}</text></view>
     <view class="form-row"><text>中文名</text><input value="{{member.nameZh}}" data-field="nameZh" bindinput="handleInput" /></view>
     <view class="form-row"><text>英文名</text><input value="{{member.nameEn}}" data-field="nameEn" bindinput="handleInput" /></view>
-    <view class="form-row"><text>邮箱</text><input value="{{member.email}}" data-field="email" bindinput="handleInput" /></view>
-    <view class="form-row"><text>电话号码</text><input value="{{member.phone}}" data-field="phone" bindinput="handleInput" /></view>
+    <view class="privacy-panel">
+      <text class="privacy-title">个人信息授权</text>
+      <text class="privacy-description">电话、邮箱和生日仅用于会员管理、会议组织及议程联系信息。录入前请阅读相关规则，并确认已取得该会员本人授权。</text>
+      <view class="legal-links">
+        <button class="text-link" bindtap="openServiceAgreement">《用户服务协议》</button>
+        <button class="text-link" bindtap="openPrivacyPolicy">{{privacyContractName || '《隐私政策》'}}</button>
+      </view>
+      <button wx:if="{{privacyNeeded}}" class="privacy-agree-button" open-type="agreePrivacyAuthorization" bindagreeprivacyauthorization="handlePrivacyAgree">阅读并同意隐私保护指引</button>
+      <view wx:else class="privacy-status">已完成隐私协议确认</view>
+      <checkbox-group bindchange="handlePersonalInfoAuthorization">
+        <label class="authorization-check {{privacyReady ? '' : 'disabled'}}">
+          <checkbox value="authorized" checked="{{personalInfoAuthorized}}" disabled="{{!privacyReady}}" color="#772432" />
+          <text>我确认已取得该会员本人对上述个人信息处理的授权</text>
+        </label>
+      </checkbox-group>
+    </view>
+    <view class="form-row"><text>邮箱</text><input disabled="{{!privacyReady || !personalInfoAuthorized}}" value="{{member.email}}" data-field="email" bindinput="handleInput" /></view>
+    <view class="form-row"><text>电话号码</text><input type="number" maxlength="20" disabled="{{!privacyReady || !personalInfoAuthorized}}" value="{{member.phone}}" data-field="phone" bindinput="handleInput" /></view>
     <view class="form-row"><text>加入头马时间</text><input value="{{member.joinedAt}}" data-field="joinedAt" bindinput="handleInput" /></view>
-    <view class="form-row"><text>生日</text><input value="{{member.birthday}}" data-field="birthday" bindinput="handleInput" /></view>
+    <view class="form-row"><text>生日</text><input disabled="{{!privacyReady || !personalInfoAuthorized}}" value="{{member.birthday}}" data-field="birthday" bindinput="handleInput" /></view>
     <view class="form-row"><text>路径中文名</text><input value="{{member.pathNameZh}}" data-field="pathNameZh" bindinput="handleInput" /></view>
     <view class="form-row"><text>路径英文名</text><input value="{{member.pathNameEn}}" data-field="pathNameEn" bindinput="handleInput" /></view>
     <view class="form-row"><text>教育进度</text><input value="{{member.educationProgress}}" data-field="educationProgress" bindinput="handleInput" /></view>

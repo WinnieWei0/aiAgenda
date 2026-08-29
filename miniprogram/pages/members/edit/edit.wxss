@@ -54,3 +54,24 @@
 
 .role-picker { box-sizing:border-box; min-height:72rpx; padding:16rpx; border:1rpx solid #c6d0d6; border-radius:10rpx; background:#fff; }
 .clear-binding { margin:0 0 22rpx; color:#b42318; border:1rpx solid #e7b7b2; background:#fff; }
+
+.privacy-panel {
+  margin: 20rpx 0 24rpx;
+  padding: 22rpx;
+  border: 1rpx solid #c9d9e1;
+  border-left: 6rpx solid #004165;
+  border-radius: 10rpx;
+  background: #f6f9fa;
+}
+
+.privacy-title { display:block; color:#004165; font-size:28rpx; font-weight:700; }
+.privacy-description { display:block; margin-top:10rpx; color:#475467; font-size:24rpx; line-height:1.65; }
+.legal-links { display:flex; flex-wrap:wrap; gap:8rpx 18rpx; margin-top:12rpx; }
+.text-link { width:auto; min-height:44rpx; margin:0; padding:0; color:#772432; background:transparent; font-size:24rpx; line-height:44rpx; }
+.text-link::after { border:0; }
+.privacy-agree-button { margin:18rpx 0 0; color:#fff; background:#004165; font-size:26rpx; }
+.privacy-status { margin-top:16rpx; color:#168a68; font-size:24rpx; font-weight:600; }
+.authorization-check { display:flex; align-items:flex-start; gap:10rpx; margin-top:18rpx; color:#344054; font-size:24rpx; line-height:1.55; }
+.authorization-check checkbox { flex:none; }
+.authorization-check.disabled { color:#98a2b3; }
+.form-panel input[disabled] { color:#98a2b3; background:#eef1f3; }

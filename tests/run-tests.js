@@ -874,6 +874,8 @@ function testMembershipRolesAndSearch() {
   assert.strictEqual(membershipRoleMigration.roleForName('普通会员'), 'member');
   assert.strictEqual(adminMemberships.buildMemberPayload({ nameZh: '新会员' }).role, 'member');
   assert.throws(() => adminMemberships.buildMemberPayload({ nameZh: '错误角色', role: 'owner' }), /会员角色无效/);
+  assert.strictEqual(adminMemberships.hasAuthorizedPersonalInfo({ nameZh: '新会员' }), false);
+  assert.strictEqual(adminMemberships.hasAuthorizedPersonalInfo({ phone: '13800138000' }), true);
   const members = [
     { _id: '1', nameZh: '韦文耐', nameEn: 'Winnie Wei', nickName: '文耐' },
     { _id: '2', nameZh: '冉桂竹', nameEn: 'Grace Ran', nickName: '桂竹' }

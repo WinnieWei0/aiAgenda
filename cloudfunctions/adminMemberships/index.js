@@ -55,6 +55,15 @@ function buildMemberPayload(member) {
 }
 
 /**
+ * 方法是什么：判断会员数据是否包含需要明确授权的个人信息。
+ * 方法作用：检查电话、邮箱和生日字段是否存在非空内容。
+ * 为什么添加：云函数必须在写入个人信息前执行不可绕过的授权校验。
+ */
+function hasAuthorizedPersonalInfo(member) {
+  return ['phone', 'email', 'birthday'].some((field) => String(member && member[field] || '').trim());
+}
+
+/**
  * 方法是什么：保存会员记录。
  * 方法作用：按会员 ID 更新或新增严格字段集合中的记录。
  * 为什么添加：会员编辑页需要稳定的单一保存入口。
@@ -125,6 +134,9 @@ async function main(event) {
       return common.ok({ record: await getMember(event.id) });
     }
     if (action === 'save') {
+      if (hasAuthorizedPersonalInfo(event.member) && event.personalInfoAuthorized !== true) {
+        return common.fail('PERSONAL_INFO_AUTHORIZATION_REQUIRED', '保存电话、邮箱或生日之前必须取得会员本人授权');
+      }
       return common.ok(await saveMember(event.member || {}));
     }
     if (action === 'delete') {
@@ -151,5 +163,5 @@ async function main(event) {
   }
 }
 
-module.exports = { MEMBER_FIELDS, buildMemberPayload, saveMember, retireMember, main };
+module.exports = { MEMBER_FIELDS, buildMemberPayload, hasAuthorizedPersonalInfo, saveMember, retireMember, main };
 exports.main = main;

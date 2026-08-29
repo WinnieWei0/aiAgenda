@@ -15,7 +15,8 @@
     "pages/template-preview/template-preview",
     "pages/template-editor/template-editor",
     "pages/history/history",
-    "pages/admin/admin"
+    "pages/admin/admin",
+    "pages/legal/legal"
   ],
   "window": {
     "navigationBarTitleText": "AI 议程表",
@@ -43,6 +44,7 @@
       }
     ]
   },
+  "__usePrivacyCheck__": true,
   "style": "v2",
   "sitemapLocation": "sitemap.json"
 }

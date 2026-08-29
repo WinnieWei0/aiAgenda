@@ -1,0 +1,11 @@
+<view class="legal-page">
+  <view class="legal-header">
+    <text class="legal-title">{{document.title}}</text>
+    <text class="legal-date">{{document.updatedAt}}</text>
+  </view>
+  <text class="legal-intro">{{document.intro}}</text>
+  <view wx:for="{{document.sections}}" wx:key="title" class="legal-section">
+    <text class="section-title">{{item.title}}</text>
+    <text class="section-body">{{item.body}}</text>
+  </view>
+</view>
