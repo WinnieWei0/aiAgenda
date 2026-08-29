@@ -20,8 +20,9 @@ Page({
     saving: false,
     formattedUpdatedAt: '',
     privacyNeeded: false,
+    privacySheetVisible: true,
     privacyReady: false,
-    privacyContractName: '《小程序用户隐私保护指引》',
+    privacyContractName: '《隐私政策》',
     personalInfoAuthorized: false,
     member: {
       birthday: '', competitionEligible: false, createdAt: '', educationAwards: '',
@@ -76,7 +77,7 @@ Page({
           this.setData({
             privacyNeeded: Boolean(result.needAuthorization),
             privacyReady: !result.needAuthorization,
-            privacyContractName: result.privacyContractName || '《小程序用户隐私保护指引》'
+            privacyContractName: '《隐私政策》'
           });
         },
         fail: () => this.setData({ privacyNeeded: true, privacyReady: false }),
@@ -104,6 +105,22 @@ Page({
   },
 
   /**
+   * 方法是什么：关闭隐私确认底部弹窗。
+   * 方法作用：收起授权提示，不阻挡用户继续使用非个人信息相关的页面功能。
+   * 为什么添加：隐私说明需要主动提示，但不能遮挡整个会员编辑页面。
+   */
+  closePrivacySheet() {
+    this.setData({ privacySheetVisible: false });
+  },
+
+  /**
+   * 方法是什么：阻止底部弹窗内容区域的点击冒泡。
+   * 方法作用：点击协议文字、复选框或按钮时不误触发关闭弹窗。
+   * 为什么添加：底部弹窗需要支持内部交互，同时允许点击遮罩关闭。
+   */
+  noop() {},
+
+  /**
    * 方法是什么：打开用户服务协议页面。
    * 方法作用：让信息录入人员在授权前查看本小程序的服务规则。
    * 为什么添加：审核要求在收集个人信息前提供清晰可访问的用户服务协议。
@@ -114,16 +131,10 @@ Page({
 
   /**
    * 方法是什么：打开隐私政策页面。
-   * 方法作用：优先展示微信后台登记的隐私保护指引，不支持时打开本地隐私政策。
+   * 方法作用：打开项目内完整的《隐私政策》页面。
    * 为什么添加：用户需要在授权前了解个人信息的收集目的、用途和权利路径。
    */
   openPrivacyPolicy() {
-    if (wx.openPrivacyContract) {
-      wx.openPrivacyContract({
-        fail: () => wx.navigateTo({ url: '/pages/legal/legal?type=privacy' })
-      });
-      return;
-    }
     wx.navigateTo({ url: '/pages/legal/legal?type=privacy' });
   },
 
