@@ -73,6 +73,17 @@ button[type='primary'][disabled] {
   opacity: 0.72;
 }
 
+button[loading]:not([disabled]) {
+  color: #ffffff !important;
+  background: #004165 !important;
+}
+
+button[type='primary'].button-hover {
+  color: #ffffff !important;
+  background: #004165 !important;
+  opacity: 0.9;
+}
+
 input,
 textarea {
   width: 100%;

@@ -76,11 +76,19 @@
 .authorization-check.disabled { color:#98a2b3; }
 .form-panel input[disabled] { color:#98a2b3; background:#eef1f3; }
 
-.privacy-mask { position:fixed; inset:0; z-index:30; display:flex; align-items:flex-end; background:rgba(15,23,42,.42); }
-.privacy-sheet { width:100%; box-sizing:border-box; padding:28rpx 28rpx calc(30rpx + env(safe-area-inset-bottom)); border-radius:18rpx 18rpx 0 0; background:#fff; box-shadow:0 -8rpx 28rpx rgba(0,65,101,.16); }
-.sheet-header { display:flex; align-items:center; justify-content:space-between; gap:18rpx; }
-.sheet-close { flex:none; margin:0; padding:0 20rpx; color:#667085; border:1rpx solid #c6d0d6; background:#fff; font-size:23rpx; }
-.sheet-close::after { border:0; }
-.privacy-sheet .privacy-description { margin-top:12rpx; }
-.privacy-sheet .legal-links { margin-top:14rpx; }
-.privacy-sheet .authorization-check { margin-top:20rpx; }
+.consent-section { margin-top:28rpx; padding:20rpx; border-top:1rpx solid #d8e0e5; background:#f8fafb; }
+.consent-links { display:flex; flex-wrap:wrap; align-items:center; gap:4rpx; color:#667085; font-size:23rpx; line-height:1.6; }
+.consent-links .text-link { display:inline; min-height:0; margin:0; padding:0; color:#772432; background:transparent; font-size:23rpx; line-height:1.6; }
+.consent-links .text-link::after { border:0; }
+.consent-section .authorization-check { display:flex; align-items:flex-start; gap:10rpx; margin-top:14rpx; color:#344054; font-size:24rpx; line-height:1.55; }
+.consent-section .authorization-check checkbox { flex:none; }
+.consent-section .authorization-check .text-link { display:inline; min-height:0; margin:0; padding:0; color:#772432; background:transparent; font-size:24rpx; line-height:1.55; }
+.consent-section .authorization-check .text-link::after { border:0; }
+.consent-section .terms-check { width:100%; box-sizing:border-box; flex-wrap:nowrap; align-items:flex-start; gap:10rpx; overflow:visible; white-space:normal; font-size:24rpx; line-height:1.55; }
+.consent-section .terms-check > checkbox { flex:none; margin-top:4rpx; }
+.consent-section .terms-copy { min-width:0; flex:1; display:flex; flex-wrap:wrap; align-items:flex-start; gap:0; overflow:hidden; font-size:24rpx; line-height:1.55; }
+.consent-section .terms-copy > text,
+.consent-section .terms-copy .text-link { flex:none; }
+.consent-section .terms-copy .text-link { width:auto; min-width:0; overflow:visible; margin:0; padding:0; font-size:24rpx; line-height:1.55; }
+.form-actions .save-button,
+.form-actions .button-hover { color:#fff; background:#004165; }

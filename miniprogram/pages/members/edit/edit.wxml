@@ -3,10 +3,10 @@
     <view class="readonly-field"><text>id</text><text>{{member._id}}</text></view>
     <view class="form-row"><text>中文名</text><input value="{{member.nameZh}}" data-field="nameZh" bindinput="handleInput" /></view>
     <view class="form-row"><text>英文名</text><input value="{{member.nameEn}}" data-field="nameEn" bindinput="handleInput" /></view>
-    <view class="form-row"><text>邮箱</text><input disabled="{{!privacyReady || !personalInfoAuthorized}}" value="{{member.email}}" data-field="email" bindinput="handleInput" /></view>
-    <view class="form-row"><text>电话号码</text><input type="number" maxlength="20" disabled="{{!privacyReady || !personalInfoAuthorized}}" value="{{member.phone}}" data-field="phone" bindinput="handleInput" /></view>
+    <view class="form-row"><text>邮箱</text><input value="{{member.email}}" data-field="email" bindinput="handleInput" /></view>
+    <view class="form-row"><text>电话号码</text><input type="number" maxlength="20" value="{{member.phone}}" data-field="phone" bindinput="handleInput" /></view>
     <view class="form-row"><text>加入头马时间</text><input value="{{member.joinedAt}}" data-field="joinedAt" bindinput="handleInput" /></view>
-    <view class="form-row"><text>生日</text><input disabled="{{!privacyReady || !personalInfoAuthorized}}" value="{{member.birthday}}" data-field="birthday" bindinput="handleInput" /></view>
+    <view class="form-row"><text>生日</text><input value="{{member.birthday}}" data-field="birthday" bindinput="handleInput" /></view>
     <view class="form-row"><text>路径中文名</text><input value="{{member.pathNameZh}}" data-field="pathNameZh" bindinput="handleInput" /></view>
     <view class="form-row"><text>路径英文名</text><input value="{{member.pathNameEn}}" data-field="pathNameEn" bindinput="handleInput" /></view>
     <view class="form-row"><text>教育进度</text><input value="{{member.educationProgress}}" data-field="educationProgress" bindinput="handleInput" /></view>
@@ -22,29 +22,13 @@
     <view class="form-row"><text>状态</text><picker range="{{statusLabels}}" value="{{statusIndex}}" bindchange="handleStatusChange"><view class="role-picker">{{statusLabels[statusIndex]}}</view></picker></view>
     <view class="form-row"><text>备注</text><textarea class="notes-input" value="{{member.notes}}" data-field="notes" bindinput="handleInput" /></view>
     <view class="readonly-field"><text>更新时间</text><text>{{formattedUpdatedAt}}</text></view>
+    <view class="consent-section">
+      <checkbox-group bindchange="handleTermsAgreement"><label class="authorization-check terms-check"><checkbox value="accepted" checked="{{termsAccepted}}" color="#772432" /><view class="terms-copy"><text>我已阅读并同意</text><button class="text-link" bindtap="openServiceAgreement">《用户协议》</button><text>和</text><button class="text-link" bindtap="openPrivacyPolicy">《隐私政策》</button></view></label></checkbox-group>
+      <checkbox-group bindchange="handlePersonalInfoAuthorization"><label class="authorization-check"><checkbox value="authorized" checked="{{personalInfoAuthorized}}" color="#772432" /><text>我确认已取得该会员本人对上述个人信息处理的授权</text></label></checkbox-group>
+    </view>
     <view class="button-row form-actions">
       <button bindtap="cancelEdit">取消</button>
-      <button type="primary" loading="{{saving}}" bindtap="saveMember">保存</button>
+      <button class="save-button" hover-class="button-hover" type="primary" bindtap="saveMember">{{saving ? '保存中...' : '保存'}}</button>
     </view>
-  </view>
-</view>
-<view wx:if="{{privacySheetVisible}}" class="privacy-mask" bindtap="closePrivacySheet">
-  <view class="privacy-sheet" catchtap="noop">
-    <view class="sheet-header">
-      <text class="privacy-title">个人信息授权</text>
-      <button class="sheet-close" size="mini" bindtap="closePrivacySheet">关闭</button>
-    </view>
-    <text class="privacy-description">电话、邮箱和生日仅用于会员管理、会议组织及议程联系信息。录入前请阅读相关规则，并确认已取得该会员本人授权。</text>
-    <view class="legal-links">
-      <button class="text-link" bindtap="openServiceAgreement">《用户服务协议》</button>
-      <button class="text-link" bindtap="openPrivacyPolicy">《隐私政策》</button>
-    </view>
-    <button class="privacy-agree-button" open-type="agreePrivacyAuthorization" bindagreeprivacyauthorization="handlePrivacyAgree">{{privacyNeeded ? '阅读并同意《隐私政策》' : '已同意《隐私政策》'}}</button>
-    <checkbox-group bindchange="handlePersonalInfoAuthorization">
-      <label class="authorization-check {{privacyReady ? '' : 'disabled'}}">
-        <checkbox value="authorized" checked="{{personalInfoAuthorized}}" disabled="{{!privacyReady}}" color="#772432" />
-        <text>我确认已取得该会员本人对上述个人信息处理的授权</text>
-      </label>
-    </checkbox-group>
   </view>
 </view>

@@ -134,6 +134,9 @@ async function main(event) {
       return common.ok({ record: await getMember(event.id) });
     }
     if (action === 'save') {
+      if (hasAuthorizedPersonalInfo(event.member) && event.agreementAccepted !== true) {
+        return common.fail('USER_AGREEMENT_REQUIRED', '保存电话、邮箱或生日之前必须同意用户服务协议和隐私政策');
+      }
       if (hasAuthorizedPersonalInfo(event.member) && event.personalInfoAuthorized !== true) {
         return common.fail('PERSONAL_INFO_AUTHORIZATION_REQUIRED', '保存电话、邮箱或生日之前必须取得会员本人授权');
       }

@@ -19,10 +19,7 @@ Page({
     isEdit: false,
     saving: false,
     formattedUpdatedAt: '',
-    privacyNeeded: false,
-    privacySheetVisible: true,
-    privacyReady: false,
-    privacyContractName: '《隐私政策》',
+    termsAccepted: false,
     personalInfoAuthorized: false,
     member: {
       birthday: '', competitionEligible: false, createdAt: '', educationAwards: '',
@@ -55,44 +52,9 @@ Page({
     const id = options && options.id ? options.id : '';
     wx.setNavigationBarTitle({ title: id ? '编辑会员' : '新增会员' });
     this.setData({ id, isEdit: Boolean(id) });
-    await this.checkPrivacyAuthorization();
     if (id) {
       await this.loadMember(id);
     }
-  },
-
-  /**
-   * 方法是什么：查询微信侧隐私协议授权状态。
-   * 方法作用：在展示个人信息输入框前确认当前用户是否已同意平台登记的隐私保护指引。
-   * 为什么添加：手机号、邮箱和生日只能在用户了解收集规则并完成授权后录入。
-   */
-  async checkPrivacyAuthorization() {
-    if (!wx.getPrivacySetting) {
-      this.setData({ privacyNeeded: false, privacyReady: true });
-      return;
-    }
-    await new Promise((resolve) => {
-      wx.getPrivacySetting({
-        success: (result) => {
-          this.setData({
-            privacyNeeded: Boolean(result.needAuthorization),
-            privacyReady: !result.needAuthorization,
-            privacyContractName: '《隐私政策》'
-          });
-        },
-        fail: () => this.setData({ privacyNeeded: true, privacyReady: false }),
-        complete: resolve
-      });
-    });
-  },
-
-  /**
-   * 方法是什么：处理微信隐私协议同意事件。
-   * 方法作用：在微信记录用户同意后开放本页的个人信息授权确认步骤。
-   * 为什么添加：平台要求开发者在处理个人信息前同步用户已阅读并同意隐私规则。
-   */
-  handlePrivacyAgree() {
-    this.setData({ privacyNeeded: false, privacyReady: true });
   },
 
   /**
@@ -105,20 +67,13 @@ Page({
   },
 
   /**
-   * 方法是什么：关闭隐私确认底部弹窗。
-   * 方法作用：收起授权提示，不阻挡用户继续使用非个人信息相关的页面功能。
-   * 为什么添加：隐私说明需要主动提示，但不能遮挡整个会员编辑页面。
+   * 方法是什么：切换当前用户的协议同意状态。
+   * 方法作用：记录当前操作用户是否明确同意《用户服务协议》和《隐私政策》。
+   * 为什么添加：平台审核要求在收集手机号等信息前取得当前用户的主动授权同意。
    */
-  closePrivacySheet() {
-    this.setData({ privacySheetVisible: false });
+  handleTermsAgreement(event) {
+    this.setData({ termsAccepted: (event.detail.value || []).includes('accepted') });
   },
-
-  /**
-   * 方法是什么：阻止底部弹窗内容区域的点击冒泡。
-   * 方法作用：点击协议文字、复选框或按钮时不误触发关闭弹窗。
-   * 为什么添加：底部弹窗需要支持内部交互，同时允许点击遮罩关闭。
-   */
-  noop() {},
 
   /**
    * 方法是什么：打开用户服务协议页面。
@@ -215,9 +170,13 @@ Page({
    * 为什么添加：编辑结果必须写回 Membership 集合。
    */
   async saveMember() {
+    if (!String(this.data.member.nameZh || '').trim() || !String(this.data.member.nameEn || '').trim()) {
+      wx.showToast({ title: '请填写中文名和英文名', icon: 'none' });
+      return;
+    }
     const hasPersonalInfo = ['phone', 'email', 'birthday'].some((field) => String(this.data.member[field] || '').trim());
-    if (hasPersonalInfo && (!this.data.privacyReady || !this.data.personalInfoAuthorized)) {
-      wx.showToast({ title: '请先完成个人信息授权确认', icon: 'none' });
+    if (!this.data.termsAccepted || !this.data.personalInfoAuthorized) {
+      wx.showToast({ title: '请先勾选两项授权确认', icon: 'none' });
       return;
     }
     this.setData({ saving: true });
@@ -225,7 +184,8 @@ Page({
       await cloud.callCloud('adminMemberships', {
         action: 'save',
         member: this.data.member,
-        personalInfoAuthorized: !hasPersonalInfo || this.data.privacyReady && this.data.personalInfoAuthorized
+        agreementAccepted: this.data.termsAccepted,
+        personalInfoAuthorized: this.data.personalInfoAuthorized
       });
       cloud.showSuccess('已保存');
       wx.navigateBack();
