@@ -23,7 +23,7 @@
     <view class="form-row"><text>备注</text><textarea class="notes-input" value="{{member.notes}}" data-field="notes" bindinput="handleInput" /></view>
     <view class="readonly-field"><text>更新时间</text><text>{{formattedUpdatedAt}}</text></view>
     <view class="consent-section">
-      <checkbox-group bindchange="handleTermsAgreement"><label class="authorization-check terms-check"><checkbox value="accepted" checked="{{termsAccepted}}" color="#772432" /><view class="terms-copy"><text>我已阅读并同意</text><button class="text-link" bindtap="openServiceAgreement">《用户协议》</button><text>和</text><button class="text-link" bindtap="openPrivacyPolicy">《隐私政策》</button></view></label></checkbox-group>
+      <checkbox-group bindchange="handleTermsAgreement"><label class="authorization-check terms-check"><checkbox value="accepted" checked="{{termsAccepted}}" color="#772432" /><view class="terms-copy"><text>我已阅读并同意</text><button class="text-link" bindtap="openServiceAgreement">《用户服务协议》</button><text>和</text><button class="text-link" bindtap="openPrivacyPolicy">《隐私政策》</button></view></label></checkbox-group>
       <checkbox-group bindchange="handlePersonalInfoAuthorization"><label class="authorization-check"><checkbox value="authorized" checked="{{personalInfoAuthorized}}" color="#772432" /><text>我确认已取得该会员本人对上述个人信息处理的授权</text></label></checkbox-group>
     </view>
     <view class="button-row form-actions">

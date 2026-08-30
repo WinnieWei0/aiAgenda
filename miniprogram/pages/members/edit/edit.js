@@ -86,10 +86,16 @@ Page({
 
   /**
    * 方法是什么：打开隐私政策页面。
-   * 方法作用：打开项目内完整的《隐私政策》页面。
-   * 为什么添加：用户需要在授权前了解个人信息的收集目的、用途和权利路径。
+   * 方法作用：优先调用微信官方入口打开公众平台配置的隐私保护指引。
+   * 为什么添加：隐私政策必须以微信公众平台当前 AppID 配置的正式内容为准。
    */
   openPrivacyPolicy() {
+    if (typeof wx.openPrivacyContract === 'function') {
+      wx.openPrivacyContract({
+        fail: () => wx.navigateTo({ url: '/pages/legal/legal?type=privacy' })
+      });
+      return;
+    }
     wx.navigateTo({ url: '/pages/legal/legal?type=privacy' });
   },
 
