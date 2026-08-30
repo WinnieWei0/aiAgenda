@@ -26,6 +26,7 @@ function createPerson(value) {
   const source = value || {};
   const sourceName = source.rawName || source.displayNameZh || source.displayNameEn || '';
   const rawName = /^(?:\[(?:太阳|玫瑰花?|庆祝|sun|rose)\]|太阳|玫瑰花?|sun|rose|[☀🌞🌹🥀\uFE0F])$/i.test(String(sourceName).trim()) ? '' : sourceName;
+  const hasName = Boolean(String(rawName).trim());
   return {
     rawName,
     memberId: source.memberId || '',
@@ -38,8 +39,8 @@ function createPerson(value) {
     pathNameEn: source.pathNameEn || '',
     officerTitleZh: source.officerTitleZh || '',
     officerTitleEn: source.officerTitleEn || '',
-    clubZh: source.clubZh === undefined ? '广州双语' : source.clubZh,
-    clubEn: source.clubEn === undefined ? 'Bilingual' : source.clubEn,
+    clubZh: source.clubZh === undefined ? (hasName ? '广州双语' : '') : source.clubZh,
+    clubEn: source.clubEn === undefined ? (hasName ? 'Bilingual' : '') : source.clubEn,
     inputMode: source.inputMode || (source.memberId || !rawName ? 'select' : 'input'),
     unresolved: Boolean(source.unresolved)
   };
@@ -115,7 +116,7 @@ function createEnglishLocale() {
       missionEn: 'Toastmasters International is a nonprofit educational organization that helps members improve communication and leadership skills and gain confidence and friendship through participation and practice.',
       missionZh: '',
       values: 'Integrity - Respect - Service - Excellence',
-      clubIntro: 'GZ Bilingual Toastmasters Club is the first club in South China named Bilingual. We help members strengthen the communication and leadership skills needed at work and in life.'
+      clubIntro: 'Guangzhou Bilingual TMC is the first bilingual club in South China; our club vision isto help members improve soft skills at workplace.Our slogan is From Bilingual to Professional!'
     },
     sidebar: { winners: [
       { label: 'Best Meeting Role', value: 'Derwin' },
@@ -134,7 +135,7 @@ function createEnglishLocale() {
       educationTitle: 'Toastmasters Education System',
       pathways: ['Dynamic Leadership', 'Engaging Humor', 'Motivational Strategies', 'Persuasive Influence', 'Presentation Mastery', 'Visionary Communication'],
       goal: 'Final Goal: Distinguished Toastmaster (DTM)',
-      achievements: ['The first Toastmasters club in Guangzhou named Bilingual', 'Select Distinguished Club 2010-2011', 'Distinguished Club 2013-2014', 'President’s Distinguished Club 2012-2013, 2015-2025', 'A cradle for District leaders', 'Beat the Clock Awards 2013, 2017', 'Smedley Awards 2014, 2016-2020, 2024'],
+      achievements: ['First Bilingual Toastmasters Club in GZ', 'Select Distinguished Club 2010-2011', 'Distinguished Club 2013-2014', 'President Distinguished Club 2012-2013, 2015-2025', 'Home Club of the Area Director', 'Beat the Clock Award 2013,2017 (May-June)', 'Smedley Award 2014, 2016-2020, 2024(Aug-Sep)'],
       meetingFlow: ['Opening and facilitator introductions', 'Table Topics', 'Prepared speeches', 'Speech evaluations', 'Facilitator reports', 'Awards and role booking'],
       benefits: ['Follow a proven learning path', 'Learn with members from diverse industries', 'Serve as a club or District officer', 'Receive feedback from mentors and experienced members', 'Learn to give feedback and mentor others', 'Join speech contests', 'Practice different meeting roles', 'Visit other Toastmasters clubs'],
       joining: 'New member interviews are normally held after the final meeting of each month. Contact the Vice President Membership in advance.\n\nRequirements:\na. Attend at least three bilingual meetings and take different roles in at least two meetings;\nb. Show a strong willingness to learn and participate;\nc. Pass the interview.',
@@ -295,7 +296,30 @@ function normalizeTemplate(templateValue) {
       page2: Object.assign({}, defaults.locales.en.page2, source.locales && source.locales.en && source.locales.en.page2 || {})
     }
   };
+  syncOfficerContacts(template);
   return template;
+}
+
+/**
+ * 方法是什么：同步模板第二页干事联系方式。
+ * 方法作用：以中文 locale 的干事记录为联系方式源，同时补齐顶层和英文 locale 的兼容数据。
+ * 为什么添加：模板编辑器、议程预览和 PDF 导出必须读取同一份最新联系人信息。
+ */
+function syncOfficerContacts(template) {
+  const zhOfficers = template.locales.zh.page2 && Array.isArray(template.locales.zh.page2.officers)
+    ? template.locales.zh.page2.officers
+    : [];
+  template.page2 = Object.assign({}, template.page2, { officers: cloneJson(zhOfficers) });
+  const enPage2 = template.locales.en.page2 || {};
+  const enOfficers = Array.isArray(enPage2.officers) ? enPage2.officers : [];
+  enPage2.officers = zhOfficers.map((officer, index) => Object.assign({}, enOfficers[index] || {}, {
+    memberId: officer.memberId || '',
+    name: officer.name || '',
+    phone: officer.phone || '',
+    wechat: officer.wechat || '',
+    role: (enOfficers[index] && enOfficers[index].role) || officer.role || ''
+  }));
+  template.locales.en.page2 = enPage2;
 }
 
 /**
@@ -329,9 +353,15 @@ function getRule(template, id) {
 function createPresidentPerson(template, language) {
   const localized = resolveTemplateLocale(template, language);
   const officers = localized.page2 && Array.isArray(localized.page2.officers) ? localized.page2.officers : [];
-  const president = officers.find((item) => String(item.role || '').includes('会长')) || {};
-  const name = String(president.name || '会长').split(/\s+/)[0];
-  return createPerson({ rawName: name, displayNameZh: name, clubZh: '广州双语', clubEn: 'Bilingual', inputMode: 'input' });
+  const fallbackOfficers = template.locales && template.locales.zh && template.locales.zh.page2 && template.locales.zh.page2.officers || [];
+  const president = officers.find((item) => String(item.role || '').includes('会长'))
+    || fallbackOfficers.find((item) => String(item.role || '').includes('会长'))
+    || {};
+  const fullName = String(president.name || '会长').trim();
+  const chineseName = (fullName.match(/[\u4e00-\u9fff]+/) || [])[0] || fullName;
+  const englishName = fullName.replace(/[\u4e00-\u9fff]+/g, '').trim() || fullName;
+  const name = language === 'en' ? englishName : chineseName;
+  return createPerson({ rawName: name, displayNameZh: chineseName, displayNameEn: englishName, clubZh: '广州双语', clubEn: 'Bilingual', inputMode: 'input' });
 }
 
 /**
@@ -916,6 +946,7 @@ module.exports = {
   normalizeLanguage,
   createDefaultTemplate,
   normalizeTemplate,
+  syncOfficerContacts,
   resolveTemplateLocale,
   getRule,
   createAgendaFromFacts,

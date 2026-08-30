@@ -11,6 +11,7 @@ const agendaUtil = require('../miniprogram/utils/agenda');
 const agendaQuery = require('../cloudfunctions/agendaQuery');
 const common = require('../cloudfunctions/common');
 const lookupOptions = require('../cloudfunctions/lookupOptions');
+const adminPathways = require('../cloudfunctions/adminPathways');
 const saveAgenda = require('../cloudfunctions/saveAgenda');
 const signupModel = require('../cloudfunctions/common/signup');
 const signupService = require('../cloudfunctions/signupService');
@@ -18,6 +19,7 @@ const exportAgendaPdf = require('../cloudfunctions/exportAgendaPdf');
 const adminMemberships = require('../cloudfunctions/adminMemberships');
 const membershipRoleMigration = require('../scripts/migrate-membership-roles');
 const memberSearch = require('../miniprogram/utils/member-search');
+const pathwaySearch = require('../miniprogram/utils/pathway-search');
 const memberFilter = require('../miniprogram/utils/member-filter');
 const signupView = require('../miniprogram/utils/signup-view');
 const membershipInvites = require('../cloudfunctions/membershipInvites');
@@ -216,6 +218,66 @@ function testPreparedSpeechRules() {
   agendaUtil.calculateAgenda(agenda, template);
   assert.strictEqual(evaluation.children.length, 1);
   assert.strictEqual(evaluation.children[0].person.rawName, '点评乙');
+}
+
+/**
+ * 方法是什么：测试 Pathways 编辑和搜索规则。
+ * 方法作用：确认项目要求不截断、隐藏等级仍能保存等级，以及中英文项目字段都可搜索。
+ * 为什么添加：Pathways 管理和备稿项目选择共享同一组基础字段，任一环节截断都会影响议程内容。
+ */
+function testPathwayEditingAndSearch() {
+  const longObjective = '项目要求'.repeat(80);
+  const payload = adminPathways.buildPathwayPayload({
+    code: 'L3P2',
+    fullLabelZh: '有效沟通',
+    fullLabelEn: 'Effective Communication',
+    objectiveZh: longObjective,
+    objectiveEn: 'Deliver an effective communication speech.'
+  });
+  assert.strictEqual(payload.objectiveZh, longObjective);
+  assert.strictEqual(payload.level, 'Level 3');
+  assert.ok(payload.searchText.includes(longObjective));
+  assert.strictEqual(adminPathways.levelFromCode('L4P1'), 'Level 4');
+  assert.strictEqual(adminPathways.levelFromCode('OTHER'), '');
+
+  const options = [
+    { code: 'L1P1', level: 'Level 1', fullLabelZh: '了解你的沟通风格', fullLabelEn: 'Know Your Communication Style' },
+    { code: 'L2P3', level: 'Level 2', fullLabelZh: '有效沟通', fullLabelEn: 'Effective Communication' },
+    { code: 'OTHER', fullLabelZh: '其他', fullLabelEn: 'Other', isOther: true }
+  ];
+  assert.deepStrictEqual(pathwaySearch.filterPathways(options, 'level 2').map((item) => item.code), ['L2P3']);
+  assert.deepStrictEqual(pathwaySearch.filterPathways(options, '沟通风格').map((item) => item.code), ['L1P1']);
+  assert.deepStrictEqual(pathwaySearch.filterPathways(options, 'EFFECTIVE').map((item) => item.code), ['L2P3']);
+  assert.strictEqual(pathwaySearch.pathwayKey(options[2]), 'OTHER');
+  const editMarkup = fs.readFileSync(path.join(__dirname, '../miniprogram/pages/pathways/edit/edit.wxml'), 'utf8');
+  assert.strictEqual(editMarkup.includes('等级'), false);
+  assert.ok(editMarkup.includes('maxlength="-1"'));
+}
+
+/**
+ * 方法是什么：测试空人员和模板会长默认值。
+ * 方法作用：确认新建议程清空待填写角色，同时按模板干事信息填入会长并支持中英文姓名。
+ * 为什么添加：默认人员值会同时影响编辑页校验、报名槽位和 PDF 导出显示。
+ */
+function testAgendaPersonDefaultsAndOfficerSync() {
+  const template = agendaUtil.createDefaultTemplate();
+  template.locales.zh.page2.officers[0] = { role: '会长 President', name: '韦文耐 Winnie Wei', phone: '13800000000', wechat: 'winnie' };
+  const chineseAgenda = agendaUtil.createAgendaFromFacts({}, template);
+  const signIn = chineseAgenda.sections.find((section) => section.id === 'signIn').row;
+  assert.ok(signIn.persons.every((person) => !person.rawName && !person.clubZh && !person.clubEn));
+  const chineseOpening = chineseAgenda.sections.find((section) => section.id === 'opening').children.find((row) => row.id === 'openingRemarks');
+  assert.strictEqual(chineseOpening.person.displayNameZh, '韦文耐');
+
+  const englishAgenda = agendaUtil.createAgendaFromFacts({ meetingInfo: { language: 'en' } }, template);
+  const englishOpening = englishAgenda.sections.find((section) => section.id === 'opening').children.find((row) => row.id === 'openingRemarks');
+  assert.strictEqual(englishOpening.person.displayNameEn, 'Winnie Wei');
+
+  const normalizedTemplate = agendaUtil.normalizeTemplate({
+    locales: { zh: { page2: { officers: [{ role: '会长 President', name: '新会长', phone: '13900000000', wechat: 'new-president' }] } } }
+  });
+  assert.strictEqual(normalizedTemplate.page2.officers[0].phone, '13900000000');
+  assert.strictEqual(normalizedTemplate.locales.en.page2.officers[0].wechat, 'new-president');
+  assert.strictEqual(normalizedTemplate.locales.en.page2.officers[0].name, '新会长');
 }
 
 function testSignupRoleSlots() {
@@ -955,6 +1017,8 @@ async function main() {
   const agenda = testRuleParser();
   testAgendaModel();
   testPreparedSpeechRules();
+  testPathwayEditingAndSearch();
+  testAgendaPersonDefaultsAndOfficerSync();
   testSignupRoleSlots();
   testSignupProfiles();
   testAgendaPreviewValidation();

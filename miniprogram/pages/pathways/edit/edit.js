@@ -13,6 +13,16 @@ function formatDateTime(value) {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
 }
 
+/**
+ * 方法是什么：从项目代码推导等级。
+ * 方法作用：在隐藏等级输入项后，为新项目补齐可搜索的等级字段。
+ * 为什么添加：Pathways 代码本身包含等级，新增项目不能因为隐藏字段而丢失等级信息。
+ */
+function levelFromCode(code) {
+  const match = String(code || '').trim().match(/^L(\d+)/i);
+  return match ? `Level ${match[1]}` : '';
+}
+
 Page({
   data: {
     id: '',
@@ -85,7 +95,11 @@ Page({
   async savePathway() {
     this.setData({ saving: true });
     try {
-      await cloud.callCloud('adminPathways', { action: 'save', pathway: this.data.pathway });
+      const pathway = Object.assign({}, this.data.pathway);
+      if (!String(pathway.level || '').trim()) {
+        pathway.level = levelFromCode(pathway.code);
+      }
+      await cloud.callCloud('adminPathways', { action: 'save', pathway });
       cloud.showSuccess('已保存');
       wx.navigateBack();
     } catch (error) {

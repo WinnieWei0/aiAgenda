@@ -1,4 +1,7 @@
 {
   "navigationBarTitleText": "编辑议程",
-  "usingComponents": { "member-selector": "/components/member-selector/member-selector" }
+  "usingComponents": {
+    "member-selector": "/components/member-selector/member-selector",
+    "pathway-selector": "/components/pathway-selector/pathway-selector"
+  }
 }

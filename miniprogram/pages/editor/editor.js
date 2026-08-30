@@ -10,6 +10,9 @@ Page({
     memberSelectorVisible: false,
     memberSelectorContext: null,
     memberSelectorSelectedId: '',
+    pathwaySelectorVisible: false,
+    pathwaySelectorContext: null,
+    pathwaySelectorSelectedCode: '',
     loading: true,
     saving: false,
     previewing: false,
@@ -525,6 +528,43 @@ Page({
   },
 
   /**
+   * 方法是什么：打开 Pathways 搜索选择器。
+   * 方法作用：记录备稿块位置和当前项目，让弹窗确认后能准确更新对应演讲。
+   * 为什么添加：原生 picker 无法同时搜索 level 和中英文项目标签。
+   */
+  openPathwaySelector(event) {
+    const dataset = Object.assign({}, event.currentTarget.dataset);
+    this.setData({
+      pathwaySelectorVisible: true,
+      pathwaySelectorContext: dataset,
+      pathwaySelectorSelectedCode: dataset.pathwayCode || ''
+    });
+  },
+
+  /**
+   * 方法是什么：关闭 Pathways 搜索选择器。
+   * 方法作用：清除本次选择上下文并恢复备稿编辑状态。
+   * 为什么添加：取消选择不能修改议程，也不能让上一次上下文残留到下一次打开。
+   */
+  closePathwaySelector() {
+    this.setData({ pathwaySelectorVisible: false, pathwaySelectorContext: null });
+  },
+
+  /**
+   * 方法是什么：确认 Pathways 项目选择。
+   * 方法作用：把弹窗返回的完整项目记录交给统一项目更新逻辑。
+   * 为什么添加：项目名称、目标描述和默认限时必须在一次确认操作中保持一致。
+   */
+  confirmPathwaySelector(event) {
+    const context = this.data.pathwaySelectorContext || {};
+    const pathway = event.detail && event.detail.pathway;
+    this.closePathwaySelector();
+    if (pathway) {
+      this.choosePathway({ detail: { pathway }, currentTarget: { dataset: context } });
+    }
+  },
+
+  /**
    * 方法是什么：选择正式会员。
    * 方法作用：写入会员 ID、中英文名并自动锁定广州双语俱乐部。
    * 为什么添加：下拉选择必须和手动输入产生可区分的数据来源。
@@ -590,11 +630,13 @@ Page({
   choosePathway(event) {
     const agenda = agendaUtil.cloneJson(this.data.agenda);
     const block = this.getRowTarget(agenda, event.currentTarget.dataset);
-    const option = this.data.pathwayOptions[Number(event.detail.value)];
-    if (!block || !option) {
+    const pathway = event.detail && event.detail.pathway
+      ? event.detail.pathway
+      : this.data.pathwayOptions[Number(event.detail.value)] && this.data.pathwayOptions[Number(event.detail.value)].pathway;
+    if (!block || !pathway) {
       return;
     }
-    block.pathway = agendaUtil.cloneJson(option.pathway);
+    block.pathway = agendaUtil.cloneJson(pathway);
     block.duration = agendaUtil.parsePathwayDuration(block.pathway.objectiveZh || block.pathway.fullLabelZh, this.data.template.settings.preparedFallbackDuration);
     this.setAgenda(agenda);
   },

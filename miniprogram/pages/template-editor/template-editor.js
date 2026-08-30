@@ -162,8 +162,14 @@ Page({
    */
   handleOfficerInput(event) {
     const template = agendaUtil.cloneJson(this.data.template);
-    const officer = template.locales[this.data.activeLocale].page2.officers[Number(event.currentTarget.dataset.index)];
-    officer[event.currentTarget.dataset.field] = event.detail.value;
+    const index = Number(event.currentTarget.dataset.index);
+    const field = event.currentTarget.dataset.field;
+    const value = event.detail.value;
+    ['zh', 'en'].forEach((localeKey) => {
+      const officer = template.locales[localeKey].page2.officers[index];
+      if (officer) officer[field] = value;
+    });
+    template.page2.officers[index][field] = value;
     this.setData({ template });
   },
 
@@ -177,14 +183,22 @@ Page({
     const option = this.data.memberOptions[index];
     if (!option) return;
     const template = agendaUtil.cloneJson(this.data.template);
-    const officer = template.locales.zh.page2.officers[Number(event.currentTarget.dataset.index)];
+    const officerIndex = Number(event.currentTarget.dataset.index);
+    const officer = template.locales.zh.page2.officers[officerIndex];
     if (!officer) return;
     const member = option.member;
-    officer.memberId = member._id;
-    officer.name = [member.nameZh, member.nameEn].filter(Boolean).join(' ') || member.nickName || '';
-    if (member.phone) officer.phone = member.phone;
+    const contact = {
+      memberId: member._id,
+      name: [member.nameZh, member.nameEn].filter(Boolean).join(' ') || member.nickName || '',
+      phone: member.phone || ''
+    };
+    ['zh', 'en'].forEach((localeKey) => {
+      const localeOfficer = template.locales[localeKey].page2.officers[officerIndex];
+      if (localeOfficer) Object.assign(localeOfficer, contact);
+    });
+    Object.assign(template.page2.officers[officerIndex], contact);
     const officerMemberIndexes = this.data.officerMemberIndexes.slice();
-    officerMemberIndexes[Number(event.currentTarget.dataset.index)] = index;
+    officerMemberIndexes[officerIndex] = index;
     this.setData({ template, officerMemberIndexes });
   },
 

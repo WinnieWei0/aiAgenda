@@ -1,0 +1,19 @@
+<view wx:if="{{visible}}" class="pathway-selector-mask" bindtap="cancel" catchtouchmove="noop">
+  <view class="pathway-selector-panel" catchtap="noop">
+    <view class="pathway-selector-header">
+      <button bindtap="cancel">取消</button>
+      <button class="confirm" disabled="{{!pendingKey}}" bindtap="confirm">确认</button>
+    </view>
+    <view class="pathway-search-wrap">
+      <input class="pathway-search" value="{{keyword}}" placeholder="搜索 code、level 或中英文标签" focus="{{visible}}" confirm-type="search" bindinput="handleSearch" />
+    </view>
+    <picker-view wx:if="{{filteredPathways.length}}" class="pathway-picker" value="{{pickerValue}}" indicator-class="pathway-picker-indicator" mask-style="background: transparent;" bindchange="handlePickerChange">
+      <picker-view-column>
+        <view wx:for="{{filteredPathways}}" wx:key="code" class="pathway-option">
+          <view class="pathway-option-labels"><text wx:if="{{item.fullLabelZh}}" class="pathway-zh">{{item.fullLabelZh}}</text><text wx:if="{{item.fullLabelEn}}" class="pathway-en">{{item.fullLabelEn}}</text></view>
+        </view>
+      </picker-view-column>
+    </picker-view>
+    <view wx:else class="pathway-empty">没有匹配的 Pathways 项目</view>
+  </view>
+</view>

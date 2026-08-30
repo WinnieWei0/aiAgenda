@@ -595,7 +595,7 @@ function drawSidebar(page, font, template, agenda, images, y, height, language) 
   drawText(page, font, template.fixedContent.clubIntro, x + 5, cursorY, { width: width - 10, height: 55, fontSize: 6.9, lineHeight: 8.6, align: 'center' });
   cursorY += 62;
   const qrData = [
-    ['membershipQr', language === 'en' ? 'VP Membership' : '会员副会长'],
+    ['membershipQr', language === 'en' ? 'Vice President of Membership' : '会员副会长'],
     ['officialQr', language === 'en' ? 'Official Account' : '公众号'],
     ['meetingGroupQr', language === 'en' ? 'Meeting Group' : '例会群']
   ];

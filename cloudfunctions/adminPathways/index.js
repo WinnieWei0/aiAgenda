@@ -17,6 +17,16 @@ function buildSearchText(pathway) {
 }
 
 /**
+ * 方法是什么：从 Pathways 代码补齐等级。
+ * 方法作用：当管理页面隐藏等级输入项时，仍为符合规范的代码保存标准等级名称。
+ * 为什么添加：新增项目必须能够按 Level 搜索，且不能要求管理员重复填写代码中已有的信息。
+ */
+function levelFromCode(code) {
+  const match = String(code || '').trim().match(/^L(\d+)/i);
+  return match ? `Level ${match[1]}` : '';
+}
+
+/**
  * 方法是什么：保存 Pathways 项目记录。
  * 方法作用：根据 `_id` 新增或更新项目代码、名称和目标说明。
  * 为什么添加：备稿项目描述要从数据库读取，管理员必须能修正和补充项目数据。
@@ -28,6 +38,9 @@ function buildPathwayPayload(pathway) {
   const payload = {};
   for (const field of PATHWAY_FIELDS) {
     payload[field] = pathway[field] === undefined || pathway[field] === null ? '' : pathway[field];
+  }
+  if (!String(payload.level || '').trim()) {
+    payload.level = levelFromCode(payload.code);
   }
   payload.searchText = [payload.code, payload.level, payload.fullLabelEn, payload.fullLabelZh, payload.objectiveEn, payload.objectiveZh]
     .filter(Boolean).join(' ').toLowerCase();
@@ -127,3 +140,5 @@ async function main(event) {
 }
 
 exports.main = main;
+exports.levelFromCode = levelFromCode;
+exports.buildPathwayPayload = buildPathwayPayload;
