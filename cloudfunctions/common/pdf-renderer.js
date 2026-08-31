@@ -388,7 +388,9 @@ function drawFirstPageHeader(page, font, template, agenda, images, language) {
     });
   });
   drawText(page, font, fixed.missionEn, PAGE.margin + 65, 156, { width: 410, height: 16, fontSize: 5.6, align: 'center' });
-  drawText(page, font, fixed.missionZh, PAGE.margin + 62, 173, { width: 416, height: 12, fontSize: 5.6, align: 'center' });
+  if (language !== 'en') {
+    drawText(page, font, fixed.missionZh, PAGE.margin + 62, 173, { width: 416, height: 12, fontSize: 5.6, align: 'center' });
+  }
   const info = agenda.meetingInfo || {};
   drawText(page, font, `No. ${info.meetingNo || ''}`, PAGE.margin + 4, 182, { width: 95, height: 10, fontSize: 7.2, bold: true });
   drawText(page, font, `${language === 'en' ? 'Date: ' : '日期：'}${info.date || ''}`, PAGE.margin + 150, 182, { width: 120, height: 10, fontSize: 7.2, bold: true });
@@ -764,25 +766,25 @@ function drawClubInfoPage(pdfDoc, font, template, images) {
   page.drawLine({ start: { x: rightX, y: topY(educationY + 95, 0) }, end: { x: rightX + rightW, y: topY(educationY + 95, 0) }, thickness: 0.6, color: BORDER });
   const half = rightW / 2;
   let y = educationY + 95;
-  drawPage2Cell(rightX, y, half, 13, language === 'en' ? 'Club Achievements' : '双语成就', { fill: '#d1d5db', align: 'center', fontSize: 7.4 });
-  drawPage2Cell(rightX + half, y, half, 13, language === 'en' ? 'Meeting Flow' : '会议流程', { fill: '#d1d5db', align: 'center', fontSize: 7.4 });
+  drawPage2Cell(rightX, y, half, 13, language === 'en' ? 'Bilingual Achievements' : '双语成就', { fill: '#d1d5db', align: 'center', fontSize: 7.4 });
+  drawPage2Cell(rightX + half, y, half, 13, language === 'en' ? 'Meeting Procedure' : '会议流程', { fill: '#d1d5db', align: 'center', fontSize: 7.4 });
   y += 13;
   const achievementsHeight = 72;
   const benefitsHeight = 105;
   drawPage2Cell(rightX, y, half, achievementsHeight, (template.page2.achievements || []).join('\n'), { align: 'center', fontSize: 7.4, lineHeight: 9.8, verticalAlign: 'middle' });
   drawPage2Cell(rightX + half, y, half, achievementsHeight, (template.page2.meetingFlow || []).join('\n'), { align: 'center', fontSize: 7.4, lineHeight: 10.2, verticalAlign: 'middle' });
   y += achievementsHeight;
-  drawPage2Cell(rightX, y, half, 13, language === 'en' ? 'What You Can Gain' : '我们在头马可以收获什么？', { fill: '#d1d5db', align: 'center', fontSize: 7.1 });
-  drawPage2Cell(rightX + half, y, half, 13, language === 'en' ? 'How to Join' : '如何加入我们', { fill: '#d1d5db', align: 'center', fontSize: 7.1 });
+  drawPage2Cell(rightX, y, half, 13, language === 'en' ? 'What can Iachieve in Toastmasters?' : '我们在头马可以收获什么？', { fill: '#d1d5db', align: 'center', fontSize: 7.1 });
+  drawPage2Cell(rightX + half, y, half, 13, language === 'en' ? 'How to Join Us' : '如何加入我们', { fill: '#d1d5db', align: 'center', fontSize: 7.1 });
   y += 13;
   drawPage2Cell(rightX, y, half, benefitsHeight, (template.page2.benefits || []).join('\n'), { align: 'center', fontSize: 7.2, lineHeight: 10.3, verticalAlign: 'middle' });
   drawPage2Cell(rightX + half, y, half, benefitsHeight, template.page2.joining, { fontSize: 6.9, lineHeight: 9.3, verticalAlign: 'middle' });
   y += benefitsHeight;
   const officerTop = y;
-  drawPage2Cell(rightX, y, rightW, 14, language === 'en' ? '2026 Club Officer Team' : '2026年（上）俱乐部干事 Club Officer Team', { fill: '#9bdcf6', align: 'center', fontSize: 7.5, bold: true });
+  drawPage2Cell(rightX, y, rightW, 14, '俱乐部干事 Club Officer Team', { fill: '#9bdcf6', align: 'center', fontSize: 7.5, bold: true });
   y += 14;
   const officerWidths = [rightW * 0.47, rightW * 0.25, rightW * 0.28];
-  (language === 'en' ? ['Officer', 'Phone', 'WeChat'] : ['干事 Officer', '电话 Phone', '微信 WeChat']).forEach((label, index) => {
+  (['干事 Officer', '电话 Phone', '微信 WeChat']).forEach((label, index) => {
     const x = rightX + officerWidths.slice(0, index).reduce((sum, value) => sum + value, 0);
     drawPage2Cell(x, y, officerWidths[index], 12, label, { fill: '#e2e8f0', align: index === 0 ? 'left' : 'center', fontSize: 6.4, paddingLeft: index === 0 ? 35 : 2.5 });
   });

@@ -106,17 +106,17 @@ function normalizeLanguage(value) {
 function createEnglishLocale() {
   return {
     fixedContent: {
-      clubTitle: 'GZ Bilingual Toastmasters Club',
-      clubSubtitle: 'A Professional Bilingual Platform for Diverse Growth and Sharing',
+      clubTitle: '广州双语国际演讲俱乐部  GZ Bilingual Toastmasters Club',
+      clubSubtitle: '专业的双语多元化成长分享平台',
       charter: 'Charter #01540850\nArea N1, Div.N, D118\nFounded in 2010',
-      meetingTime: 'Every Wednesday night 19:30 - 21:30',
-      venue: 'Room 1904-A, West Tower, Xingchen Building, 172 Huasui Road, Tianhe District, Guangzhou',
-      fees: 'Guest Ticket: RMB 29\nMembership Registration Fee: RMB 300\nMembership Renewal Due (6 months): RMB 720',
-      tabooTopics: 'Politics, Religion, Sex, Sales',
+      meetingTime: '每周三晚 19:30 - 21:30\nEvery Wednesday night 19:30 - 21:30',
+      venue: '广州市天河区珠江新城华穗路172号星辰大厦西塔1904-A室\nRoom 1904-A, West Tower, Xingchen Building, 172 Huasui Road, Tianhe District, Guangzhou',
+      fees: '宾客场地费 Guest Ticket: RMB 29\n会员注册费 Membership Registration Fee: RMB 300\n会员续费（六个月）Membership Renewal Due: RMB 720',
+      tabooTopics: '政治、宗教、性、销售\nPolitics, Religion, Sex, Sales',
       missionEn: 'Toastmasters International is a nonprofit educational organization that helps members improve communication and leadership skills and gain confidence and friendship through participation and practice.',
       missionZh: '',
       values: 'Integrity - Respect - Service - Excellence',
-      clubIntro: 'Guangzhou Bilingual TMC is the first bilingual club in South China; our club vision isto help members improve soft skills at workplace.Our slogan is From Bilingual to Professional!'
+      clubIntro: 'Guangzhou Bilingual TMC is the first bilingual club in South China; our club vision is to help members improve soft skills at workplace. Our slogan is From Bilingual to Professional!'
     },
     sidebar: { winners: [
       { label: 'Best Meeting Role', value: 'Derwin' },

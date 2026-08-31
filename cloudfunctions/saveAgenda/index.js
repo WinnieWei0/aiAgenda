@@ -12,7 +12,10 @@ const LEGACY_FIELDS = [
  */
 function buildAgendaPayload(agenda, template) {
   const normalized = common.agendaModel.normalizeAgenda(agenda, template || common.agendaModel.createDefaultTemplate());
-  normalized.items = common.agendaModel.flattenAgendaRows(normalized);
+  // sections 是当前唯一的流程来源；接龙解析产生的旧字段不再写入数据库。
+  ['rawText', 'items', 'participants', 'warnings', 'unresolvedNames', 'confidence', 'source'].forEach((field) => {
+    delete normalized[field];
+  });
   delete normalized._id;
   delete normalized.expiresAt;
   return normalized;

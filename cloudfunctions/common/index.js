@@ -307,10 +307,20 @@ async function saveAgendaTemplate(value) {
   }));
   template.updatedAt = nowIso();
   delete template._id;
+  // locales 是模板文案的唯一持久化来源，旧版顶层字段只在读取时由 normalizeTemplate 补回。
+  ['fixedContent', 'sidebar', 'page2', 'timerRules'].forEach((field) => {
+    delete template[field];
+  });
   const collection = await ensureCollection('agenda_templates');
   const existing = await collection.where({ templateId: agendaModel.TEMPLATE_ID }).limit(1).get();
   if (existing.data && existing.data.length) {
-    await collection.doc(existing.data[0]._id).update({ data: template });
+    const updateData = Object.assign({}, template, {
+      fixedContent: db.command.remove(),
+      sidebar: db.command.remove(),
+      page2: db.command.remove(),
+      timerRules: db.command.remove()
+    });
+    await collection.doc(existing.data[0]._id).update({ data: updateData });
     return Object.assign({}, template, { _id: existing.data[0]._id });
   }
   const added = await collection.add({ data: Object.assign({}, template, { createdAt: nowIso() }) });
