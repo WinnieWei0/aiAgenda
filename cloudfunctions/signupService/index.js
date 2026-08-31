@@ -93,8 +93,12 @@ async function response(db, record, openid) {
   const preparation = (record.agenda.sections || []).find((section) => section.id === 'preparation');
   const manager = preparation && preparation.row && preparation.row.person || {};
   const template = await common.getAgendaTemplate();
-  const locale = template.locales && template.locales[language] || {};
-  const templateVenue = locale.fixedContent && locale.fixedContent.venue || '';
+  const locales = template.locales || {};
+  const locale = locales[language] || {};
+  const localizedVenue = locale.fixedContent && locale.fixedContent.venue || '';
+  const zhVenue = locales.zh && locales.zh.fixedContent && locales.zh.fixedContent.venue || '';
+  const templateVenue = language === 'en'
+    ?zhVenue: localizedVenue;
   return { publicId: CURRENT_AGENDA_ID, agendaId: CURRENT_AGENDA_ID, meetingInfo: record.agenda.meetingInfo, language, templateVenue, meetingManagerName: language === 'en' ? manager.displayNameEn || manager.rawName || 'To be filled' : manager.displayNameZh || manager.rawName || '待填写', slots, remainingRoles: slots.filter((s) => !s.occupied).length, attendeeCount: people.size, people: Array.from(people.values()), myOpenid: openid };
 }
 
