@@ -32,8 +32,8 @@
           <view class="role-row {{slot.occupied ? 'claimed' : ''}}">
             <view class="role-copy"><view class="role-name-line"><text class="status-dot"></text><text class="role-name">{{slot.displayLabel || slot.label}}</text><text class="access-tag {{slot.isGuestRole ? 'guest-access-tag' : 'member-access-tag'}}">{{slot.isGuestRole ? 'Guest' : (data.language === 'en' ? 'Member' : '会员')}}</text></view></view>
             <button wx:if="{{!slot.occupied}}" class="claim-button" size="mini" data-slot-id="{{slot.id}}" bindtap="openSignup">{{data.language === 'en' ? 'Sign up' : '报名'}}</button>
-            <view wx:elif="{{slot.mine}}" class="claimed-actions"><text class="claimed-name">{{slot.person.displayNameZh || slot.person.rawName}}</text><button class="x-button" size="mini" data-id="{{slot.signupId}}" bindtap="cancelSignup">X</button></view>
-            <text wx:else class="claimed-name">{{slot.person.displayNameZh || slot.person.rawName}}</text>
+            <view wx:elif="{{slot.mine}}" class="claimed-actions"><text class="claimed-name">{{data.language === 'en' ? (slot.person.displayNameEn || slot.person.rawName) : (slot.person.displayNameZh || slot.person.rawName)}}</text><button class="x-button" size="mini" data-id="{{slot.signupId}}" bindtap="cancelSignup">X</button></view>
+            <text wx:else class="claimed-name">{{data.language === 'en' ? (slot.person.displayNameEn || slot.person.rawName) : (slot.person.displayNameZh || slot.person.rawName)}}</text>
           </view>
         </block>
       </view>
