@@ -517,7 +517,7 @@ function createAgendaFromFacts(factsValue, templateValue) {
       role: '',
       evaluator: ''
     },
-    assets: { meetingGroupQr: template.assets.meetingGroupQr },
+    assets: { meetingGroupQr: '' },
     autoModules: {}
   };
   if (normalizeLanguage(agenda.meetingInfo.language) === 'en') {
@@ -735,7 +735,7 @@ function normalizeAgenda(value, templateValue) {
   const agenda = cloneJson(value);
   agenda.templateId = agenda.templateId || template.templateId;
   agenda.meetingInfo = Object.assign({}, createAgendaFromFacts({}, template).meetingInfo, agenda.meetingInfo || {});
-  agenda.assets = Object.assign({ meetingGroupQr: template.assets.meetingGroupQr }, agenda.assets || {});
+  agenda.assets = Object.assign({ meetingGroupQr: '' }, agenda.assets || {});
   agenda.bestAwards = Object.assign({ preparedSpeech: '', tableTopics: '', role: '', evaluator: '' }, agenda.bestAwards || {});
   agenda.autoModules = Object.assign({}, agenda.autoModules || {});
   agenda.warnings = Array.isArray(agenda.warnings) ? agenda.warnings : [];

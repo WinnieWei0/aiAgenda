@@ -453,12 +453,15 @@ function drawAgendaHeader(page, font, y, language, drawRightBoundaryValue) {
  * 方法作用：按节点类型输出标题、项目描述、限时、人员和俱乐部。
  * 为什么添加：预览解析出的连续行必须在 PDF 中保持相同顺序和内容。
  */
-function drawAgendaRow(page, font, row, table, y, language, forcedHeight) {
+function drawAgendaRow(page, font, row, table, y, language, forcedHeight, layoutScaleValue) {
   const height = forcedHeight || getAgendaRowHeight(row, language);
+  const layoutScale = Number(layoutScaleValue) > 0 ? Number(layoutScaleValue) : 1;
   const tableWidth = table.widths.reduce((total, width) => total + width, 0);
   if (row.type === 'workshopTopic') {
     drawCell(page, font, table.x, y, tableWidth, height, row.topic || row.titleZh || '', {
-      fill: '#f3f6f8', border: false, fontSize: 7.2, lineHeight: 8, paddingLeft: 4, verticalAlign: 'middle'
+      fill: '#d8d8d8', border: false, fontSize: 7.2 * layoutScale, lineHeight: 8 * layoutScale,
+      paddingLeft: table.widths[0] + 2.5 * layoutScale, paddingRight: 2.5 * layoutScale,
+      verticalAlign: 'middle'
     });
     page.drawLine({ start: { x: table.x, y: topY(y + height, 0) }, end: { x: table.x + tableWidth, y: topY(y + height, 0) }, thickness: 0.25, color: BORDER });
     return height;
@@ -476,12 +479,13 @@ function drawAgendaRow(page, font, row, table, y, language, forcedHeight) {
   }
   const values = [row.startTime || '', title, duration, getRowPersonName(row, language), row.id === 'topicNote' ? '' : getRowClub(row, language)];
   if (row.type === 'preparedSpeechBlock') {
-    const backgroundOverlap = row.firstPreparedSpeech ? 0 : 0.6;
+    const backgroundOverlap = row.firstPreparedSpeech ? 0 : 0.6 * layoutScale;
+    const preparedTitleHeight = 10 * layoutScale;
     page.drawRectangle({
       x: table.x,
-      y: topY(y - backgroundOverlap, 10 + backgroundOverlap),
+      y: topY(y - backgroundOverlap, preparedTitleHeight + backgroundOverlap),
       width: tableWidth,
-      height: 10 + backgroundOverlap,
+      height: preparedTitleHeight + backgroundOverlap,
       color: hexToRgb('#d8d8d8'),
       borderWidth: 0
     });
@@ -495,7 +499,7 @@ function drawAgendaRow(page, font, row, table, y, language, forcedHeight) {
     });
   }
   let cursor = table.x;
-  const preparedTitleHeight = 10;
+  const preparedTitleHeight = 10 * layoutScale;
   const topicNoteMerged = language === 'en' && row.id === 'topicNote';
   values.forEach((value, index) => {
     const cellValue = topicNoteMerged && index === 1 ? '' : value;
@@ -503,11 +507,12 @@ function drawAgendaRow(page, font, row, table, y, language, forcedHeight) {
     drawCell(page, font, cursor, y, table.widths[index], cellHeight, cellValue, {
       fill,
       border: false,
-      fontSize: 7.2,
-      lineHeight: 8,
+      fontSize: 7.2 * layoutScale,
+      lineHeight: 8 * layoutScale,
       align: index === 2 ? 'right' : 'left',
       bold: row.isGroup,
-      paddingRight: index === 2 ? 10 : 2.5,
+      paddingLeft: 2.5 * layoutScale,
+      paddingRight: (index === 2 ? 10 : 2.5) * layoutScale,
       verticalAlign: 'middle'
     });
     cursor += table.widths[index];
@@ -517,30 +522,37 @@ function drawAgendaRow(page, font, row, table, y, language, forcedHeight) {
     const mergedWidth = table.widths.slice(1, 4).reduce((total, width) => total + width, 0);
     drawCell(page, font, mergedX, y, mergedWidth, height, title, {
       border: false,
-      fontSize: 7.2,
-      lineHeight: 8,
+      fontSize: 7.2 * layoutScale,
+      lineHeight: 8 * layoutScale,
+      paddingLeft: 2.5 * layoutScale,
+      paddingRight: 2.5 * layoutScale,
       verticalAlign: 'middle'
     });
   }
   if (row.type === 'preparedSpeechBlock' && projectName) {
     const projectX = table.x + table.widths[0];
     const projectWidth = table.widths.slice(1, 4).reduce((total, width) => total + width, 0);
-    drawCell(page, font, projectX, y + preparedTitleHeight, projectWidth, 9, projectName, {
+    const projectHeight = 9 * layoutScale;
+    drawCell(page, font, projectX, y + preparedTitleHeight, projectWidth, projectHeight, projectName, {
       border: false,
-      fontSize: 6.8,
-      lineHeight: 7.5,
+      fontSize: 6.8 * layoutScale,
+      lineHeight: 7.5 * layoutScale,
+      paddingLeft: 2.5 * layoutScale,
+      paddingRight: 2.5 * layoutScale,
       verticalAlign: 'middle'
     });
   }
   if (row.type === 'preparedSpeechBlock' && objective) {
-    const objectiveY = y + (projectName ? 19 : 10);
+    const objectiveY = y + (projectName ? 19 : 10) * layoutScale;
     const objectiveX = table.x + table.widths[0];
     const objectiveWidth = table.widths.slice(1, 4).reduce((total, width) => total + width, 0);
     drawCell(page, font, objectiveX, objectiveY, objectiveWidth, height - (objectiveY - y), objective, {
       fill,
       border: false,
-      fontSize: 7.2,
-      lineHeight: 8,
+      fontSize: 7.2 * layoutScale,
+      lineHeight: 8 * layoutScale,
+      paddingLeft: 2.5 * layoutScale,
+      paddingRight: 2.5 * layoutScale,
       align: 'left',
       verticalAlign: 'middle'
     });
@@ -624,8 +636,8 @@ function drawSidebar(page, font, template, agenda, images, y, height, language) 
  * 方法作用：在议程表下方输出绿卡、黄卡、红卡和鼓掌表格。
  * 为什么添加：计时提示是源模板第一页的固定使用信息。
  */
-function drawTimerRules(page, font, template, language) {
-  const titleY = 711;
+function drawTimerRules(page, font, template, language, titleYValue) {
+  const titleY = Number.isFinite(Number(titleYValue)) ? Number(titleYValue) : 711;
   drawText(page, font, language === 'en' ? 'Timing Rules (Please EFFECTIVELY Use Your LIMITED Stage Time)' : '计时规则（请有效利用你在台上有限的时间）', PAGE.margin, titleY - 1, { width: PAGE.width - PAGE.margin * 2, height: 11, fontSize: 8.2, align: 'center', bold: true });
   const rows = template.timerRules || [];
   const widths = [132, 91, 91, 91, 91];
@@ -648,9 +660,42 @@ function drawTimerRules(page, font, template, language) {
 }
 
 /**
- * 方法是什么：绘制第一页和议程续页。
- * 方法作用：在固定可用高度内绘制行，溢出时自动插入无裁切续页。
- * 为什么添加：备稿块可多次添加，不能通过压缩到不可读或覆盖计时区解决溢出。
+ * 方法是什么：计算第一页议程、计时规则和外框的纵向布局。
+ * 方法作用：短议程保持原版式，长议程先扩展到底部安全线，再统一压缩行内容。
+ * 为什么添加：动态坐标必须共用同一计算结果，避免会议结束、计时规则和外框相互覆盖。
+ */
+function calculateAgendaPageLayout(baseHeights, rowCount, timerRuleRows, contentTop) {
+  const defaultAgendaBottom = 697;
+  const timerGap = 14;
+  const timerRuleHeight = 11 + timerRuleRows * 11;
+  const framePadding = 5;
+  const maxFrameBottom = PAGE.height - PAGE.margin;
+  const maxTimerTitleY = maxFrameBottom - timerRuleHeight - framePadding;
+  const maxAgendaBottom = maxTimerTitleY - timerGap;
+  const totalBaseHeight = baseHeights.reduce((sum, height) => sum + height, 0);
+  const defaultAvailableHeight = defaultAgendaBottom - contentTop;
+  const maximumAvailableHeight = maxAgendaBottom - contentTop;
+  const layoutScale = totalBaseHeight > maximumAvailableHeight ? maximumAvailableHeight / totalBaseHeight : 1;
+  const agendaBottom = totalBaseHeight <= defaultAvailableHeight
+    ? defaultAgendaBottom
+    : Math.min(contentTop + totalBaseHeight * layoutScale, maxAgendaBottom);
+  const stretchPerRow = rowCount && totalBaseHeight <= defaultAvailableHeight
+    ? (defaultAvailableHeight - totalBaseHeight) / rowCount
+    : 0;
+  const timerTitleY = agendaBottom + timerGap;
+  return {
+    agendaBottom,
+    timerTitleY,
+    frameBottom: timerTitleY + timerRuleHeight + framePadding,
+    layoutScale,
+    stretchPerRow
+  };
+}
+
+/**
+ * 方法是什么：绘制单页议程并动态安排计时区。
+ * 方法作用：优先下移议程底部，空间不足时统一压缩全部流程行。
+ * 为什么添加：会议结束和计时规则必须保留在第一页完整外框内。
  */
 function drawAgendaPages(pdfDoc, font, template, agenda, images) {
   const language = agendaModel.normalizeLanguage(agenda.meetingInfo && agenda.meetingInfo.language);
@@ -668,36 +713,23 @@ function drawAgendaPages(pdfDoc, font, template, agenda, images) {
   });
   const firstPage = pdfDoc.addPage([PAGE.width, PAGE.height]);
   drawFirstPageHeader(firstPage, font, template, agenda, images, language);
-  let page = firstPage;
   const agendaTop = 195;
-  const agendaBottom = 697;
   let y = agendaTop;
-  let table = drawAgendaHeader(page, font, y, language, false);
+  const table = drawAgendaHeader(firstPage, font, y, language, false);
   y += table.height;
-  drawSidebar(firstPage, font, template, agenda, images, agendaTop, agendaBottom - agendaTop, language);
   const sharedBoundaryX = PAGE.margin + table.widths.reduce((sum, width) => sum + width, 0);
   const baseHeights = rows.map((row) => getAgendaRowHeight(row, language));
-  const availableFirstPageHeight = agendaBottom - y;
-  const totalBaseHeight = baseHeights.reduce((sum, height) => sum + height, 0);
-  const stretchPerRow = rows.length && totalBaseHeight <= availableFirstPageHeight
-    ? (availableFirstPageHeight - totalBaseHeight) / rows.length
-    : 0;
+  const layout = calculateAgendaPageLayout(baseHeights, rows.length, (template.timerRules || []).length, y);
+  const { agendaBottom, timerTitleY, frameBottom, layoutScale, stretchPerRow } = layout;
+  drawSidebar(firstPage, font, template, agenda, images, agendaTop, agendaBottom - agendaTop, language);
   for (let index = 0; index < rows.length; index += 1) {
-    const height = baseHeights[index] + stretchPerRow;
-    if (y + height > agendaBottom + 0.01) {
-      page = pdfDoc.addPage([PAGE.width, PAGE.height]);
-      drawText(page, font, `${template.fixedContent.clubTitle} - ${language === 'en' ? 'Agenda Continued' : '议程续页'}`, PAGE.margin, 22, { width: PAGE.width - PAGE.margin * 2, height: 18, fontSize: 11, align: 'center' });
-      y = 48;
-      table = drawAgendaHeader(page, font, y, language);
-      y += table.height;
-    }
-    y += drawAgendaRow(page, font, rows[index], table, y, language, height);
+    const height = baseHeights[index] * layoutScale + stretchPerRow;
+    y += drawAgendaRow(firstPage, font, rows[index], table, y, language, height, layoutScale);
   }
-  drawTimerRules(firstPage, font, template, language);
+  drawTimerRules(firstPage, font, template, language, timerTitleY);
   firstPage.drawLine({ start: { x: PAGE.margin, y: topY(agendaTop, 0) }, end: { x: PAGE.width - PAGE.margin, y: topY(agendaTop, 0) }, thickness: 0.25, color: BORDER });
   firstPage.drawLine({ start: { x: sharedBoundaryX, y: topY(agendaBottom, 0) }, end: { x: sharedBoundaryX, y: topY(agendaTop, 0) }, thickness: 0.25, color: BORDER });
-  firstPage.drawRectangle({ x: 0, y: 0, width: PAGE.width, height: 70, color: rgb(1, 1, 1), borderWidth: 0 });
-  drawFirstPageHeaderFrame(firstPage, 760);
+  drawFirstPageHeaderFrame(firstPage, frameBottom);
 }
 
 /**
@@ -825,8 +857,8 @@ function drawClubInfoPage(pdfDoc, font, template, images) {
 
 /**
  * 方法是什么：生成完整议程 PDF。
- * 方法作用：规范化 AgendaV2，绘制第一页、必要续页和固定俱乐部资料页。
- * 为什么添加：导出必须由当前全局模板驱动并确保任意备稿数量不会裁切。
+ * 方法作用：规范化 AgendaV2，绘制单页议程和固定俱乐部资料页。
+ * 为什么添加：导出必须由当前全局模板驱动，并通过动态压缩避免长流程分页或裁切。
  */
 async function renderAgendaPdf(agendaValue, language, templateValue) {
   const agendaLanguage = agendaModel.normalizeLanguage(language || agendaValue && agendaValue.meetingInfo && agendaValue.meetingInfo.language);
@@ -865,6 +897,7 @@ module.exports = {
   resolveSidebarWinners,
   drawSidebar,
   drawTimerRules,
+  calculateAgendaPageLayout,
   drawAgendaPages,
   drawClubInfoPage,
   renderAgendaPdf

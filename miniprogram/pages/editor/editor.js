@@ -200,9 +200,8 @@ Page({
     const preparation = agenda.sections.find((section) => section.id === 'preparation');
     const mmMemberIndex = preparation && preparation.row && preparation.row.person ? preparation.row.person.memberIndex : -1;
     const meetingGroupQr = agenda.assets && agenda.assets.meetingGroupQr || '';
-    const defaultMeetingGroupQr = this.data.template && this.data.template.assets && this.data.template.assets.meetingGroupQr || '';
     app.setCurrentAgenda(agenda);
-    this.setData({ agenda, mmMemberIndex, meetingGroupQrCustom: Boolean(meetingGroupQr && meetingGroupQr !== defaultMeetingGroupQr), addModuleOptions, addModuleLabels: addModuleOptions.map((item) => item.label) });
+    this.setData({ agenda, mmMemberIndex, meetingGroupQrCustom: Boolean(meetingGroupQr), addModuleOptions, addModuleLabels: addModuleOptions.map((item) => item.label) });
   },
 
   /**

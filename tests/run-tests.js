@@ -489,6 +489,10 @@ function testLocalizedTemplateAndAnchors() {
 function testDynamicAgendaModules() {
   const template = agendaUtil.createDefaultTemplate();
   let agenda = agendaUtil.createEmptyAgenda();
+  assert.strictEqual(agenda.assets.meetingGroupQr, '', '初始化议程不应保留模板默认二维码');
+  agenda.assets.meetingGroupQr = 'cloud://meeting-group-upload.png';
+  agenda = agendaUtil.normalizeAgenda(agenda, template);
+  assert.strictEqual(agenda.assets.meetingGroupQr, 'cloud://meeting-group-upload.png', '已上传的会议群二维码应继续保留');
   agenda.meetingInfo.language = 'en';
   agenda = agendaUtil.addDynamicModule(agenda, 'workshop');
   agenda = agendaUtil.addDynamicModule(agenda, 'freeTalk');
@@ -834,10 +838,11 @@ function testPdfAgendaLineStyle() {
   assert.strictEqual(pdfRenderer.formatPersonName({ displayNameZh: '外部来宾' }, 'zh'), '外部来宾');
   const rectangles = [];
   const lines = [];
+  const texts = [];
   const page = {
     drawRectangle(options) { rectangles.push(options); },
     drawLine(options) { lines.push(options); },
-    drawText() {}
+    drawText(text, options) { texts.push({ text, options }); }
   };
   const font = {
     widthOfTextAtSize(text, size) { return String(text).length * size; }
@@ -887,6 +892,16 @@ function testPdfAgendaLineStyle() {
   assert.strictEqual(rectangles.filter((rectangle) => rectangle.color !== undefined).length, 1, '备稿演讲只应在标题区域显示灰色背景');
   assert.strictEqual(rectangles.find((rectangle) => rectangle.color !== undefined).height, 10.6, '备稿演讲标题背景应向上覆盖潜在分隔线');
   assert.strictEqual(lines.filter((line) => line.start.y === line.end.y).length, 0, '备稿演讲标题上方不应绘制横线');
+
+  rectangles.length = 0;
+  lines.length = 0;
+  texts.length = 0;
+  pdfRenderer.drawAgendaRow(page, font, { id: 'workshop-topic', type: 'workshopTopic', topic: '工作坊主题' }, table, 128, 'zh', 11);
+  const workshopBackground = rectangles.find((rectangle) => rectangle.color !== undefined);
+  assert.ok(workshopBackground, '工作坊主题应显示整行灰色背景');
+  assert.strictEqual(workshopBackground.width, table.widths.reduce((sum, width) => sum + width, 0), '工作坊主题应横跨全部五列');
+  assert.deepStrictEqual(workshopBackground.color, pdfRenderer.hexToRgb('#d8d8d8'), '工作坊主题应使用备稿标题同款灰色');
+  assert.strictEqual(texts[0].options.x, table.x + table.widths[0] + 2.5, '工作坊主题文字应与第二列左边缘对齐');
 
   rectangles.length = 0;
   lines.length = 0;
@@ -996,9 +1011,9 @@ async function testRetireMember() {
 }
 
 /**
- * 方法是什么：测试超长议程 PDF 续页。
- * 方法作用：用八个备稿块验证渲染器会插入议程续页并保留最终资料页。
- * 为什么添加：会员可多次新增备稿，第一页溢出时绝不能裁切或覆盖计时区。
+ * 方法是什么：测试超长议程 PDF 单页压缩。
+ * 方法作用：用八个备稿块验证议程留在第一页，最终资料页仍固定为第二页。
+ * 为什么添加：长流程需要下移计时规则并压缩，而不能把会议结束拆到议程续页。
  */
 async function testPdfOverflow() {
   const template = agendaUtil.createDefaultTemplate();
@@ -1015,7 +1030,17 @@ async function testPdfOverflow() {
   const agenda = agendaUtil.createAgendaFromFacts({ preparedSpeeches }, template);
   const buffer = await pdfRenderer.renderAgendaPdf(agenda, 'zh', template);
   const document = await PDFDocument.load(buffer);
-  assert.ok(document.getPageCount() >= 3, '超长议程应生成至少一个续页');
+  assert.strictEqual(document.getPageCount(), 2, '超长议程应压缩在第一页并只保留固定资料页');
+  const shortLayout = pdfRenderer.calculateAgendaPageLayout([100], 1, 3, 208);
+  assert.strictEqual(shortLayout.agendaBottom, 697, '短议程应保持默认底部位置');
+  assert.strictEqual(shortLayout.timerTitleY, 711, '短议程计时规则应保持默认位置');
+  assert.strictEqual(shortLayout.layoutScale, 1, '短议程不应缩小字号和行高');
+  const expandedLayout = pdfRenderer.calculateAgendaPageLayout([500], 1, 3, 208);
+  assert.ok(expandedLayout.agendaBottom > 697, '较长议程应优先向下扩展');
+  assert.strictEqual(expandedLayout.layoutScale, 1, '页面仍有空间时不应压缩');
+  const compressedLayout = pdfRenderer.calculateAgendaPageLayout([800], 1, 3, 208);
+  assert.ok(compressedLayout.layoutScale < 1, '超长议程应统一压缩');
+  assert.ok(compressedLayout.frameBottom <= 841.89 - 26 + 0.01, '动态外框不得越过页面安全边距');
 }
 
 /**

@@ -5,6 +5,7 @@ const { spawnSync } = require('child_process');
 const ROOT = path.resolve(__dirname, '..');
 const CLOUD_DIR = path.join(ROOT, 'cloudfunctions');
 const PRUNE_ONLY = process.argv.includes('--prune-only');
+const REFRESH_ONLY = process.argv.includes('--refresh-only');
 
 /**
  * 方法是什么：查找所有包含 package.json 的云函数目录。
@@ -35,6 +36,11 @@ function findCloudFunctionDirs() {
 function installInDir(dir) {
   console.log(`安装依赖：${path.relative(ROOT, dir)}`);
   if (PRUNE_ONLY) {
+    pruneDeploymentDependencies(dir);
+    return;
+  }
+  if (REFRESH_ONLY) {
+    refreshLocalDependencies(dir);
     pruneDeploymentDependencies(dir);
     return;
   }
