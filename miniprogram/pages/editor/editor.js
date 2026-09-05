@@ -28,7 +28,8 @@ Page({
     validationErrors: [],
     validationRemaining: 0,
     signupData: null,
-    agendaGenerated: false
+    agendaGenerated: false,
+    meetingGroupQrCustom: false
   },
 
   /**
@@ -198,8 +199,10 @@ Page({
     const addModuleOptions = this.getAvailableModules(agenda);
     const preparation = agenda.sections.find((section) => section.id === 'preparation');
     const mmMemberIndex = preparation && preparation.row && preparation.row.person ? preparation.row.person.memberIndex : -1;
+    const meetingGroupQr = agenda.assets && agenda.assets.meetingGroupQr || '';
+    const defaultMeetingGroupQr = this.data.template && this.data.template.assets && this.data.template.assets.meetingGroupQr || '';
     app.setCurrentAgenda(agenda);
-    this.setData({ agenda, mmMemberIndex, addModuleOptions, addModuleLabels: addModuleOptions.map((item) => item.label) });
+    this.setData({ agenda, mmMemberIndex, meetingGroupQrCustom: Boolean(meetingGroupQr && meetingGroupQr !== defaultMeetingGroupQr), addModuleOptions, addModuleLabels: addModuleOptions.map((item) => item.label) });
   },
 
   /**
@@ -284,13 +287,17 @@ Page({
       });
     });
     const labels = {
+      tableTopics: '即兴演讲环节',
       icebreaker: '破冰',
       freeTalk: 'Free Talk',
       workshop: '工作坊',
       educationAward: '教育积分颁奖',
       memberInterview: '新会员面试'
     };
-    return Object.keys(agendaUtil.DYNAMIC_MODULES).filter((kind) => !existing.has(kind) && (kind !== 'freeTalk' || language === 'en')).map((kind) => ({ kind, label: labels[kind] }));
+    const tableTopics = agenda.sections.find((section) => section.id === 'tableTopics');
+    const options = Object.keys(agendaUtil.DYNAMIC_MODULES).filter((kind) => !existing.has(kind) && (kind !== 'freeTalk' || language === 'en')).map((kind) => ({ kind, label: labels[kind] }));
+    if (tableTopics && tableTopics.enabled === false) options.unshift({ kind: 'tableTopics', label: labels.tableTopics });
+    return options;
   },
 
   /**
@@ -723,6 +730,15 @@ Page({
     if (!section) {
       return;
     }
+    if (section.id === 'tableTopics') {
+      if (!(await this.confirmAndCancelSlots(['role:tableTopicsMaster', 'role:tableTopicsEvaluator'], '即兴演讲环节已有报名，删除后将同时取消主持人和点评师报名。确认删除吗？'))) return;
+      section.enabled = false;
+      (section.children || []).forEach((row) => {
+        if (row.id === 'topicExplanation' || row.id === 'topicSummary' || row.id === 'tableTopicsEvaluation') row.person = agendaUtil.createPerson({});
+      });
+      this.setAgenda(agenda);
+      return;
+    }
     if (dataset.childIndex !== undefined && dataset.childIndex !== '') {
       const child = section.children[Number(dataset.childIndex)];
       if (child && child.dynamic) {
@@ -737,8 +753,9 @@ Page({
   },
 
   async confirmAndCancelSlots(slotIds, message) {
-    if (!this.data.signupData || !this.data.agenda.signupPublicId) return true;
-    const occupied = (this.data.signupData.slots || []).filter((slot) => slotIds.includes(slot.id) && slot.occupied);
+    if (!this.data.agenda.signupPublicId) return true;
+    if (!this.data.signupData) await this.loadSignupData();
+    const occupied = (this.data.signupData && this.data.signupData.slots || []).filter((slot) => slotIds.includes(slot.id) && slot.occupied);
     if (!occupied.length) return true;
     const confirmed = await new Promise((resolve) => wx.showModal({ title: '确认删除', content: message, confirmColor: '#b91c1c', success: (res) => resolve(Boolean(res.confirm)), fail: () => resolve(false) }));
     if (!confirmed) return false;
@@ -830,6 +847,14 @@ Page({
     }
   },
 
+  handleWorkshopTopicInput(event) {
+    const agenda = agendaUtil.cloneJson(this.data.agenda);
+    const row = this.getRowTarget(agenda, event.currentTarget.dataset);
+    if (!row || row.moduleKind !== 'workshop' || !this.canEditRow(row, 'titleZh')) return;
+    row.topic = event.detail.value;
+    this.setAgenda(agenda);
+  },
+
   /**
    * 方法是什么：响应底部生成或保存按钮。
    * 方法作用：首次生成和后续保存共用议程保存流程，并由保存结果更新按钮状态。
@@ -906,13 +931,26 @@ Page({
         });
         return;
       }
-      const data = await cloud.callCloud('exportAgendaPdf', { agendaId: agenda._id });
+      await this.openPdfPreview(agenda._id);
+    } catch (error) {
+      cloud.showError(error);
+    } finally {
+      this.setData({ previewing: false });
+    }
+  },
+
+  async continuePreview() {
+    this.setData({ validationDialogVisible: false });
+    await this.openPdfPreview(this.data.agenda && this.data.agenda._id);
+  },
+
+  async openPdfPreview(agendaId) {
+    if (!agendaId) return;
+    this.setData({ previewing: true });
+    try {
+      const data = await cloud.callCloud('exportAgendaPdf', { agendaId });
       const download = await wx.cloud.downloadFile({ fileID: data.fileID });
-      await wx.openDocument({
-        filePath: download.tempFilePath,
-        fileType: 'pdf',
-        showMenu: true
-      });
+      await wx.openDocument({ filePath: download.tempFilePath, fileType: 'pdf', showMenu: true });
     } catch (error) {
       cloud.showError(error);
     } finally {

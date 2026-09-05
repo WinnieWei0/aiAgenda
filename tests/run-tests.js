@@ -293,6 +293,10 @@ function testSignupRoleSlots() {
   assert.ok(slots.some((slot) => slot.id === 'prepared:speech-two:evaluator'));
   assert.ok(slots.some((slot) => slot.roleKey === 'icebreaker'));
   assert.ok(slots.some((slot) => slot.roleKey === 'workshop'));
+  agenda.sections.find((section) => section.id === 'tableTopics').enabled = false;
+  const disabledSlots = signupModel.buildRoleSlots(agenda);
+  assert.strictEqual(disabledSlots.some((slot) => slot.id === 'role:tableTopicsMaster'), false, '禁用即兴演讲后不应生成主持人槽位');
+  assert.strictEqual(disabledSlots.some((slot) => slot.id === 'role:tableTopicsEvaluator'), false, '禁用即兴演讲后不应生成点评人槽位');
   assert.deepStrictEqual(signupModel.allowedPersonTypes('guestReception'), ['member', 'club', 'guest']);
   assert.deepStrictEqual(signupModel.allowedPersonTypes('ahCounter'), ['member', 'club', 'guest']);
   assert.deepStrictEqual(signupModel.allowedPersonTypes('photographer'), ['member', 'club', 'guest']);
@@ -502,6 +506,8 @@ function testDynamicAgendaModules() {
   assert.strictEqual(freeTalkRow.person.rawName, '');
   assert.strictEqual(freeTalkRow.person.clubEn, '');
   assert.strictEqual(agenda.sections.find((section) => section.moduleKind === 'workshop').row.duration, 30);
+  const workshop = agenda.sections.find((section) => section.moduleKind === 'workshop');
+  workshop.row.topic = '工作坊主题';
   assert.strictEqual(agenda.sections.find((section) => section.moduleKind === 'educationAward').row.duration, 10);
   const facilitator = agenda.sections.find((section) => section.id === 'facilitatorIntroduction');
   const photographer = facilitator.children.find((row) => row.id === 'photographer');
@@ -522,6 +528,7 @@ function testDynamicAgendaModules() {
   assert.strictEqual(freeTalk.startTime, '');
   assert.strictEqual(freeTalk.duration, 0);
   const flattened = agendaUtil.flattenAgendaRows(agenda);
+  assert.strictEqual(flattened.find((row) => row.type === 'workshopTopic').topic, '工作坊主题');
   assert.strictEqual(flattened.some((row) => row.moduleKind === 'freeTalk'), false);
   assert.strictEqual(flattened.some((row) => row.id === 'openingIcebreaker'), false);
   assert.strictEqual(flattened.some((row) => row.id === 'specialSession'), false);
@@ -529,6 +536,11 @@ function testDynamicAgendaModules() {
   assert.strictEqual(flattened.find((row) => row.id === 'vote').isGroup, true);
   assert.strictEqual(flattened.find((row) => row.moduleKind === 'educationAward').isGroup, true);
   assert.strictEqual(flattened.find((row) => row.moduleKind === 'memberInterview').isGroup, true);
+
+  agenda = agendaUtil.addDynamicModule(agenda, 'tableTopics');
+  const restoredTopics = agenda.sections.find((section) => section.id === 'tableTopics');
+  assert.strictEqual(restoredTopics.enabled, true);
+  assert.strictEqual(restoredTopics.children.find((row) => row.id === 'topicExplanation').person.rawName, '');
 }
 
 function testEnglishAgendaCompatibility() {

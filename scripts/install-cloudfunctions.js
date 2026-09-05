@@ -4,6 +4,7 @@ const { spawnSync } = require('child_process');
 
 const ROOT = path.resolve(__dirname, '..');
 const CLOUD_DIR = path.join(ROOT, 'cloudfunctions');
+const PRUNE_ONLY = process.argv.includes('--prune-only');
 
 /**
  * 方法是什么：查找所有包含 package.json 的云函数目录。
@@ -12,7 +13,7 @@ const CLOUD_DIR = path.join(ROOT, 'cloudfunctions');
  */
 function findCloudFunctionDirs() {
   const dirs = [];
-  const requested = new Set(process.argv.slice(2));
+  const requested = new Set(process.argv.slice(2).filter((value) => !value.startsWith('--')));
   const entries = fs.readdirSync(CLOUD_DIR, { withFileTypes: true });
   for (const entry of entries) {
     if (!entry.isDirectory()) {
@@ -33,6 +34,10 @@ function findCloudFunctionDirs() {
  */
 function installInDir(dir) {
   console.log(`安装依赖：${path.relative(ROOT, dir)}`);
+  if (PRUNE_ONLY) {
+    pruneDeploymentDependencies(dir);
+    return;
+  }
   const result = spawnSync('npm', ['install', '--install-links'], {
     cwd: dir,
     stdio: 'inherit',
@@ -48,6 +53,51 @@ function installInDir(dir) {
     }
   }
   refreshLocalDependencies(dir);
+  pruneDeploymentDependencies(dir);
+}
+
+/**
+ * 方法是什么：裁剪云函数依赖中的非运行文件。
+ * 方法作用：删除类型声明、源码映射、测试和文档，降低开发者工具上传包的文件数与体积。
+ * 为什么添加：开发者工具可能使用受限的 ZIP 请求上传，完整 npm 依赖会导致 request handler 失败。
+ */
+function pruneDeploymentDependencies(dir) {
+  const nodeModules = path.join(dir, 'node_modules');
+  if (!fs.existsSync(nodeModules)) {
+    return;
+  }
+  const removableDirectories = new Set(['test', 'tests', '__tests__', 'docs', 'doc', 'examples', 'example', 'coverage']);
+  const walk = (current) => {
+    for (const entry of fs.readdirSync(current, { withFileTypes: true })) {
+      const target = path.join(current, entry.name);
+      if (entry.isDirectory()) {
+        if (removableDirectories.has(entry.name.toLowerCase()) || target === path.join(nodeModules, '@types')) {
+          fs.rmSync(target, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 });
+        } else {
+          walk(target);
+        }
+      } else if (/\.(?:map|md|markdown|ts)$/i.test(entry.name) && !/\.d\.ts$/i.test(entry.name)) {
+        fs.rmSync(target, { force: true });
+      } else if (/\.d\.ts$/i.test(entry.name)) {
+        fs.rmSync(target, { force: true });
+      } else if (/^(?:licen[cs]e|changelog|changes|notice)(?:\..*)?$/i.test(entry.name) || entry.name === '.package-lock.json') {
+        fs.rmSync(target, { force: true });
+      }
+    }
+  };
+  walk(nodeModules);
+  const generatedDirectories = [
+    ['bson', 'dist'], ['bson', 'src'], ['bson', 'etc'],
+    ['protobufjs', 'dist'], ['protobufjs', 'scripts'],
+    ['ajv', 'dist'], ['ajv', 'scripts'],
+    ['psl', 'data'], ['psl', 'types']
+  ];
+  for (const segments of generatedDirectories) {
+    fs.rmSync(path.join(nodeModules, ...segments), { recursive: true, force: true, maxRetries: 5, retryDelay: 200 });
+  }
+  for (const fileName of ['psl.mjs', 'psl.umd.cjs']) {
+    fs.rmSync(path.join(nodeModules, 'psl', 'dist', fileName), { force: true });
+  }
 }
 
 /**

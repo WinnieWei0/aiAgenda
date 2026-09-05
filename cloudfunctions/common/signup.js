@@ -65,6 +65,7 @@ function personFromProfile(profile) {
 
 function visitRows(agenda, visitor) {
   (agenda.sections || []).forEach((section) => {
+    if (section.enabled === false) return;
     if (section.row) visitor(section.row, section);
     (section.children || []).forEach((row) => visitor(row, section));
   });

@@ -743,6 +743,7 @@ function normalizeAgenda(value, templateValue) {
     if (section.row) {
       section.row.person = createPerson(section.row.person);
       section.row.persons = Array.isArray(section.row.persons) ? section.row.persons.map(createPerson) : [];
+      if (section.moduleKind === 'workshop') section.row.topic = String(section.row.topic || '');
     }
     if (section.id === 'preparedSpeech') {
       section.children = (section.children || []).map((block, index) => createPreparedBlock(block, index, template));
@@ -833,6 +834,7 @@ function createDynamicRow(kind, index) {
     titleZh: spec.titleZh,
     titleEn: spec.titleEn,
     duration: spec.duration,
+    topic: kind === 'workshop' ? '' : undefined,
     person: createPerson({ clubZh: '', clubEn: '' }),
     persons: [],
     personMode: hasPerson ? 'editable' : 'none',
@@ -850,6 +852,16 @@ function createDynamicRow(kind, index) {
  */
 function addDynamicModule(agendaValue, kind) {
   const agenda = cloneJson(agendaValue);
+  if (kind === 'tableTopics') {
+    const section = agenda.sections.find((item) => item.id === 'tableTopics');
+    if (section) {
+      section.enabled = true;
+      (section.children || []).forEach((row) => {
+        if (row.id === 'topicExplanation' || row.id === 'topicSummary' || row.id === 'tableTopicsEvaluation') row.person = createPerson({});
+      });
+    }
+    return agenda;
+  }
   const spec = DYNAMIC_MODULES[kind];
   if (!spec) {
     return agenda;
@@ -923,6 +935,9 @@ function flattenAgendaRows(agendaValue) {
     if (section.type === 'row') {
       const isSectionHeading = section.id === 'vote' || section.dynamic === true;
       rows.push(Object.assign({}, section.row, { startTime: section.startTime, duration: section.duration, isGroup: isSectionHeading }));
+      if (section.moduleKind === 'workshop' && section.row.topic) {
+        rows.push({ id: `${section.id}-topic`, type: 'workshopTopic', titleZh: section.row.topic, titleEn: section.row.topic, topic: section.row.topic, startTime: '', duration: 0, isGroup: false, personMode: 'none' });
+      }
       return;
     }
     rows.push({ id: section.id, type: section.type, titleZh: section.titleZh, titleEn: section.titleEn, startTime: section.startTime, duration: section.duration, isGroup: true, personMode: 'none' });

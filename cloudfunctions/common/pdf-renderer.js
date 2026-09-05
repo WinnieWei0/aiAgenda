@@ -350,6 +350,10 @@ function getRowClub(row, language) {
  * 为什么添加：固定第一页必须尽量紧凑，同时保证项目描述可读且不重叠。
  */
 function getAgendaRowHeight(row, language) {
+  if (row.type === 'workshopTopic') {
+    const length = String(row.topic || row.titleZh || '').length;
+    return length > 70 ? 20 : length > 35 ? 15 : 11;
+  }
   if (row.type === 'preparedSpeechBlock') {
     const objective = row.pathway && (language === 'en' ? row.pathway.objectiveEn : row.pathway.objectiveZh) || '';
     return objective.length > 90 ? 38 : 31;
@@ -451,6 +455,14 @@ function drawAgendaHeader(page, font, y, language, drawRightBoundaryValue) {
  */
 function drawAgendaRow(page, font, row, table, y, language, forcedHeight) {
   const height = forcedHeight || getAgendaRowHeight(row, language);
+  const tableWidth = table.widths.reduce((total, width) => total + width, 0);
+  if (row.type === 'workshopTopic') {
+    drawCell(page, font, table.x, y, tableWidth, height, row.topic || row.titleZh || '', {
+      fill: '#f3f6f8', border: false, fontSize: 7.2, lineHeight: 8, paddingLeft: 4, verticalAlign: 'middle'
+    });
+    page.drawLine({ start: { x: table.x, y: topY(y + height, 0) }, end: { x: table.x + tableWidth, y: topY(y + height, 0) }, thickness: 0.25, color: BORDER });
+    return height;
+  }
   const fill = row.id === 'topicNote' ? '#d8d8d8' : '';
   const duration = row.duration ? `${row.duration} ${language === 'en' ? 'mins' : '分钟'}` : '';
   let title = getLocalizedRoleTitle(row, language);
@@ -463,7 +475,6 @@ function drawAgendaRow(page, font, row, table, y, language, forcedHeight) {
     objective = language === 'en' ? pathway.objectiveEn || pathway.objectiveZh : pathway.objectiveZh;
   }
   const values = [row.startTime || '', title, duration, getRowPersonName(row, language), row.id === 'topicNote' ? '' : getRowClub(row, language)];
-  const tableWidth = table.widths.reduce((total, width) => total + width, 0);
   if (row.type === 'preparedSpeechBlock') {
     const backgroundOverlap = row.firstPreparedSpeech ? 0 : 0.6;
     page.drawRectangle({

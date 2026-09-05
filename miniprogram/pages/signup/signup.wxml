@@ -47,7 +47,7 @@
       <view class="person-identity"><text class="person-name">{{item.name}}</text><text wx:if="{{item.personType === 'club' && item.club}}" class="club-tag">{{item.club}}</text><text wx:if="{{item.personType === 'guest'}}" class="club-tag">{{data.language === 'en' ? 'Guest' : '宾客'}}</text><text wx:if="{{item.personType === 'preset' && item.club && item.club !== '广州双语'}}" class="club-tag">{{item.club}}</text></view>
       <view wx:if="{{item.roles.length}}" class="person-role-labels"><text wx:for="{{item.roles}}" wx:for-item="role" wx:key="slotId" class="role-label">{{role.label}}</text></view>
       <button wx:elif="{{item.attendanceOnly && item.mine}}" class="x-button" size="mini" data-id="{{item.attendanceSignupId}}" bindtap="cancelSignup">X</button>
-      <text wx:else class="attendance-label">{{data.language === 'en' ? 'Attend Only' : '仅参会'}}</text>
+      <text wx:else class="attendance-label"></text>
     </view>
   </view>
 </view>

@@ -18,6 +18,7 @@
           <text class="section-title">{{section.type === 'row' ? section.row.displayTitle : section.displayTitle}}</text>
         </view>
         <text wx:if="{{section.type !== 'end' && section.duration}}" class="section-duration">{{section.duration}} 分钟</text>
+        <button wx:if="{{section.id === 'tableTopics'}}" class="section-delete" size="mini" type="warn" data-section-index="{{sectionIndex}}" bindtap="deleteDynamicModule">删除</button>
       </view>
 
       <view wx:if="{{section.type === 'row'}}" class="agenda-row single-row">
@@ -30,6 +31,7 @@
         </block>
         <view wx:if="{{section.row.personMode === 'fixed' && section.row.person.rawName}}" class="fixed-person">{{agenda.meetingInfo.language === 'en' ? (section.row.person.displayNameEn || section.row.person.rawName) : (section.row.person.displayNameZh || section.row.person.rawName)}} · {{agenda.meetingInfo.language === 'en' ? section.row.person.clubEn : section.row.person.clubZh}}</view>
         <view wx:if="{{section.row.clubMode === 'fixed' && section.row.id !== 'break'}}" class="fixed-club">{{section.row.clubZh}}</view>
+        <label wx:if="{{section.moduleKind === 'workshop'}}" class="workshop-topic-field"><text>主题</text><input value="{{section.row.topic}}" placeholder="请输入工作坊主题" data-scope="section" data-section-index="{{sectionIndex}}" data-field="topic" bindinput="handleWorkshopTopicInput" /></label>
       </view>
       <view wx:if="{{section.id === 'break' || section.dynamic}}" class="module-controls">
         <view wx:if="{{section.id === 'break' || section.movable}}" class="module-actions"><button size="mini" disabled="{{!section.canMoveUp}}" data-section-index="{{sectionIndex}}" data-direction="-1" bindtap="moveAgendaSection">上移</button><button size="mini" disabled="{{!section.canMoveDown}}" data-section-index="{{sectionIndex}}" data-direction="1" bindtap="moveAgendaSection">下移</button></view>
@@ -72,7 +74,7 @@
 
   <view wx:if="{{addModuleOptions.length}}" class="panel add-module-panel"><text class="panel-title">新增模块</text><picker range="{{addModuleLabels}}" bindchange="addDynamicModule"><view class="add-module-picker">选择要新增的模块<text class="picker-arrow">⌄</text></view></picker></view>
 
-  <view class="panel qr-panel"><view class="qr-row"><text class="panel-title">例会群二维码</text><button class="icon-button" size="mini" bindtap="chooseMeetingGroupQr"><image class="button-icon small" src="/images/icons/upload.png" mode="aspectFit" />替换图片</button></view><button wx:if="{{isAdmin}}" class="reset-button" bindtap="resetMeeting">重置当前会议</button></view>
+  <view class="panel qr-panel"><view class="qr-row"><text class="panel-title">例会群二维码</text><button class="icon-button" size="mini" bindtap="chooseMeetingGroupQr"><image class="button-icon small" src="/images/icons/upload.png" mode="aspectFit" />{{meetingGroupQrCustom ? '替换图片' : '上传图片'}}</button></view><image wx:if="{{meetingGroupQrCustom}}" class="meeting-group-qr-preview" src="{{agenda.assets.meetingGroupQr}}" mode="aspectFit" /><button wx:if="{{isAdmin}}" class="reset-button" bindtap="resetMeeting">重置当前会议</button></view>
   <view class="bottom-actions"><button class="save-agenda-button icon-button" disabled="{{saving || previewing}}" bindtap="saveAgendaFromButton"><image class="button-icon" src="{{agendaGenerated ? '/images/icons/save-white.png' : '/images/icons/plus-white.png'}}" mode="aspectFit" />{{saving ? '保存中...' : (agendaGenerated ? '保存' : '生成议程表')}}</button><button class="preview-button icon-button" disabled="{{saving || previewing}}" bindtap="goPreview"><image class="button-icon" src="/images/icons/eye-white.png" mode="aspectFit" />{{previewing ? '生成中...' : '预览'}}</button></view>
 
   <view wx:if="{{validationDialogVisible}}" class="validation-mask">
@@ -82,7 +84,7 @@
         <text wx:for="{{validationErrors}}" wx:key="*this" class="validation-error">{{item}}</text>
         <text wx:if="{{validationRemaining > 0}}" class="validation-error validation-more">另有{{validationRemaining}}项未填写</text>
       </scroll-view>
-      <button class="validation-confirm" bindtap="dismissValidationDialog">返回填写</button>
+      <view class="validation-actions"><button class="validation-edit" bindtap="dismissValidationDialog">编辑</button><button class="validation-confirm" bindtap="continuePreview">预览</button></view>
     </view>
   </view>
 </view>
