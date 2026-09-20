@@ -341,7 +341,15 @@ function getRowClub(row, language) {
   if (row.type === 'preparedSpeechBlock') {
     return row.speaker && row.speaker[field] || '';
   }
-  return row.person && row.person[field] || '';
+  if (Array.isArray(row.persons) && row.persons.length) {
+    return row.persons.map((person) => person && person[field] || (language === 'en' ? 'Guest' : '宾客')).join(' && ');
+  }
+  const personClub = row.person && row.person[field] || '';
+  if (personClub) return personClub;
+  if (row.roleKey === 'guestReception' || row.roleKey === 'memberReception') {
+    return language === 'en' ? 'Guest' : '宾客';
+  }
+  return '';
 }
 
 /**

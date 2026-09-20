@@ -28,6 +28,17 @@ Page({
     validationErrors: [],
     validationRemaining: 0,
     signupData: null,
+    signupModalVisible: false,
+    signupSelectedSlot: null,
+    signupPersonType: 'member',
+    signupAllowMember: true,
+    signupAllowClub: true,
+    signupAllowGuest: true,
+    signupMemberIndex: -1,
+    signupName: '',
+    signupClub: '',
+    signupEditingSlotId: '',
+    signupSubmitting: false,
     agendaGenerated: false,
     meetingGroupQrCustom: false
   },
@@ -79,12 +90,17 @@ Page({
     }
   },
 
+  /**
+   * 方法是什么：读取当前会议报名槽位。
+   * 方法作用：让编辑接龙页显示报名状态，并在其他页面修改后刷新人员按钮。
+   * 为什么添加：报名页和编辑页必须使用同一份服务端槽位数据。
+   */
   async loadSignupData() {
     try {
       const signupData = await cloud.callCloud('signupService', { action: 'get' });
-      this.setData({ signupData });
+      this.setData({ signupData }, () => this.setAgenda(this.data.agenda));
     } catch (error) {
-      this.setData({ signupData: null });
+      this.setData({ signupData: null }, () => this.setAgenda(this.data.agenda));
     }
   },
 
@@ -211,6 +227,16 @@ Page({
    */
   decorateAgenda(agenda) {
     const language = agendaUtil.normalizeLanguage(agenda.meetingInfo && agenda.meetingInfo.language);
+    const signupSlots = new Map((this.data.signupData && this.data.signupData.slots || []).map((slot) => [slot.id, slot]));
+    const decorateSignupPerson = (person, slotId) => {
+      if (!person || !slotId) return;
+      const slot = signupSlots.get(slotId);
+      person.signupSlotId = slotId;
+      person.signupSlotOccupied = Boolean(slot && slot.occupied);
+      person.signupSlotSignupId = slot && slot.signupId || '';
+      person.signupSlotLabel = slot && slot.label || '';
+      person.signupSlotHasValue = person.signupSlotOccupied || Boolean(person.rawName || person.memberId || person.displayNameZh || person.displayNameEn);
+    };
     const decorateRow = (row) => {
       if (!row) {
         return;
@@ -239,8 +265,18 @@ Page({
       if (row.type === 'preparedSpeechBlock') {
         row.speaker = this.decoratePerson(row.speaker);
         row.evaluator = this.decoratePerson(row.evaluator);
+        decorateSignupPerson(row.speaker, `prepared:${row.id}:speaker`);
+        decorateSignupPerson(row.evaluator, `prepared:${row.id}:evaluator`);
         row.pathwayIndex = this.data.pathwayOptions.findIndex((option) => option.pathway._id === row.pathway._id || option.pathway.code === row.pathway.code);
       }
+      if (row.roleKey) decorateSignupPerson(row.person, `role:${row.roleKey}`);
+      if (row.dynamic && (row.moduleKind === 'icebreaker' || row.moduleKind === 'workshop')) {
+        decorateSignupPerson(row.person, `dynamic:${row.id}`);
+      }
+      if (row.id === 'signIn') {
+        (row.persons || []).forEach((person, index) => decorateSignupPerson(person, index === 1 ? 'role:memberReception' : 'role:guestReception'));
+      }
+      if (row.id === 'venueIntroduction') decorateSignupPerson(row.person, 'role:guestReception');
     };
     agenda.sections.forEach((section) => {
       section.displayTitle = section.titleZh || section.row && section.row.titleZh;
@@ -351,6 +387,54 @@ Page({
       return row.persons[Number(dataset.personIndex)];
     }
     return row.person;
+  },
+
+  /**
+   * 方法是什么：推导人员控件对应的报名槽位。
+   * 方法作用：把编辑器中的人员位置映射到 signupService 使用的稳定槽位 ID。
+   * 为什么添加：清空人员前必须同步释放报名页中的同一角色。
+   */
+  getPersonSignupSlotId(agenda, dataset) {
+    const section = agenda.sections[Number(dataset.sectionIndex)];
+    const row = this.getRowTarget(agenda, dataset);
+    if (!section || !row) return '';
+    if (section.id === 'venueIntroduction') return 'role:guestReception';
+    if (section.id === 'signIn' && dataset.personField === 'multi') {
+      return Number(dataset.personIndex) === 1 ? 'role:memberReception' : 'role:guestReception';
+    }
+    if (row.type === 'preparedSpeechBlock') {
+      return `prepared:${row.id}:${dataset.personField}`;
+    }
+    if (row.roleKey) return `role:${row.roleKey}`;
+    if (row.dynamic) return `dynamic:${row.id}`;
+    return '';
+  },
+
+  /**
+   * 方法是什么：清空议程人员。
+   * 方法作用：清除姓名、会员绑定和俱乐部，并同步取消对应报名槽位。
+   * 为什么添加：编辑器清空人员不能留下报名页的孤立占位记录。
+   */
+  async clearPerson(event) {
+    const dataset = event.currentTarget.dataset;
+    const agenda = agendaUtil.cloneJson(this.data.agenda);
+    const target = this.getPersonTarget(agenda, dataset);
+    if (!target) return;
+    const hasPerson = Boolean(target.rawName || target.memberId || target.clubZh || target.clubEn);
+    if (!hasPerson || !this.canEditRow(this.getRowTarget(agenda, dataset), 'person')) return;
+    const slotId = this.getPersonSignupSlotId(agenda, dataset);
+    if (slotId && agenda.signupPublicId && !(await this.confirmAndCancelSlots([slotId], '该人员已有报名，清空后将取消报名。确认继续吗？'))) return;
+    const empty = agendaUtil.createPerson({});
+    if (dataset.personField === 'speaker' || dataset.personField === 'evaluator') {
+      const row = this.getRowTarget(agenda, dataset);
+      row[dataset.personField] = empty;
+    } else if (dataset.personField === 'multi') {
+      const row = this.getRowTarget(agenda, dataset);
+      row.persons[Number(dataset.personIndex)] = empty;
+    } else {
+      this.getRowTarget(agenda, dataset).person = empty;
+    }
+    this.setAgenda(agenda);
   },
 
   /**
@@ -508,18 +592,36 @@ Page({
     this.setAgenda(agenda);
   },
 
+  /**
+   * 方法是什么：打开统一会员选择器。
+   * 方法作用：根据 MM、议程人员或角色报名上下文恢复当前选中会员。
+   * 为什么添加：编辑人员和角色报名共用同一个可搜索选择组件。
+   */
   openMemberSelector(event) {
     const dataset = Object.assign({}, event.currentTarget.dataset);
-    const selectedId = dataset.selectorKind === 'mm'
-      ? (this.data.memberOptions[this.data.mmMemberIndex] && this.data.memberOptions[this.data.mmMemberIndex].member._id || '')
-      : (dataset.memberId || '');
+    let selectedId = dataset.memberId || '';
+    if (dataset.selectorKind === 'mm') {
+      selectedId = this.data.memberOptions[this.data.mmMemberIndex] && this.data.memberOptions[this.data.mmMemberIndex].member._id || '';
+    } else if (dataset.selectorKind === 'signup') {
+      selectedId = this.data.signupMemberIndex >= 0 && this.data.memberOptions[this.data.signupMemberIndex] && this.data.memberOptions[this.data.signupMemberIndex].member._id || '';
+    }
     this.setData({ memberSelectorVisible: true, memberSelectorContext: dataset, memberSelectorSelectedId: selectedId });
   },
 
+  /**
+   * 方法是什么：关闭会员选择器。
+   * 方法作用：结束当前选择上下文而不修改人员或报名数据。
+   * 为什么添加：取消选择必须避免上下文残留到下一次打开。
+   */
   closeMemberSelector() {
     this.setData({ memberSelectorVisible: false, memberSelectorContext: null });
   },
 
+  /**
+   * 方法是什么：确认会员选择器结果。
+   * 方法作用：按上下文写入 MM、议程人员或报名弹窗的会员索引。
+   * 为什么添加：同一组件需要服务三种人员选择流程。
+   */
   confirmMemberSelector(event) {
     const member = event.detail.member;
     const index = this.data.memberOptions.findIndex((option) => option.member._id === member._id);
@@ -530,7 +632,133 @@ Page({
       this.chooseMeetingManager({ detail: { value: index } });
       return;
     }
+    if (context.selectorKind === 'signup') {
+      this.setData({ signupMemberIndex: index });
+      return;
+    }
     this.chooseMember({ detail: { value: index }, currentTarget: { dataset: context } });
+  },
+
+  /**
+   * 方法是什么：关闭角色报名弹窗。
+   * 方法作用：清除当前角色弹窗但保留服务端报名状态。
+   * 为什么添加：取消报名填写不能改变议程人员。
+   */
+  closeSignupModal() {
+    if (!this.data.signupSubmitting) this.setData({ signupModalVisible: false, signupSelectedSlot: null, signupEditingSlotId: '' });
+  },
+
+  /**
+   * 方法是什么：切换角色报名身份。
+   * 方法作用：控制会员、友会和宾客输入模式。
+   * 为什么添加：不同角色允许的报名身份由服务端槽位决定。
+   */
+  chooseSignupType(event) {
+    this.setData({ signupPersonType: event.currentTarget.dataset.type });
+  },
+
+  /**
+   * 方法是什么：输入临时报名姓名。
+   * 方法作用：保存友会或宾客报名弹窗中的姓名。
+   * 为什么添加：非会员报名不使用会员选择器。
+   */
+  inputSignupName(event) {
+    this.setData({ signupName: event.detail.value });
+  },
+
+  /**
+   * 方法是什么：输入报名俱乐部。
+   * 方法作用：保存友会报名使用的俱乐部字段。
+   * 为什么添加：俱乐部信息需要随报名槽位一起提交服务端。
+   */
+  inputSignupClub(event) {
+    this.setData({ signupClub: event.detail.value });
+  },
+
+  /**
+   * 方法是什么：确保当前会议存在报名会话。
+   * 方法作用：首次在编辑页报名时保存议程并创建公共报名槽位。
+   * 为什么添加：编辑页角色报名不能依赖用户先跳转报名页。
+   */
+  async ensureSignupData() {
+    if (this.data.signupData && Array.isArray(this.data.signupData.slots)) return this.data.signupData;
+    const signupData = await cloud.callCloud('signupService', { action: 'create' });
+    this.setData({ signupData, 'agenda.signupPublicId': signupData.publicId, 'agenda.signupSlots': signupData.slots });
+    this.setAgenda(this.data.agenda);
+    return signupData;
+  },
+
+  /**
+   * 方法是什么：打开或清空编辑页角色报名。
+   * 方法作用：未占用角色打开报名弹窗，已占用角色调用统一清空流程。
+   * 为什么添加：编辑接龙页需要与报名页保持同一报名状态和按钮语义。
+   */
+  async openRoleSignup(event) {
+    const slotId = event.currentTarget.dataset.slotId || this.getPersonSignupSlotId(this.data.agenda, event.currentTarget.dataset);
+    const editing = event.currentTarget.dataset.action === 'edit';
+    if (!slotId) return;
+    try {
+      const signupData = await this.ensureSignupData();
+      if (!signupData) return;
+      const slot = (signupData.slots || []).find((item) => item.id === slotId);
+      if (!slot) return;
+      if (slot.occupied && !editing) {
+        if (!(await this.confirmAndCancelSlots([slotId], '确认清空该角色报名并释放名额吗？'))) return;
+        await this.loadAgendaById(this.data.agenda._id);
+        await this.loadSignupData();
+        cloud.showSuccess('已清空');
+        return;
+      }
+      const allowed = slot.allowedPersonTypes || ['member', 'club'];
+      const memberIndex = this.data.memberOptions.findIndex((option) => option.member._id === (slot.person && slot.person.memberId));
+      this.setData({
+        signupModalVisible: true,
+        signupSelectedSlot: slot,
+        signupPersonType: allowed[0] || 'member',
+        signupAllowMember: allowed.includes('member'),
+        signupAllowClub: allowed.includes('club'),
+        signupAllowGuest: allowed.includes('guest'),
+        signupMemberIndex: memberIndex,
+        signupName: '',
+        signupClub: '',
+        signupEditingSlotId: editing ? slot.id : ''
+      });
+    } catch (error) {
+      cloud.showError(error);
+    }
+  },
+
+  /**
+   * 方法是什么：提交编辑页角色报名。
+   * 方法作用：使用 signupService 写入槽位并重新加载议程人员。
+   * 为什么添加：报名成功后编辑页必须立即显示最新姓名和俱乐部。
+   */
+  async submitRoleSignup(event) {
+    if (this.data.signupSubmitting) return;
+    const slot = this.data.signupSelectedSlot;
+    const detail = event.detail || {};
+    if (!slot) return;
+    this.setData({ signupSubmitting: true });
+    try {
+      if (this.data.signupEditingSlotId) {
+        await cloud.callCloud('signupService', { action: 'cancelSlot', slotId: this.data.signupEditingSlotId });
+      }
+      const signupData = await cloud.callCloud('signupService', {
+        action: 'signup',
+        slotId: slot.id,
+        personType: detail.personType,
+        memberId: detail.memberId || '',
+        name: detail.name || '',
+        club: detail.club || ''
+      });
+      this.setData({ signupData, signupModalVisible: false, signupSelectedSlot: null, signupEditingSlotId: '', signupSubmitting: false });
+      await this.loadAgendaById(this.data.agenda._id);
+      await this.loadSignupData();
+      cloud.showSuccess('报名成功');
+    } catch (error) {
+      this.setData({ signupSubmitting: false });
+      cloud.showError(error);
+    }
   },
 
   /**

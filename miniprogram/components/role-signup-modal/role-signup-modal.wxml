@@ -1,0 +1,15 @@
+<view wx:if="{{visible}}" class="signup-mask" bindtap="close">
+  <view class="signup-modal" catchtap="noop">
+    <text class="signup-modal-title">{{roleSlot.label || (language === 'en' ? 'Role sign-up' : '角色报名')}}</text>
+    <view class="signup-types">
+      <button wx:if="{{allowMember}}" disabled="{{submitting}}" class="{{personType === 'member' ? 'active' : ''}}" data-type="member" bindtap="chooseType">{{language === 'en' ? 'Member' : '双语会员'}}</button>
+      <button wx:if="{{allowClub}}" disabled="{{submitting}}" class="{{personType === 'club' ? 'active' : ''}}" data-type="club" bindtap="chooseType">{{language === 'en' ? 'Club' : '友会'}}</button>
+      <button wx:if="{{allowGuest}}" disabled="{{submitting}}" class="{{personType === 'guest' ? 'active' : ''}}" data-type="guest" bindtap="chooseType">{{language === 'en' ? 'Guest' : '宾客'}}</button>
+    </view>
+    <button wx:if="{{personType === 'member'}}" class="signup-member-picker" disabled="{{submitting}}" bindtap="openMemberSelector">{{memberLabel || (language === 'en' ? 'Select a member' : '请选择会员')}}</button>
+    <input wx:else disabled="{{submitting}}" value="{{name}}" placeholder="{{language === 'en' ? 'Name' : '姓名'}}" bindinput="inputName" />
+    <input wx:if="{{personType === 'club'}}" disabled="{{submitting}}" value="{{club}}" placeholder="{{language === 'en' ? 'Club' : '俱乐部'}}" bindinput="inputClub" />
+    <button class="signup-modal-submit" disabled="{{submitting}}" bindtap="confirm">{{submitting ? (language === 'en' ? 'Signing up...' : '报名中...') : (language === 'en' ? 'Confirm sign-up' : '确认报名')}}</button>
+  </view>
+</view>
+<member-selector visible="{{memberSelectorVisible}}" members="{{members}}" selected-id="{{memberId}}" bindcancel="closeMemberSelector" bindconfirm="confirmMemberSelector" />

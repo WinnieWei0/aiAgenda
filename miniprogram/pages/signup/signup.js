@@ -12,10 +12,10 @@ Page({
     this.loadMembers();
   },
   onShow() {
-    if (this.refreshOnShow) {
-      this.refreshOnShow = false;
+    if (this.hasShown) {
       this.load();
     }
+    this.hasShown = true;
   },
   onHide() { this.refreshOnShow = true; },
   onPullDownRefresh() { this.load().finally(() => wx.stopPullDownRefresh()); },
@@ -67,14 +67,10 @@ Page({
   inputName(event) { this.setData({ name: event.detail.value }); },
   inputClub(event) { this.setData({ club: event.detail.value }); },
   noop() {},
-  async submitSignup() {
+  async submitSignup(event) {
     if (this.data.submitting) return;
-    const member = this.data.members[this.data.memberIndex];
-    if (this.data.personType === 'member' && !member) {
-      wx.showToast({ title: '请选择会员', icon: 'none' });
-      return;
-    }
-    const payload = { action: 'signup', slotId: this.data.selectedSlot && this.data.selectedSlot.id || '', personType: this.data.personType, memberId: member && member._id || '', name: this.data.name, club: this.data.club };
+    const detail = event.detail || {};
+    const payload = { action: 'signup', slotId: this.data.selectedSlot && this.data.selectedSlot.id || '', personType: detail.personType, memberId: detail.memberId || '', name: detail.name || '', club: detail.club || '' };
     this.setData({ submitting: true });
     try {
       const data = await cloud.callCloud('signupService', payload);

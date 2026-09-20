@@ -12,9 +12,10 @@
 
   <view class="card meeting-card">
     <text class="card-title">{{data.language === 'en' ? 'Meeting Information' : '会议信息'}}</text>
-    <view class="info-row"><text class="info-label">{{data.language === 'en' ? 'Date' : '日期'}}</text><text class="info-value">{{data.meetingInfo.date || (data.language === 'en' ? 'To be filled' : '待填写')}}</text></view>
+    <view class="info-row"><text class="info-label">{{data.language === 'en' ? 'Date' : '日期'}}</text><text class="info-value">{{data.meetingInfo.date || (data.language === 'en' ? 'To be filled' : '待填写')}}{{data.signupDisplay.weekdayLabel ? ' ' + data.signupDisplay.weekdayLabel : ''}}</text></view>
     <view class="info-row"><text class="info-label">{{data.language === 'en' ? 'Time' : '时间'}}</text><text class="info-value">{{data.meetingInfo.startTime}}~{{data.meetingInfo.endTime}}</text></view>
-    <view class="info-row"><text class="info-label">{{data.language === 'en' ? 'Venue' : '地点'}}</text><text class="info-value">{{data.templateVenue || (data.language === 'en' ? 'To be filled' : '待填写')}}</text></view>
+    <view class="info-row"><text class="info-label">{{data.language === 'en' ? 'Venue' : '地点'}}</text><text class="info-value">{{data.templateVenue || (data.language === 'en' ? 'To be filled' : '待填写')}}{{data.signupDisplay.venueSuffix ? ' ' + data.signupDisplay.venueSuffix : ''}}</text></view>
+    <view class="info-row"><text class="info-label">{{data.language === 'en' ? 'Guest fee' : '费用'}}</text><text class="info-value">{{data.signupDisplay.guestFee}}</text></view>
     <view class="info-row"><text class="info-label">MM</text><text class="info-value">{{data.meetingManagerName}}</text></view>
   </view>
 
@@ -32,7 +33,7 @@
           <view class="role-row {{slot.occupied ? 'claimed' : ''}}">
             <view class="role-copy"><view class="role-name-line"><text class="status-dot"></text><text class="role-name">{{slot.displayLabel || slot.label}}</text><text class="access-tag {{slot.isGuestRole ? 'guest-access-tag' : 'member-access-tag'}}">{{slot.isGuestRole ? 'Guest' : (data.language === 'en' ? 'Member' : '会员')}}</text></view></view>
             <button wx:if="{{!slot.occupied}}" class="claim-button" size="mini" data-slot-id="{{slot.id}}" bindtap="openSignup">{{data.language === 'en' ? 'Sign up' : '报名'}}</button>
-            <view wx:elif="{{slot.mine}}" class="claimed-actions"><text class="claimed-name">{{data.language === 'en' ? (slot.person.displayNameEn || slot.person.rawName) : (slot.person.displayNameZh || slot.person.rawName)}}</text><button class="x-button" size="mini" data-id="{{slot.signupId}}" bindtap="cancelSignup">X</button></view>
+            <view wx:elif="{{slot.canCancel}}" class="claimed-actions"><text class="claimed-name">{{data.language === 'en' ? (slot.person.displayNameEn || slot.person.rawName) : (slot.person.displayNameZh || slot.person.rawName)}}</text><button class="x-button" size="mini" data-id="{{slot.signupId}}" bindtap="cancelSignup">X</button></view>
             <text wx:else class="claimed-name">{{data.language === 'en' ? (slot.person.displayNameEn || slot.person.rawName) : (slot.person.displayNameZh || slot.person.rawName)}}</text>
           </view>
         </block>
@@ -52,5 +53,4 @@
   </view>
 </view>
 
-<view wx:if="{{modal}}" class="mask" bindtap="closeModal"><view class="modal" catchtap="noop"><text class="modal-title">{{selectedSlot ? (selectedSlot.displayLabel || selectedSlot.label) : (data.language === 'en' ? 'Attend Only' : '仅参会')}}</text><view class="types"><button wx:if="{{allowMember}}" disabled="{{submitting}}" class="{{personType === 'member' ? 'active' : ''}}" data-type="member" bindtap="chooseType">{{data.language === 'en' ? 'Member' : '双语会员'}}</button><button wx:if="{{allowClub}}" disabled="{{submitting}}" class="{{personType === 'club' ? 'active' : ''}}" data-type="club" bindtap="chooseType">{{data.language === 'en' ? 'Club' : '友会'}}</button><button wx:if="{{allowGuest}}" disabled="{{submitting}}" class="{{personType === 'guest' ? 'active' : ''}}" data-type="guest" bindtap="chooseType">{{data.language === 'en' ? 'Guest' : '宾客'}}</button></view><button wx:if="{{personType === 'member'}}" class="picker member-select-button" disabled="{{submitting}}" bindtap="openMemberSelector">{{memberLabels[memberIndex] || (data.language === 'en' ? 'Select a member' : '请选择会员')}}</button><input wx:else disabled="{{submitting}}" value="{{name}}" placeholder="{{data.language === 'en' ? 'Name' : '姓名'}}" bindinput="inputName"/><input wx:if="{{personType === 'club'}}" disabled="{{submitting}}" value="{{club}}" placeholder="{{data.language === 'en' ? 'Club' : '俱乐部'}}" bindinput="inputClub"/><button class="submit" disabled="{{submitting}}" bindtap="submitSignup">{{submitting ? (data.language === 'en' ? 'Signing up...' : '报名中...') : (data.language === 'en' ? 'Confirm sign-up' : '确认报名')}}</button></view></view>
-<member-selector visible="{{memberSelectorVisible}}" members="{{members}}" bindcancel="closeMemberSelector" bindconfirm="confirmMemberSelector" />
+<role-signup-modal visible="{{modal}}" role-slot="{{selectedSlot}}" members="{{members}}" language="{{data.language}}" submitting="{{submitting}}" bindcancel="closeModal" bindconfirm="submitSignup" />

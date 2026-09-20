@@ -9,6 +9,25 @@ const EN_ROLE_LABELS = {
   preparedEvaluator: 'IE', icebreaker: 'Icebreaker', workshop: 'Workshop Facilitator'
 };
 
+const WEEKDAY_LABELS_ZH = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
+const WEEKDAY_LABELS_EN = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
+/**
+ * 方法是什么：生成报名页展示用的星期文案。
+ * 方法作用：优先使用会议已解析的星期，缺失时从日期补算。
+ * 为什么添加：报名页需要显示星期，但不能修改议程原始会议字段。
+ */
+function resolveWeekdayLabel(meetingInfo, language) {
+  const source = meetingInfo || {};
+  if (source.weekday) {
+    if (language !== 'en') return String(source.weekday);
+    const index = WEEKDAY_LABELS_ZH.indexOf(String(source.weekday));
+    return index >= 0 ? WEEKDAY_LABELS_EN[index] : String(source.weekday);
+  }
+  const date = new Date(`${String(source.date || '').slice(0, 10)}T00:00:00`);
+  return Number.isNaN(date.getTime()) ? '' : language === 'en' ? WEEKDAY_LABELS_EN[date.getDay()] : WEEKDAY_LABELS_ZH[date.getDay()];
+}
+
 function displayRoleLabel(roleKey, label, language) {
   if (common.signup && typeof common.signup.displayRoleLabel === 'function') {
     return common.signup.displayRoleLabel(roleKey, label, language);
@@ -56,13 +75,14 @@ async function response(db, record, openid) {
     }
   }
   const language = record.agenda.meetingInfo && record.agenda.meetingInfo.language === 'en' ? 'en' : 'zh';
+  const isAdmin = await common.isAdmin(openid);
   const people = new Map();
   list.forEach((item) => {
     const key = common.signup.signupPersonKey(item);
     const current = people.get(key) || { key, name: language === 'en' ? item.displayNameEn || item.name : item.name, memberId: item.memberId || '', personType: item.personType, club: language === 'en' ? item.clubEn || item.club : item.club, roles: [], attendanceOnly: false, mine: item.openid === openid };
     if (item.slotId) {
       const slot = (record.signupSlots || []).find((value) => value.id === item.slotId);
-      current.roles.push({ signupId: item._id, slotId: item.slotId, label: displayRoleLabel(slot && slot.roleKey, item.roleLabel, language), mine: current.mine });
+      current.roles.push({ signupId: item._id, slotId: item.slotId, label: displayRoleLabel(slot && slot.roleKey, item.roleLabel, language), mine: current.mine, canCancel: isAdmin || current.mine });
     }
     else { current.attendanceOnly = true; current.attendanceSignupId = item._id; }
     people.set(key, current);
@@ -75,6 +95,7 @@ async function response(db, record, openid) {
       signupId: signupItem && signupItem._id || slot.signupId || '',
       signupOpenid: signupItem && signupItem.openid || slot.signupOpenid || '',
       mine: Boolean(signupItem && signupItem.openid === openid),
+      canCancel: Boolean(signupItem && (isAdmin || signupItem.openid === openid)),
       person: signupItem ? common.signup.personFromProfile(signupItem) : slot.person,
       displayLabel: displayRoleLabel(slot.roleKey, slot.label, language),
       allowedPersonTypes: common.signup.allowedPersonTypes(slot.roleKey),
@@ -87,7 +108,7 @@ async function response(db, record, openid) {
     const name = language === 'en' ? slot.person.displayNameEn || slot.person.rawName || 'Organizer preset' : slot.person.displayNameZh || slot.person.rawName || '组织者预设';
     const key = `preset:${name}`;
     const current = people.get(key) || { key, name, personType: 'preset', club: language === 'en' ? slot.person.clubEn || '' : slot.person.clubZh || '', roles: [], attendanceOnly: false, mine: false };
-    current.roles.push({ slotId: slot.id, label: displayRoleLabel(slot.roleKey, slot.label, language), mine: false });
+    current.roles.push({ slotId: slot.id, label: displayRoleLabel(slot.roleKey, slot.label, language), mine: false, canCancel: false });
     people.set(key, current);
   });
   const preparation = (record.agenda.sections || []).find((section) => section.id === 'preparation');
@@ -98,8 +119,27 @@ async function response(db, record, openid) {
   const localizedVenue = locale.fixedContent && locale.fixedContent.venue || '';
   const zhVenue = locales.zh && locales.zh.fixedContent && locales.zh.fixedContent.venue || '';
   const templateVenue = language === 'en'
-    ?zhVenue: localizedVenue;
-  return { publicId: CURRENT_AGENDA_ID, agendaId: CURRENT_AGENDA_ID, meetingInfo: record.agenda.meetingInfo, language, templateVenue, meetingManagerName: language === 'en' ? manager.displayNameEn || manager.rawName || 'To be filled' : manager.displayNameZh || manager.rawName || '待填写', slots, remainingRoles: slots.filter((s) => !s.occupied).length, attendeeCount: people.size, people: Array.from(people.values()), myOpenid: openid };
+    ? localizedVenue
+    : zhVenue;
+  return {
+    publicId: CURRENT_AGENDA_ID,
+    agendaId: CURRENT_AGENDA_ID,
+    meetingInfo: record.agenda.meetingInfo,
+    language,
+    templateVenue,
+    signupDisplay: {
+      weekdayLabel: resolveWeekdayLabel(record.agenda.meetingInfo, language),
+      venueSuffix: language === 'en' ? 'Metro Line 5, Zhujiang New Town Exit B1' : '5号线珠江新城B1口',
+      guestFee: language === 'en' ? 'RMB 29' : '29元'
+    },
+    meetingManagerName: language === 'en' ? manager.displayNameEn || manager.rawName || 'To be filled' : manager.displayNameZh || manager.rawName || '待填写',
+    slots,
+    remainingRoles: slots.filter((s) => !s.occupied).length,
+    attendeeCount: people.size,
+    people: Array.from(people.values()),
+    myOpenid: openid,
+    isAdmin
+  };
 }
 
 async function createSession(db, openid) {
@@ -205,5 +245,5 @@ async function main(event) {
   } catch (error) { return common.handleError(error); }
 }
 
-module.exports = { profileFromEvent, canCreateSession, getCurrentAgenda, response, main };
+module.exports = { profileFromEvent, canCreateSession, getCurrentAgenda, response, resolveWeekdayLabel, main };
 exports.main = main;

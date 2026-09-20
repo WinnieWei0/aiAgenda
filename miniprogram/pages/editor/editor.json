@@ -2,6 +2,7 @@
   "navigationBarTitleText": "编辑议程",
   "usingComponents": {
     "member-selector": "/components/member-selector/member-selector",
+    "role-signup-modal": "/components/role-signup-modal/role-signup-modal",
     "pathway-selector": "/components/pathway-selector/pathway-selector"
   }
 }

@@ -119,13 +119,13 @@ async function main(event) {
     common.initCloud();
     const action = event && event.action ? event.action : 'list';
     const db = common.getDb();
-    await common.requireAdmin(common.getOpenid());
     if (action === 'list') {
       return common.ok(await listPathways(event));
     }
     if (action === 'get') {
       return common.ok({ record: await getPathway(event.id) });
     }
+    await common.requireAdmin(common.getOpenid());
     if (action === 'save') {
       return common.ok(await savePathway(event.pathway || {}));
     }

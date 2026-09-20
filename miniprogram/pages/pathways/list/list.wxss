@@ -20,3 +20,16 @@
 .card-actions {
   margin-top: 14rpx;
 }
+
+.card-actions button {
+  min-height: 48rpx;
+  padding: 0 14rpx;
+  font-size: 22rpx;
+  line-height: 48rpx;
+}
+
+.card-actions .button-icon.small {
+  width: 24rpx;
+  height: 24rpx;
+  margin-right: 5rpx;
+}

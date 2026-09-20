@@ -1,1 +1,1 @@
-{"navigationBarTitleText":"角色报名","enablePullDownRefresh":true,"usingComponents":{"member-selector":"/components/member-selector/member-selector"}}
+{"navigationBarTitleText":"角色报名","enablePullDownRefresh":true,"usingComponents":{"role-signup-modal":"/components/role-signup-modal/role-signup-modal"}}

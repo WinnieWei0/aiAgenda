@@ -1,4 +1,5 @@
 const cloud = require('../../../utils/cloud');
+const app = getApp();
 
 Page({
   data: {
@@ -6,7 +7,8 @@ Page({
     keyword: '',
     records: [],
     filteredRecords: [],
-    total: 0
+    total: 0,
+    isAdmin: false
   },
 
   /**
@@ -15,6 +17,8 @@ Page({
    * 为什么添加：用户点击路径列表后，需要立即看到可维护的项目清单。
    */
   async onLoad() {
+    await app.login();
+    this.setData({ isAdmin: app.isAdmin() });
     await this.loadRecords();
   },
 
@@ -24,6 +28,8 @@ Page({
    * 为什么添加：保存后的项目变更需要反映到列表中。
    */
   async onShow() {
+    const isAdmin = app.isAdmin();
+    if (isAdmin !== this.data.isAdmin) this.setData({ isAdmin });
     await this.loadRecords();
   },
 

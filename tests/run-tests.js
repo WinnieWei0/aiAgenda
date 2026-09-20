@@ -337,6 +337,18 @@ function testSignupProfiles() {
 }
 
 /**
+ * 方法是什么：测试报名页展示字段派生。
+ * 方法作用：验证星期补算不会修改会议原始字段，并覆盖已提供星期和日期补算两种情况。
+ * 为什么添加：报名页新增展示信息必须与议程会议数据保持隔离。
+ */
+function testSignupDisplayFields() {
+  assert.strictEqual(signupService.resolveWeekdayLabel({ weekday: '周三', date: '2026-09-20' }), '周三');
+  assert.strictEqual(signupService.resolveWeekdayLabel({ weekday: '周三' }, 'en'), 'Wednesday');
+  assert.strictEqual(signupService.resolveWeekdayLabel({ date: '2026-09-23' }), '周三');
+  assert.strictEqual(signupService.resolveWeekdayLabel({ date: '' }), '');
+}
+
+/**
  * 方法是什么：测试预览导出前的完整表单校验。
  * 方法作用：验证会议基础信息、流程人员、俱乐部和备稿项目缺失时均会阻止提交。
  * 为什么添加：草稿允许不完整，但进入预览前必须确保所有可见表单项都有值。
@@ -1058,6 +1070,7 @@ async function main() {
   testAgendaPersonDefaultsAndOfficerSync();
   testSignupRoleSlots();
   testSignupProfiles();
+  testSignupDisplayFields();
   testAgendaPreviewValidation();
   testTemplateAndLegacyUpgrade();
   testLocalizedTemplateAndAnchors();

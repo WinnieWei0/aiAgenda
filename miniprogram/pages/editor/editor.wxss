@@ -29,7 +29,7 @@
 .duration-input { width: 110rpx; height: 64rpx; padding: 0 10rpx; border: 1rpx solid #c6d0d6; border-radius:8rpx; text-align: right; }
 .note-row { padding: 14rpx; background: #e5e7eb; font-style: italic; }
 .person-editor { margin-top: 14rpx; }
-.person-line { display: grid; grid-template-columns: 100rpx minmax(0, 1fr) 112rpx; gap: 10rpx; align-items: center; justify-items: stretch; }
+.person-line { display: grid; grid-template-columns: 100rpx minmax(0, 1fr) 76rpx 100rpx; gap: 8rpx; align-items: center; justify-items: stretch; }
 .person-label { color: #667085; font-size: 24rpx; }
 .person-control, .club-input { box-sizing: border-box; width: 100%; min-width: 0; height: 64rpx; margin: 0; padding: 0 12rpx; border: 1rpx solid #c6d0d6; border-radius:8rpx; }
 .member-picker { box-sizing: border-box; width: 100%; min-width: 0; height: 64rpx; padding: 0 12rpx; overflow: hidden; border: 1rpx solid #c6d0d6; border-radius: 8rpx; background: #ffffff; }
@@ -40,7 +40,11 @@
 .person-control .picker-value { display: flex; box-sizing: border-box; min-height: 64rpx; align-items: center; justify-content: space-between; padding: 12rpx; border: 1rpx solid #c6d0d6; border-radius:8rpx; background: #ffffff; overflow: hidden; }
 .picker-label { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .picker-arrow { flex: 0 0 auto; margin-left: 12rpx; color: #667085; font-size: 30rpx; line-height: 1; }
-.switch-button { box-sizing: border-box; width: 112rpx; min-width: 112rpx; max-width: 112rpx; height: 64rpx; margin: 0; padding: 0 8rpx; font-size: 24rpx; line-height: 64rpx; white-space: nowrap; }
+.switch-button, .clear-person-button { box-sizing: border-box; height: 64rpx; margin: 0; padding: 0 4rpx; font-size: 14rpx; line-height: 64rpx; white-space: nowrap; }
+.clear-person-button { color: #b42318; border: 1rpx solid #e7b7b2; background: #fff; }
+.signup-empty-button { box-sizing: border-box; grid-column: 2 / 5; height: 64rpx; margin: 0; color: #004165; border: 1rpx solid #9bb8c5; background: #fff; font-size: 26rpx; line-height: 64rpx; }
+.signup-person-name { display: flex; min-width: 0; height: 64rpx; box-sizing: border-box; align-items: center; padding: 0 12rpx; overflow: hidden; color: #1f2933; border: 1rpx solid #c6d0d6; border-radius: 8rpx; background: #fff; white-space: nowrap; text-overflow: ellipsis; }
+.signup-clear-button { box-sizing: border-box; height: 64rpx; margin: 0; padding: 0 8rpx; color: #b42318; border: 1rpx solid #e7b7b2; background: #fff; font-size: 24rpx; line-height: 64rpx; white-space: nowrap; }
 .club-line { display: grid; grid-template-columns: 100rpx minmax(0, 1fr); gap: 10rpx; align-items: center; margin-top: 10rpx; }
 .club-label { color: #667085; font-size: 24rpx; }
 .club-input[disabled] { color: #475467; background: #f0f3f5; }
@@ -96,4 +100,4 @@
 .validation-edit { color: #667085; background: #ffffff; }
 .validation-confirm { color: #004165; background: #ffffff; }
 .validation-confirm::after { border: 0; }
-@media (max-width: 420px) { .field-grid { grid-template-columns: 1fr; } .field.full { grid-column: auto; } .person-line { grid-template-columns: 84rpx minmax(0, 1fr) 112rpx; gap: 8rpx; } .person-label { font-size: 22rpx; } .club-line { grid-template-columns: 84rpx minmax(0, 1fr); gap: 8rpx; } .club-label { font-size: 22rpx; } .bottom-actions { gap: 12rpx; padding-right: 18rpx; padding-left: 18rpx; } .preview-button { padding-right: 8rpx; padding-left: 8rpx; } }
+@media (max-width: 420px) { .field-grid { grid-template-columns: 1fr; } .field.full { grid-column: auto; } .person-line { grid-template-columns: 84rpx minmax(0, 1fr) 64rpx 88rpx; gap: 6rpx; } .person-label { font-size: 22rpx; } .switch-button, .clear-person-button { font-size: 14rpx; } .club-line { grid-template-columns: 84rpx minmax(0, 1fr); gap: 8rpx; } .club-label { font-size: 22rpx; } .bottom-actions { gap: 12rpx; padding-right: 18rpx; padding-left: 18rpx; } .preview-button { padding-right: 8rpx; padding-left: 8rpx; } }

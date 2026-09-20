@@ -1,4 +1,5 @@
 const cloud = require('../../../utils/cloud');
+const app = getApp();
 
 /**
  * 方法是什么：格式化路径记录时间。
@@ -28,6 +29,7 @@ Page({
     id: '',
     isEdit: false,
     saving: false,
+    isAdmin: false,
     formattedCreatedAt: '',
     formattedUpdatedAt: '',
     pathway: {
@@ -49,6 +51,8 @@ Page({
    * 为什么添加：同一表单需要支持路径数据 CRUD。
    */
   async onLoad(options) {
+    await app.login();
+    this.setData({ isAdmin: app.isAdmin() });
     const id = options && options.id ? options.id : '';
     this.setData({ id, isEdit: Boolean(id) });
     if (id) {
@@ -93,6 +97,10 @@ Page({
    * 为什么添加：编辑结果必须写回 Pathways 集合。
    */
   async savePathway() {
+    if (!this.data.isAdmin) {
+      wx.showToast({ title: '仅管理员可修改路径', icon: 'none' });
+      return;
+    }
     this.setData({ saving: true });
     try {
       const pathway = Object.assign({}, this.data.pathway);
