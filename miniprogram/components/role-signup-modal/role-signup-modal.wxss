@@ -1,8 +1,8 @@
 .signup-mask { position: fixed; top: 0; right: 0; bottom: 0; left: 0; z-index: 90; display: flex; align-items: flex-end; justify-content: center; background: rgba(0,0,0,.55); }
-.signup-modal { box-sizing: border-box; width: 100%; max-width: 680rpx; padding: 30rpx 30rpx calc(30rpx + env(safe-area-inset-bottom)); border-radius: 16rpx 16rpx 0 0; background: #fff; }
+.signup-modal { box-sizing: border-box; width: 100%; padding: 30rpx 30rpx calc(30rpx + env(safe-area-inset-bottom)); border-radius: 16rpx 16rpx 0 0; background: #fff; }
 .signup-modal-title { display: block; margin-bottom: 24rpx; color: #004165; font-size: 32rpx; font-weight: 700; text-align: left; }
 .signup-types { display: flex; gap: 12rpx; margin-bottom: 20rpx; }
-.signup-types button { flex: 1; box-sizing: border-box; min-width: 0; margin: 0; padding: 0 8rpx; color: #101828; border: 0; border-radius: 10rpx; background: #f8f9fa; font-size: 25rpx; }
+.signup-types button { flex: 1; box-sizing: border-box; min-width: 0; height: 72rpx; margin: 0; padding: 0 8rpx; color: #101828; border: 0; border-radius: 10rpx; background: #f8f9fa; font-size: 28rpx; line-height: 72rpx; }
 .signup-types button.active { color: #fff; background: #772432; }
-.signup-member-picker, .signup-modal input { box-sizing: border-box; width: 72%; min-height: 72rpx; margin: 0 auto 22rpx; padding: 14rpx 18rpx; border: 1rpx solid #c6d0d6; border-radius: 10rpx; background: #fff; text-align: center; }
-.signup-modal-submit { display: block; box-sizing: border-box; width: 72%; margin: 0 auto; color: #fff; border: 0; border-radius: 10rpx; background: #004165; font-size: 30rpx; font-weight: 700; }
+.signup-member-picker, .signup-modal input { box-sizing: border-box; width: 80%; min-height: 82rpx; margin: 0 auto 24rpx; padding: 14rpx 18rpx; border: 1rpx solid #c6d0d6; border-radius: 10rpx; background: #fff; text-align: center; font-size: 30rpx; }
+.signup-modal-submit { display: block; box-sizing: border-box; width: 80%; min-height: 82rpx; margin: 0 auto; color: #fff; border: 0; border-radius: 10rpx; background: #004165; font-size: 32rpx; font-weight: 700; }

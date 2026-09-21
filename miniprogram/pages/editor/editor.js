@@ -98,7 +98,8 @@ Page({
   async loadSignupData() {
     try {
       const signupData = await cloud.callCloud('signupService', { action: 'get' });
-      this.setData({ signupData }, () => this.setAgenda(this.data.agenda));
+      const agenda = this.reconcileAgendaWithSignupData(this.data.agenda, signupData);
+      this.setData({ signupData }, () => this.setAgenda(agenda));
     } catch (error) {
       this.setData({ signupData: null }, () => this.setAgenda(this.data.agenda));
     }
@@ -677,14 +678,13 @@ Page({
 
   /**
    * 方法是什么：确保当前会议存在报名会话。
-   * 方法作用：首次在编辑页报名时保存议程并创建公共报名槽位。
-   * 为什么添加：编辑页角色报名不能依赖用户先跳转报名页。
+   * 方法作用：从当前议程恢复可编辑的报名槽位快照。
+   * 为什么添加：编辑页报名和清空只能修改本地草稿，保存时才提交服务端。
    */
   async ensureSignupData() {
     if (this.data.signupData && Array.isArray(this.data.signupData.slots)) return this.data.signupData;
-    const signupData = await cloud.callCloud('signupService', { action: 'create' });
-    this.setData({ signupData, 'agenda.signupPublicId': signupData.publicId, 'agenda.signupSlots': signupData.slots });
-    this.setAgenda(this.data.agenda);
+    const signupData = { slots: (this.data.agenda.signupSlots || []).map((slot) => Object.assign({}, slot)) };
+    this.setData({ signupData });
     return signupData;
   },
 
@@ -703,10 +703,7 @@ Page({
       const slot = (signupData.slots || []).find((item) => item.id === slotId);
       if (!slot) return;
       if (slot.occupied && !editing) {
-        if (!(await this.confirmAndCancelSlots([slotId], '确认清空该角色报名并释放名额吗？'))) return;
-        await this.loadAgendaById(this.data.agenda._id);
-        await this.loadSignupData();
-        cloud.showSuccess('已清空');
+        this.clearLocalSignupSlot(slot.id);
         return;
       }
       const allowed = slot.allowedPersonTypes || ['member', 'club'];
@@ -721,7 +718,7 @@ Page({
         signupMemberIndex: memberIndex,
         signupName: '',
         signupClub: '',
-        signupEditingSlotId: editing ? slot.id : ''
+        signupEditingSlotId: editing && slot.signupId ? slot.id : ''
       });
     } catch (error) {
       cloud.showError(error);
@@ -730,8 +727,8 @@ Page({
 
   /**
    * 方法是什么：提交编辑页角色报名。
-   * 方法作用：使用 signupService 写入槽位并重新加载议程人员。
-   * 为什么添加：报名成功后编辑页必须立即显示最新姓名和俱乐部。
+   * 方法作用：把弹窗资料写入当前议程和本地槽位状态。
+   * 为什么添加：编辑页只有底部保存操作才允许同步数据库。
    */
   async submitRoleSignup(event) {
     if (this.data.signupSubmitting) return;
@@ -740,25 +737,67 @@ Page({
     if (!slot) return;
     this.setData({ signupSubmitting: true });
     try {
-      if (this.data.signupEditingSlotId) {
-        await cloud.callCloud('signupService', { action: 'cancelSlot', slotId: this.data.signupEditingSlotId });
-      }
-      const signupData = await cloud.callCloud('signupService', {
-        action: 'signup',
-        slotId: slot.id,
-        personType: detail.personType,
-        memberId: detail.memberId || '',
-        name: detail.name || '',
-        club: detail.club || ''
+      const agenda = this.applyLocalSignup(this.data.agenda, slot, detail);
+      const signupData = Object.assign({}, this.data.signupData || {}, {
+        slots: (this.data.signupData && this.data.signupData.slots || []).map((item) => item.id === slot.id ? Object.assign({}, item, { occupied: true, preset: true, signupId: '', person: this.personFromSignupDetail(detail) }) : item)
       });
+      agenda.signupSlots = signupData.slots;
+      this.setAgenda(agenda);
       this.setData({ signupData, signupModalVisible: false, signupSelectedSlot: null, signupEditingSlotId: '', signupSubmitting: false });
-      await this.loadAgendaById(this.data.agenda._id);
-      await this.loadSignupData();
-      cloud.showSuccess('报名成功');
     } catch (error) {
       this.setData({ signupSubmitting: false });
       cloud.showError(error);
     }
+  },
+
+  personFromSignupDetail(detail) {
+    const member = this.data.memberOptions.find((option) => option.member._id === detail.memberId);
+    const source = member && member.member;
+    const name = source ? (source.nameZh || source.nameEn || source.nickName || '') : (detail.name || '');
+    const club = source ? '广州双语' : (detail.club || (detail.personType === 'guest' && name ? '宾客' : ''));
+    return agendaUtil.createPerson({ rawName: name, memberId: source ? source._id : '', displayNameZh: source ? (source.nameZh || name) : name, displayNameEn: source ? (source.nameEn || source.nameZh || name) : name, clubZh: club, clubEn: source ? 'Guangzhou Bilingual' : club, inputMode: source ? 'select' : 'input' });
+  },
+
+  applyLocalSignup(agendaValue, slot, detail) {
+    const agenda = agendaUtil.cloneJson(agendaValue);
+    const person = this.personFromSignupDetail(detail);
+    const target = slot.target || {};
+    const visitRows = (visitor) => agenda.sections.forEach((section) => { if (section.row) visitor(section.row, section); (section.children || []).forEach((row) => visitor(row, section)); });
+    if (target.kind === 'multi') {
+      const section = agenda.sections.find((item) => item.id === target.sectionId);
+      if (section && section.row) section.row.persons[target.index] = person;
+      if (slot.roleKey === 'guestReception') { const venue = agenda.sections.find((item) => item.id === 'venueIntroduction'); if (venue && venue.row) venue.row.person = agendaUtil.cloneJson(person); }
+    } else if (target.kind === 'roleKey') visitRows((row) => { if (row.roleKey === target.roleKey) row.person = agendaUtil.cloneJson(person); });
+    else if (target.kind === 'prepared') { const section = agenda.sections.find((item) => item.id === 'preparedSpeech'); const block = section && (section.children || []).find((item) => item.id === target.blockId); if (block) block[target.field] = person; }
+    else if (target.kind === 'row') visitRows((row) => { if (row.id === target.rowId) row.person = agendaUtil.cloneJson(person); });
+    return agenda;
+  },
+
+  /**
+   * 方法是什么：用最新报名槽位同步编辑页人员。
+   * 方法作用：写入仍有效的报名人，并清空已经在报名页取消的角色。
+   * 为什么添加：编辑页返回前台时不能继续显示服务端已取消的旧报名。
+   */
+  reconcileAgendaWithSignupData(agendaValue, signupData) {
+    return (signupData && signupData.slots || []).reduce((agenda, slot) => {
+      const person = slot.occupied && slot.person || {};
+      return this.applyLocalSignup(agenda, slot, {
+        personType: person.memberId ? 'member' : (person.clubZh && person.clubZh !== '宾客' ? 'club' : 'guest'),
+        memberId: person.memberId || '',
+        name: person.rawName || person.displayNameZh || person.displayNameEn || '',
+        club: person.clubZh || person.clubEn || ''
+      });
+    }, agendaUtil.cloneJson(agendaValue));
+  },
+
+  clearLocalSignupSlot(slotId) {
+    const slot = (this.data.signupData && this.data.signupData.slots || []).find((item) => item.id === slotId);
+    if (!slot) return;
+    const empty = { personType: 'guest', memberId: '', name: '', club: '' };
+    const agenda = this.applyLocalSignup(this.data.agenda, slot, empty);
+    const signupData = Object.assign({}, this.data.signupData, { slots: this.data.signupData.slots.map((item) => item.id === slotId ? Object.assign({}, item, { occupied: false, preset: false, person: null, signupId: '' }) : item) });
+    agenda.signupSlots = signupData.slots;
+    this.setData({ signupData }, () => this.setAgenda(agenda));
   },
 
   /**
