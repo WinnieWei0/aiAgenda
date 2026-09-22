@@ -33,7 +33,7 @@
           <view class="role-row {{slot.occupied ? 'claimed' : ''}}">
             <view class="role-copy"><view class="role-name-line"><text class="status-dot"></text><text class="role-name">{{slot.displayLabel || slot.label}}</text><text class="access-tag {{slot.isGuestRole ? 'guest-access-tag' : 'member-access-tag'}}">{{slot.isGuestRole ? 'Guest' : (data.language === 'en' ? 'Member' : '会员')}}</text></view></view>
             <button wx:if="{{!slot.occupied}}" class="claim-button" size="mini" data-slot-id="{{slot.id}}" bindtap="openSignup">{{data.language === 'en' ? 'Sign up' : '报名'}}</button>
-            <view wx:elif="{{slot.canCancel}}" class="claimed-actions"><text class="claimed-name">{{data.language === 'en' ? (slot.person.displayNameEn || slot.person.rawName) : (slot.person.displayNameZh || slot.person.rawName)}}</text><button class="x-button" size="mini" data-id="{{slot.signupId}}" bindtap="cancelSignup">X</button></view>
+            <view wx:elif="{{slot.canCancel||data.isAdmin}}" class="claimed-actions"><text class="claimed-name">{{data.language === 'en' ? (slot.person.displayNameEn || slot.person.rawName) : (slot.person.displayNameZh || slot.person.rawName)}}</text><button class="x-button" size="mini" data-id="{{slot.signupId}}" bindtap="cancelSignup">X</button></view>
             <text wx:else class="claimed-name">{{data.language === 'en' ? (slot.person.displayNameEn || slot.person.rawName) : (slot.person.displayNameZh || slot.person.rawName)}}</text>
           </view>
         </block>
@@ -46,7 +46,7 @@
     <view wx:if="{{!data.people.length}}" class="empty">{{data.language === 'en' ? 'No sign-ups yet' : '暂无报名'}}</view>
     <view wx:for="{{data.people}}" wx:key="key" class="person">
       <view class="person-identity"><text class="person-name">{{item.name}}</text><text wx:if="{{item.personType === 'club' && item.club}}" class="club-tag">{{item.club}}</text><text wx:if="{{item.personType === 'guest'}}" class="club-tag">{{data.language === 'en' ? 'Guest' : '宾客'}}</text><text wx:if="{{item.personType === 'preset' && item.club && item.club !== '广州双语'}}" class="club-tag">{{item.club}}</text></view>
-      <view wx:if="{{item.roles.length}}" class="person-role-labels"><text wx:for="{{item.roles}}" wx:for-item="role" wx:key="slotId" class="role-label">{{role.label}}</text></view>
+      <text wx:if="{{item.roles.length}}" class="person-role-labels role-label">{{item.rolesText}}</text>
       <button wx:elif="{{item.attendanceOnly && item.mine}}" class="x-button" size="mini" data-id="{{item.attendanceSignupId}}" bindtap="cancelSignup">X</button>
       <text wx:else class="attendance-label"></text>
     </view>

@@ -84,5 +84,6 @@ Page({
       }
     }
   },
-  cancelSignup(event) { const signupId = event.currentTarget.dataset.id; wx.showModal({ title:'取消报名', content:'确认取消这项报名吗？', success: async (res) => { if (!res.confirm) return; try { const data = await cloud.callCloud('signupService', { action:'cancel', signupId }); this.setData({ data: signupView.decorateSignupData(data) }); cloud.showSuccess('已取消'); } catch (error) { cloud.showError(error); } } }); }
+  cancelSignup(event) { const signupId = event.currentTarget.dataset.id; wx.showModal({ title:'取消报名', content:'确认取消这项报名吗？', success: async (res) => { if (!res.confirm) return; try { const data = await cloud.callCloud('signupService', { action:'cancel', signupId }); this.setData({ data: signupView.decorateSignupData(data) }); cloud.showSuccess('已取消'); } catch (error) { cloud.showError(error); } } }); },
+  clearSlot(event) { const slotId = event.currentTarget.dataset.slotId; wx.showModal({ title:'清空角色', content:'确认清空该角色并释放名额吗？', success: async (res) => { if (!res.confirm) return; try { const data = await cloud.callCloud('signupService', { action:'cancelSlot', slotId }); this.setData({ data: signupView.decorateSignupData(data) }); cloud.showSuccess('已清空'); } catch (error) { cloud.showError(error); } } }); }
 });

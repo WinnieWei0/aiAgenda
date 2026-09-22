@@ -22,6 +22,7 @@ const memberSearch = require('../miniprogram/utils/member-search');
 const pathwaySearch = require('../miniprogram/utils/pathway-search');
 const memberFilter = require('../miniprogram/utils/member-filter');
 const signupView = require('../miniprogram/utils/signup-view');
+const pdfPreview = require('../miniprogram/utils/pdf-preview');
 const membershipInvites = require('../cloudfunctions/membershipInvites');
 const singletonAgendaMigration = require('../scripts/migrate-singleton-agenda');
 const { PDFDocument } = require('../cloudfunctions/common/node_modules/pdf-lib');
@@ -346,6 +347,32 @@ function testSignupDisplayFields() {
   assert.strictEqual(signupService.resolveWeekdayLabel({ weekday: '周三' }, 'en'), 'Wednesday');
   assert.strictEqual(signupService.resolveWeekdayLabel({ date: '2026-09-23' }), '周三');
   assert.strictEqual(signupService.resolveWeekdayLabel({ date: '' }), '');
+}
+
+function testSignupAggregationKeys() {
+  assert.strictEqual(signupModel.signupPersonKey({ memberId: 'member-1', openid: 'openid-a' }), signupModel.signupPersonKey({ memberId: 'member-1', openid: 'openid-b' }));
+  assert.strictEqual(signupModel.signupPersonKey({ personType: 'guest', name: '宾客甲', club: '宾客' }), signupModel.signupPersonKey({ personType: 'guest', name: '宾客甲', club: '宾客' }));
+  assert.strictEqual(signupModel.signupPersonKey({ memberId: 'member-1', name: '同名' }), signupModel.signupPersonKey({ memberId: 'member-2', name: '同名' }));
+  assert.strictEqual(signupModel.signupPersonKey({ personType: 'guest', name: '同名', club: '宾客' }), signupModel.signupPersonKey({ personType: 'club', name: '同名', club: '其他俱乐部' }));
+}
+
+async function testPdfPreviewFileHandling() {
+  await assert.rejects(() => pdfPreview.openCloudPdf({ cloud: { downloadFile: async () => ({ tempFilePath: '' }) } }, 'cloud://file'), /未返回本地文件路径/);
+  const opened = [];
+  const wxApi = {
+    env: { USER_DATA_PATH: '/user-data' },
+    cloud: { downloadFile: async () => ({ tempFilePath: '/tmp/agenda.pdf' }) },
+    getFileSystemManager() {
+      return {
+        access({ success }) { success(); },
+        saveFile({ filePath, success }) { success({ savedFilePath: filePath }); }
+      };
+    },
+    openDocument(options) { opened.push(options); return Promise.resolve(); }
+  };
+  const openPath = await pdfPreview.openCloudPdf(wxApi, 'cloud://file', 'agenda.pdf');
+  assert.strictEqual(openPath, '/user-data/' + openPath.split('/').pop());
+  assert.strictEqual(opened.length, 1);
 }
 
 /**
@@ -1071,6 +1098,7 @@ async function main() {
   testSignupRoleSlots();
   testSignupProfiles();
   testSignupDisplayFields();
+  testSignupAggregationKeys();
   testAgendaPreviewValidation();
   testTemplateAndLegacyUpgrade();
   testLocalizedTemplateAndAnchors();
@@ -1094,6 +1122,7 @@ async function main() {
   await testRetireMember();
   await testPdfRenderer(agenda);
   await testPdfOverflow();
+  await testPdfPreviewFileHandling();
   console.log('核心测试通过。');
 }
 

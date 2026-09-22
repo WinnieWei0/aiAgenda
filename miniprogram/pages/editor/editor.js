@@ -1,6 +1,7 @@
 const app = getApp();
 const cloud = require('../../utils/cloud');
 const agendaUtil = require('../../utils/agenda');
+const pdfPreview = require('../../utils/pdf-preview');
 
 Page({
   data: {
@@ -1215,8 +1216,7 @@ Page({
     this.setData({ previewing: true });
     try {
       const data = await cloud.callCloud('exportAgendaPdf', { agendaId });
-      const download = await wx.cloud.downloadFile({ fileID: data.fileID });
-      await wx.openDocument({ filePath: download.tempFilePath, fileType: 'pdf', showMenu: true });
+      await pdfPreview.openCloudPdf(wx, data && data.fileID, data && data.fileName);
     } catch (error) {
       cloud.showError(error);
     } finally {

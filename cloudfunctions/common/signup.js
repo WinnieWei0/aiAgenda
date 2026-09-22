@@ -35,8 +35,10 @@ function displayRoleLabel(roleKey, label, language) {
 
 function signupPersonKey(item) {
   const source = item || {};
-  const identity = source.memberId || `${source.personType || 'guest'}:${source.name || ''}:${source.club || ''}`;
-  return source.openid ? `${source.openid}:${identity}` : `preset:${source._id || identity}`;
+  const name = String(source.name || source.rawName || source.displayNameZh || source.displayNameEn || '').trim().toLowerCase();
+  if (name) return `name:${name}`;
+  if (source.memberId) return `member:${source.memberId}`;
+  return `anonymous:${source._id || source.openid || source.personType || 'guest'}`;
 }
 
 function clone(value) {

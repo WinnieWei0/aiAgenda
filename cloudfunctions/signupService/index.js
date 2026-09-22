@@ -80,9 +80,11 @@ async function response(db, record, openid) {
   list.forEach((item) => {
     const key = common.signup.signupPersonKey(item);
     const current = people.get(key) || { key, name: language === 'en' ? item.displayNameEn || item.name : item.name, memberId: item.memberId || '', personType: item.personType, club: language === 'en' ? item.clubEn || item.club : item.club, roles: [], attendanceOnly: false, mine: item.openid === openid };
+    current.mine = current.mine || item.openid === openid;
     if (item.slotId) {
       const slot = (record.signupSlots || []).find((value) => value.id === item.slotId);
-      current.roles.push({ signupId: item._id, slotId: item.slotId, label: displayRoleLabel(slot && slot.roleKey, item.roleLabel, language), mine: current.mine, canCancel: isAdmin || current.mine });
+      const role = { signupId: item._id, slotId: item.slotId, label: displayRoleLabel(slot && slot.roleKey, item.roleLabel, language), mine: item.openid === openid, canCancel: isAdmin || item.openid === openid };
+      if (!current.roles.some((value) => value.slotId === role.slotId || value.label === role.label)) current.roles.push(role);
     }
     else { current.attendanceOnly = true; current.attendanceSignupId = item._id; }
     people.set(key, current);
@@ -92,8 +94,8 @@ async function response(db, record, openid) {
     const occupied = Boolean(slot.preset && slot.occupied || signupItem);
     return Object.assign({}, slot, {
       occupied,
-      signupId: signupItem && signupItem._id || slot.signupId || '',
-      signupOpenid: signupItem && signupItem.openid || slot.signupOpenid || '',
+      signupId: signupItem && signupItem._id || '',
+      signupOpenid: signupItem && signupItem.openid || '',
       mine: Boolean(signupItem && signupItem.openid === openid),
       canCancel: Boolean(signupItem && (isAdmin || signupItem.openid === openid)),
       person: signupItem ? common.signup.personFromProfile(signupItem) : slot.person,
@@ -106,11 +108,13 @@ async function response(db, record, openid) {
   });
   slots.filter((slot) => slot.preset && slot.occupied && slot.person).forEach((slot) => {
     const name = language === 'en' ? slot.person.displayNameEn || slot.person.rawName || 'Organizer preset' : slot.person.displayNameZh || slot.person.rawName || '组织者预设';
-    const key = `preset:${name}`;
+    const key = common.signup.signupPersonKey(Object.assign({ personType: 'preset', name }, slot.person));
     const current = people.get(key) || { key, name, personType: 'preset', club: language === 'en' ? slot.person.clubEn || '' : slot.person.clubZh || '', roles: [], attendanceOnly: false, mine: false };
-    current.roles.push({ slotId: slot.id, label: displayRoleLabel(slot.roleKey, slot.label, language), mine: false, canCancel: false });
+    const role = { slotId: slot.id, label: displayRoleLabel(slot.roleKey, slot.label, language), mine: false, canCancel: isAdmin };
+    if (!current.roles.some((value) => value.slotId === role.slotId || value.label === role.label)) current.roles.push(role);
     people.set(key, current);
   });
+  people.forEach((person) => { person.rolesText = person.roles.map((role) => role.label).join('&'); });
   const preparation = (record.agenda.sections || []).find((section) => section.id === 'preparation');
   const manager = preparation && preparation.row && preparation.row.person || {};
   const template = await common.getAgendaTemplate();
@@ -129,8 +133,8 @@ async function response(db, record, openid) {
     templateVenue,
     signupDisplay: {
       weekdayLabel: resolveWeekdayLabel(record.agenda.meetingInfo, language),
-      venueSuffix: language === 'en' ? 'Metro Line 5, Zhujiang New Town Exit B1' : '5号线珠江新城B1口',
-      guestFee: language === 'en' ? 'RMB 29' : '29元'
+      venueSuffix: language === 'en' ? '(Metro Line 5, Zhujiang New Town Exit B1)' : '(5号线珠江新城B1口)',
+      guestFee: language === 'en' ? 'RMB 29 for guest' : '宾客29元'
     },
     meetingManagerName: language === 'en' ? manager.displayNameEn || manager.rawName || 'To be filled' : manager.displayNameZh || manager.rawName || '待填写',
     slots,
@@ -188,7 +192,20 @@ async function cancel(db, openid, event) {
   const signupResult = await db.collection('agenda_signups').doc(event.signupId).get();
   const item = signupResult.data;
   const manage = record.ownerOpenid === openid || await common.isAdmin(openid);
-  if (!item || item.agendaId !== record._id || item.openid !== openid && !manage) throw Object.assign(new Error('只能取消自己的报名'), { code: 'FORBIDDEN' });
+  if (!item) {
+    const staleSlot = (record.signupSlots || []).find((slot) => slot.signupId === event.signupId);
+    const staleOwner = staleSlot && staleSlot.signupOpenid === openid;
+    if (!staleSlot || !manage && !staleOwner) throw Object.assign(new Error('只能取消自己的报名'), { code: 'FORBIDDEN' });
+    staleSlot.occupied = false;
+    staleSlot.preset = false;
+    staleSlot.person = null;
+    delete staleSlot.signupId;
+    delete staleSlot.signupOpenid;
+    const agenda = common.agendaModel.normalizeAgenda(common.signup.writeSlotPerson(record.agenda, staleSlot, null), await common.getAgendaTemplate());
+    await db.collection('agendas').doc(record._id).update({ data: { agenda, signupSlots: record.signupSlots, signupVersion: Number(record.signupVersion || 0) + 1, updatedAt: new Date().toISOString() } });
+    return response(db, Object.assign({}, record, { agenda }), openid);
+  }
+  if (item.agendaId !== record._id || item.openid !== openid && !manage) throw Object.assign(new Error('只能取消自己的报名'), { code: 'FORBIDDEN' });
   await db.collection('agenda_signups').doc(event.signupId).remove();
   if (item.claimId) await db.collection('agenda_signup_claims').doc(item.claimId).remove();
   if (item.slotId) {

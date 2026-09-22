@@ -103,12 +103,13 @@
 .access-tag,.club-tag,.role-label { padding:3rpx 9rpx; border-radius:4rpx; font-size:21rpx; }
 .member-access-tag,.club-tag,.role-label { color:#772432; background:#f7edf0; }
 .guest-access-tag { color:#004165; background:#dcebf1; }
-.claimed-actions { display:flex; max-width:48%; flex:none; align-items:center; justify-content:flex-end; gap:8rpx; }
-.claimed-name { overflow:hidden; color:#667085; font-size:24rpx; text-overflow:ellipsis; white-space:nowrap; }
+.claimed-actions { display:flex; max-width:58%; min-height:52rpx; flex:none; align-items:center; justify-content:flex-end; gap:8rpx; }
+.claimed-name { display:flex; max-width:calc(100% - 56rpx); min-height:48rpx; align-items:center; overflow:hidden; color:#667085; font-size:24rpx; line-height:48rpx; text-overflow:ellipsis; white-space:nowrap; }
 .claim-button { width:112rpx; flex:none; margin:0; color:#168a68; border:1rpx solid #6fb59f; background:#fff; }
 .claimed-mark { flex:none; color:#667085; font-size:24rpx; }
 .x-button { width:48rpx; min-width:48rpx; height:48rpx; flex:none; margin:0; padding:0; color:#b42318; border:0; background:transparent; font-weight:700; line-height:48rpx; }
 .x-button::after { border:0; }
+.clear-slot-button { min-width:96rpx; height:52rpx; flex:none; margin:0; padding:0 14rpx; color:#b42318; border:1rpx solid #e7b7b2; background:#fff; font-size:23rpx; line-height:52rpx; white-space:nowrap; }
 
 .people-card .card-title { display:block; margin-bottom:12rpx; }
 .person { display:flex; min-height:68rpx; align-items:center; gap:14rpx; padding:14rpx 0; border-bottom:1rpx solid #e4e9ec; }
