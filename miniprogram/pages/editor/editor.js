@@ -2,6 +2,7 @@ const app = getApp();
 const cloud = require('../../utils/cloud');
 const agendaUtil = require('../../utils/agenda');
 const pdfPreview = require('../../utils/pdf-preview');
+const meetingService = require('../../services/meeting-service');
 
 Page({
   data: {
@@ -98,7 +99,7 @@ Page({
    */
   async loadSignupData() {
     try {
-      const signupData = await cloud.callCloud('signupService', { action: 'get' });
+      const signupData = await meetingService.signup('get');
       const agenda = this.reconcileAgendaWithSignupData(this.data.agenda, signupData);
       this.setData({ signupData }, () => this.setAgenda(agenda));
     } catch (error) {
@@ -123,7 +124,7 @@ Page({
   /**
    * 方法是什么：加载会员选项。
    * 方法作用：为所有人员字段提供正式会员下拉选择。
-   * 为什么添加：选择会员时需要自动填入姓名和广州双语俱乐部。
+   * 为什么添加：选择会员时需要自动填入姓名和当前俱乐部。
    */
   async loadMembers() {
     this.setData({ memberLoading: true, memberLoadError: false });
@@ -182,7 +183,7 @@ Page({
    */
   async loadCurrentAgenda() {
     try {
-      const data = await cloud.callCloud('agendaQuery', { action: 'current' });
+      const data = await meetingService.query('current');
       const agenda = data.agenda || agendaUtil.createEmptyAgenda();
       this.setAgenda(agenda);
       this.setData({ agendaGenerated: Boolean(agenda.meetingInfo && String(agenda.meetingInfo.meetingNo || '').trim()) });
@@ -198,7 +199,7 @@ Page({
    */
   async loadAgendaById(id) {
     try {
-      const data = await cloud.callCloud('agendaQuery', { action: 'get', id });
+      const data = await meetingService.query('get', { id });
       this.setAgenda(data.agenda);
       this.setData({ agendaGenerated: Boolean(data.agenda && data.agenda.meetingInfo && String(data.agenda.meetingInfo.meetingNo || '').trim()) });
     } catch (error) {
@@ -506,7 +507,7 @@ Page({
       pathNameEn: member.pathNameEn || '',
       officerTitleZh: member.officerTitleZh || '',
       officerTitleEn: member.officerTitleEn || '',
-      clubZh: '广州双语',
+      clubZh: '',
       clubEn: 'Bilingual',
       inputMode: 'select',
       unresolved: false
@@ -755,8 +756,8 @@ Page({
     const member = this.data.memberOptions.find((option) => option.member._id === detail.memberId);
     const source = member && member.member;
     const name = source ? (source.nameZh || source.nameEn || source.nickName || '') : (detail.name || '');
-    const club = source ? '广州双语' : (detail.club || (detail.personType === 'guest' && name ? '宾客' : ''));
-    return agendaUtil.createPerson({ rawName: name, memberId: source ? source._id : '', displayNameZh: source ? (source.nameZh || name) : name, displayNameEn: source ? (source.nameEn || source.nameZh || name) : name, clubZh: club, clubEn: source ? 'Guangzhou Bilingual' : club, inputMode: source ? 'select' : 'input' });
+    const club = source ? '' : (detail.club || (detail.personType === 'guest' && name ? '宾客' : ''));
+    return agendaUtil.createPerson({ rawName: name, memberId: source ? source._id : '', displayNameZh: source ? (source.nameZh || name) : name, displayNameEn: source ? (source.nameEn || source.nameZh || name) : name, clubZh: club, clubEn: source ? '' : club, inputMode: source ? 'select' : 'input' });
   },
 
   applyLocalSignup(agendaValue, slot, detail) {
@@ -840,7 +841,7 @@ Page({
 
   /**
    * 方法是什么：选择正式会员。
-   * 方法作用：写入会员 ID、中英文名并自动锁定广州双语俱乐部。
+   * 方法作用：写入会员 ID、中英文名并自动锁定当前俱乐部。
    * 为什么添加：下拉选择必须和手动输入产生可区分的数据来源。
    */
   chooseMember(event) {
@@ -863,7 +864,7 @@ Page({
       pathNameEn: member.pathNameEn || '',
       officerTitleZh: member.officerTitleZh || '',
       officerTitleEn: member.officerTitleEn || '',
-      clubZh: '广州双语',
+      clubZh: '',
       clubEn: 'Bilingual',
       inputMode: 'select',
       unresolved: false
@@ -1028,7 +1029,7 @@ Page({
     if (!confirmed) return false;
     try {
       for (const slot of occupied) {
-        await cloud.callCloud('signupService', { action: 'cancelSlot', slotId: slot.id });
+        await meetingService.signup('cancelSlot', { slotId: slot.id });
       }
       await this.loadSignupData();
       return true;
@@ -1091,7 +1092,7 @@ Page({
       this.setData({ saving: true });
     }
     try {
-      const data = await cloud.callCloud('saveAgenda', { agenda: this.data.agenda });
+      const data = await meetingService.save(this.data.agenda);
       const savedAgenda = data.agenda;
       app.setCurrentAgenda(savedAgenda);
       this.setData({
@@ -1139,7 +1140,7 @@ Page({
     const agenda = await this.saveAgenda({ silent: true });
     if (!agenda) return;
     try {
-      const data = await cloud.callCloud('signupService', { action: 'create' });
+      const data = await meetingService.signup('create');
       this.setData({ signupData: data, 'agenda.signupPublicId': data.publicId, 'agenda.signupSlots': data.slots });
       wx.navigateTo({ url: '/pages/signup/signup' });
     } catch (error) { cloud.showError(error); }
@@ -1150,7 +1151,7 @@ Page({
     wx.showModal({ title: '取消角色', content: '确认清空该角色报名并释放名额吗？', success: async (res) => {
       if (!res.confirm) return;
       try {
-        const data = await cloud.callCloud('signupService', { action: 'cancelSlot', slotId });
+        const data = await meetingService.signup('cancelSlot', { slotId });
         this.setData({ signupData: data });
         await this.loadAgendaById(this.data.agenda._id);
         cloud.showSuccess('已取消');
@@ -1162,7 +1163,7 @@ Page({
     wx.showModal({ title: '重置当前会议', content: '将清空本期议程和全部报名，原报名链接立即失效。此操作不可撤销。', confirmColor: '#b42318', success: async (res) => {
       if (!res.confirm) return;
       try {
-        const data = await cloud.callCloud('signupService', { action: 'reset' });
+        const data = await meetingService.signup('reset');
         this.setData({ signupData: null, agendaGenerated: false });
         this.setAgenda(data.agenda);
         cloud.showSuccess('会议已重置');

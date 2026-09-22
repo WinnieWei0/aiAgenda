@@ -63,7 +63,7 @@ function postJson(url, headers, body, timeoutMs) {
  */
 function buildAgendaPrompt() {
   return [
-    '你是广州双语国际演讲俱乐部的议程助理。',
+    '你是一个多俱乐部议程系统的解析助理。',
     '请把用户提供的微信群接龙文本解析成 JSON。',
     '只能输出 JSON，不要输出 Markdown 或解释。',
     'JSON 字段包括 meetingInfo、roles、preparedSpeeches、participants、nextMeeting、confidence。',

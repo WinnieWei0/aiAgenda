@@ -39,8 +39,8 @@ function createPerson(value) {
     pathNameEn: source.pathNameEn || '',
     officerTitleZh: source.officerTitleZh || '',
     officerTitleEn: source.officerTitleEn || '',
-    clubZh: source.clubZh === undefined ? (hasName ? '广州双语' : '') : source.clubZh,
-    clubEn: source.clubEn === undefined ? (hasName ? 'Bilingual' : '') : source.clubEn,
+    clubZh: source.clubZh === undefined ? (hasName ? '默认俱乐部' : '') : source.clubZh,
+    clubEn: source.clubEn === undefined ? (hasName ? 'Default Club' : '') : source.clubEn,
     inputMode: source.inputMode || (source.memberId || !rawName ? 'select' : 'input'),
     unresolved: Boolean(source.unresolved)
   };
@@ -106,23 +106,23 @@ function normalizeLanguage(value) {
 function createEnglishLocale() {
   return {
     fixedContent: {
-      clubTitle: '广州双语国际演讲俱乐部  GZ Bilingual Toastmasters Club',
+      clubTitle: '俱乐部名称  Club Name',
       clubSubtitle: '专业的双语多元化成长分享平台',
-      charter: 'Charter #01540850\nArea N1, Div.N, D118\nFounded in 2010',
-      meetingTime: '每周三晚 19:30 - 21:30\nEvery Wednesday night 19:30 - 21:30',
-      venue: '广州市天河区珠江新城华穗路172号星辰大厦西塔1904-A室\nRoom 1904-A, West Tower, Xingchen Building, 172 Huasui Road, Tianhe District, Guangzhou',
-      fees: '宾客场地费 Guest Ticket: RMB 29\n会员注册费 Membership Registration Fee: RMB 300\n会员续费（六个月）Membership Renewal Due: RMB 720',
+      charter: 'Charter information configured in club template',
+      meetingTime: 'Meeting time configured in club template',
+      venue: 'Meeting venue configured in club template',
+      fees: 'Fees configured in club template',
       tabooTopics: '政治、宗教、性、销售\nPolitics, Religion, Sex, Sales',
       missionEn: 'Toastmasters International is a nonprofit educational organization that helps members improve communication and leadership skills and gain confidence and friendship through participation and practice.',
       missionZh: '',
       values: 'Integrity - Respect - Service - Excellence',
-      clubIntro: 'Guangzhou Bilingual TMC is the first bilingual club in South China; our club vision is to help members improve soft skills at workplace. Our slogan is From Bilingual to Professional!'
+      clubIntro: 'Club introduction and member development information.'
     },
     sidebar: { winners: [
-      { label: 'Best Meeting Role', value: 'Derwin' },
-      { label: 'Best Table Topics', value: 'Jeffery' },
-      { label: 'Best Prepared', value: 'Penny' },
-      { label: 'Best Evaluator', value: 'Kathrine' }
+      { label: 'Best Meeting Role', value: '' },
+      { label: 'Best Table Topics', value: '' },
+      { label: 'Best Prepared', value: '' },
+      { label: 'Best Evaluator', value: '' }
     ] },
     timerRules: [
       ['Timer Signals', 'Green Card', 'Yellow Card', 'Red Card', 'Applause'],
@@ -135,18 +135,18 @@ function createEnglishLocale() {
       educationTitle: 'Toastmasters Education System',
       pathways: ['Dynamic Leadership', 'Engaging Humor', 'Motivational Strategies', 'Persuasive Influence', 'Presentation Mastery', 'Visionary Communication'],
       goal: 'Final Goal: Distinguished Toastmaster (DTM)',
-      achievements: ['First Bilingual Toastmasters Club in GZ', 'Select Distinguished Club 2010-2011', 'Distinguished Club 2013-2014', 'President Distinguished Club 2012-2013, 2015-2025', 'Home Club of the Area Director', 'Beat the Clock Award 2013,2017 (May-June)', 'Smedley Award 2014, 2016-2020, 2024(Aug-Sep)'],
+      achievements: ['Achievement details configured in club template'],
       meetingFlow: ['Opening and facilitator introductions', 'Table Topics', 'Prepared speeches', 'Speech evaluations', 'Facilitator reports', 'Awards and role booking'],
       benefits: ['Follow a proven learning path', 'Learn with members from diverse industries', 'Serve as a club or District officer', 'Receive feedback from mentors and experienced members', 'Learn to give feedback and mentor others', 'Join speech contests', 'Practice different meeting roles', 'Visit other Toastmasters clubs'],
       joining: 'New member interviews are normally held after the final meeting of each month. Contact the Vice President Membership in advance.\n\nRequirements:\na. Attend at least three bilingual meetings and take different roles in at least two meetings;\nb. Show a strong willingness to learn and participate;\nc. Pass the interview.',
-      resources: 'Resources: www.toastmasters.org    Toastmasters District 118',
+      resources: 'Resources: www.toastmasters.org',
       officers: []
     }
   };
 }
 
 /**
- * 方法是什么：创建广州双语默认模板。
+ * 方法是什么：创建通用默认模板。
  * 方法作用：提供两页固定内容、素材地址、议程规则和默认负责人。
  * 为什么添加：数据库尚未初始化时仍需直接得到可预览和可导出的完整模板。
  */
@@ -156,17 +156,17 @@ function createDefaultTemplate() {
     templateId: TEMPLATE_ID,
     schemaVersion: AGENDA_SCHEMA_VERSION,
     fixedContent: {
-      clubTitle: '广州双语国际演讲俱乐部 GZ Bilingual Toastmasters Club',
+      clubTitle: '俱乐部名称  Club Name',
       clubSubtitle: '专业的双语多元化成长分享平台',
-      charter: 'Charter #01540850\nArea N1, Div.N, D118\nFounded in 2010',
-      meetingTime: '每周三晚 19:30 - 21:30\nEvery Wednesday night 19:30 - 21:30',
-      venue: '广州市天河区珠江新城华穗路172号星辰大厦西塔1904-A室\nRoom 1904-A, West Tower, Xingchen Building, 172 Huasui Road, Tianhe District, Guangzhou',
-      fees: '宾客场地费 Guest Ticket: RMB 29\n会员注册费 Membership Registration Fee: RMB 300\n会员续费（六个月）Membership Renewal Due: RMB 720',
+      charter: '俱乐部编号和分区信息由模板配置',
+      meetingTime: '会议时间由俱乐部模板配置',
+      venue: '会议地点由俱乐部模板配置',
+      fees: '费用信息由俱乐部模板配置',
       tabooTopics: '政治、宗教、性、销售\nPolitics, Religion, Sex, Sales',
       missionEn: 'Toastmasters International (TI) is a nonprofit educational organization that operates clubs worldwide for the purpose of helping members improve communication and leadership skills and gain confidence and friendship through participation and practice.',
       missionZh: '国际演讲会的使命是提供积极的互助成长环境，让成员从中有效地训练沟通技巧和领导力技巧，从而增强自信，收获友谊，实现个人成长。',
       values: '诚信-尊重-服务-追求卓越',
-      clubIntro: '广州双语国际演讲俱乐部是华南地区第一家以“双语”命名的俱乐部；俱乐部愿景是帮助会员提升职场软技能。俱乐部口号是--双语成就专业！'
+      clubIntro: '俱乐部介绍和会员成长信息。'
     },
     assets: {
       logo: '/images/template/toastmasters-logo.png',
@@ -177,10 +177,10 @@ function createDefaultTemplate() {
     },
     sidebar: {
       winners: [
-        { label: 'Best Meeting Role', value: 'Derwin' },
-        { label: 'Best Table Topics', value: 'Jeffery' },
-        { label: 'Best Prepared', value: 'Penny' },
-        { label: 'Best Evaluator', value: 'Kathrine' }
+        { label: 'Best Meeting Role', value: '' },
+        { label: 'Best Table Topics', value: '' },
+        { label: 'Best Prepared', value: '' },
+        { label: 'Best Evaluator', value: '' }
       ]
     },
     timerRules: [
@@ -194,21 +194,12 @@ function createDefaultTemplate() {
       educationTitle: '头马国际演讲会教育体系',
       pathways: ['动态领导', '运用幽默', '激励策略', '有说服力的影响', '精通演讲', '愿景沟通'],
       goal: '终极目标：杰出沟通和领导成就荣誉会员',
-      achievements: ['广州第一家以“双语”命名的俱乐部', '优选杰出俱乐部 2010-2011', '杰出俱乐部 2013-2014', '会长杰出俱乐部 2012-2013, 2015-2025', '头马大区干事的摇篮', '头马争分夺秒殊荣奖 2013, 2017', '2014、2016-2020、2024 史麦德利殊荣奖'],
+      achievements: ['俱乐部成就由模板配置'],
       meetingFlow: ['开场和会议促进者介绍', '即兴演讲环节', '备稿环节', '备稿点评环节', '促进者报告环节', '颁奖与角色预定'],
       benefits: ['教育路径，一套成熟的演讲目标达成指引', '和来自不同领域的伙伴学习交流', '挑战担任俱乐部乃至大区干事', '从导师和资深会员接收到反馈', '学习给以反馈，甚至成为导师', '参加演讲比赛', '担任不同角色，锻炼不同能力', '免费参加头马其他俱乐部例会'],
       joining: '新会员面试一般定于每月最后一次例会结束后，如有意愿可以提前向会员副会长报名。\n\n入会要求：\na. 参加3次或以上双语例会，并至少在两次例会中担任不同角色；\nb. 有强烈的学习成长意愿，能积极参加例会；\nc. 通过面试。',
-      resources: '推荐资源：总部网站 - http://www.toastmasters.org    118大区公众号 - Toastmasters D118',
-      officers: [
-        { role: '会长 President', name: '白俊杰 Benny', phone: '13560239936', wechat: 'benny-bai' },
-        { role: '教育副会长 VPE', name: '韦文耐 Winnie', phone: '13250578375', wechat: 'a15078646220' },
-        { role: '会员副会长 VPM', name: '不懂先生 Franco', phone: '15920120728', wechat: 'hgw620782' },
-        { role: '公关副会长 VPPR', name: '周沫 Mo', phone: '16601756896', wechat: 'Movision_design' },
-        { role: '秘书长 Secretary', name: '廖凤媚 Miranda', phone: '15247155831', wechat: 'M15920143399' },
-        { role: '财务官 Treasurer', name: '李鑫 Yolanda', phone: '15625040772', wechat: 'yolanda_lixin' },
-        { role: '事务官 SAA', name: '文烨彬 Wendy', phone: '15247155831', wechat: 'Cap-WM' },
-        { role: '荣誉会长 IPP', name: '严芷君 Sapphire', phone: '13249154881', wechat: 'YanZhijun18' }
-      ]
+      resources: '推荐资源：总部网站 - http://www.toastmasters.org',
+      officers: []
     },
     settings: {
       evaluationDuration: 3,
@@ -361,7 +352,7 @@ function createPresidentPerson(template, language) {
   const chineseName = (fullName.match(/[\u4e00-\u9fff]+/) || [])[0] || fullName;
   const englishName = fullName.replace(/[\u4e00-\u9fff]+/g, '').trim() || fullName;
   const name = language === 'en' ? englishName : chineseName;
-  return createPerson({ rawName: name, displayNameZh: chineseName, displayNameEn: englishName, clubZh: '广州双语', clubEn: 'Bilingual', inputMode: 'input' });
+  return createPerson({ rawName: name, displayNameZh: chineseName, displayNameEn: englishName, inputMode: 'input' });
 }
 
 /**

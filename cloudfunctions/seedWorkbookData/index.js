@@ -1,6 +1,45 @@
 const common = require('agenda-common');
 const workbookParser = require('./workbook-parser');
 
+const MEMBER_FIELDS = [
+  'birthday', 'competitionEligible', 'educationAwards', 'educationProgress', 'educationProgressUpdatedAt',
+  'email', 'isMentor', 'joinedAt', 'menteeCount', 'mentorName', 'nameEn', 'nameZh', 'nickName', 'notes',
+  'officerTitleEn', 'officerTitleZh', 'pathNameEn', 'pathNameZh', 'phone', 'quarter', 'status', 'role'
+];
+const PATHWAY_FIELDS = ['code', 'fullLabelEn', 'fullLabelZh', 'level', 'objectiveEn', 'objectiveZh'];
+
+/**
+ * 方法是什么：清洗 Excel 会员记录。
+ * 方法作用：只保留会员业务白名单、俱乐部作用域和搜索字段。
+ * 为什么添加：云端上传入口不能把工作表原始结构写入新数据库。
+ */
+function sanitizeMembership(member) {
+  const payload = { clubId: common.config.getConfig().clubId };
+  MEMBER_FIELDS.forEach((field) => {
+    payload[field] = member[field] === undefined || member[field] === null ? '' : member[field];
+  });
+  payload.role = common.normalizeMembershipRole(payload.role || 'member');
+  payload.status = payload.status || 'active';
+  payload.searchText = [payload.nickName, payload.nameZh, payload.nameEn, payload.mentorName, payload.officerTitleZh, payload.officerTitleEn, payload.pathNameZh, payload.pathNameEn]
+    .filter(Boolean).join(' ').toLowerCase();
+  return payload;
+}
+
+/**
+ * 方法是什么：清洗 Excel 路径记录。
+ * 方法作用：只保留路径业务白名单、俱乐部作用域和搜索字段。
+ * 为什么添加：Pathways 的工作表辅助列不属于运行时业务数据。
+ */
+function sanitizePathway(pathway) {
+  const payload = { clubId: common.config.getConfig().clubId };
+  PATHWAY_FIELDS.forEach((field) => {
+    payload[field] = pathway[field] === undefined || pathway[field] === null ? '' : pathway[field];
+  });
+  payload.searchText = [payload.code, payload.level, payload.fullLabelEn, payload.fullLabelZh, payload.objectiveEn, payload.objectiveZh]
+    .filter(Boolean).join(' ').toLowerCase();
+  return payload;
+}
+
 /**
  * 方法是什么：批量写入指定集合的种子数据。
  * 方法作用：按照唯一键逐条 upsert，返回创建和更新数量。
@@ -52,8 +91,8 @@ async function main(event) {
     common.initCloud();
     await common.requireAdmin(common.getOpenid());
     const workbook = workbookParser.parseWorkbook(await downloadWorkbook(event));
-    const membershipStats = await seedCollection('memberships', 'sourceKey', workbook.memberships);
-    const pathwayStats = await seedCollection('pathways', 'sourceKey', workbook.pathways);
+    const membershipStats = await seedCollection('memberships', 'nameZh', workbook.memberships.map(sanitizeMembership));
+    const pathwayStats = await seedCollection('pathways', 'code', workbook.pathways.map(sanitizePathway));
     return common.ok({
       memberships: membershipStats,
       pathways: pathwayStats,
@@ -65,3 +104,4 @@ async function main(event) {
 }
 
 exports.main = main;
+module.exports = { sanitizeMembership, sanitizePathway, seedCollection, downloadWorkbook, main };

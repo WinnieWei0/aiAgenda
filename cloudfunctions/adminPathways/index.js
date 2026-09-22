@@ -35,7 +35,7 @@ const PATHWAY_FIELDS = ['code', 'fullLabelEn', 'fullLabelZh', 'level', 'objectiv
 const LEGACY_FIELDS = ['sourceKey', 'projectNameEn', 'projectNameZh', 'detailZh', 'skillZh', 'rawRow', 'id'];
 
 function buildPathwayPayload(pathway) {
-  const payload = {};
+  const payload = { clubId: common.config.getConfig().clubId };
   for (const field of PATHWAY_FIELDS) {
     payload[field] = pathway[field] === undefined || pathway[field] === null ? '' : pathway[field];
   }
@@ -62,17 +62,17 @@ async function savePathway(pathway) {
     LEGACY_FIELDS.forEach((field) => {
       updateData[field] = db.command.remove();
     });
-    const existing = await db.collection('pathways').doc(id).get();
-    const allowedFields = new Set(PATHWAY_FIELDS.concat(['searchText', 'createdAt', 'updatedAt']));
+    const existing = await common.getCollection('pathways').doc(id).get();
+    const allowedFields = new Set(PATHWAY_FIELDS.concat(['clubId', 'searchText', 'createdAt', 'updatedAt']));
     Object.keys(existing.data || {}).forEach((field) => {
       if (field !== '_id' && !allowedFields.has(field)) {
         updateData[field] = db.command.remove();
       }
     });
-    await db.collection('pathways').doc(id).update({ data: updateData });
+    await common.getCollection('pathways').doc(id).update({ data: updateData });
     return { _id: id, action: 'updated' };
   }
-  const res = await db.collection('pathways').add({
+  const res = await common.getCollection('pathways').add({
     data: Object.assign({}, payload, { createdAt: common.nowIso() })
   });
   return { _id: res._id, action: 'created' };
@@ -85,7 +85,7 @@ async function savePathway(pathway) {
  */
 async function getPathway(id) {
   const db = common.getDb();
-  const res = await db.collection('pathways').doc(id).get();
+  const res = await common.getCollection('pathways').doc(id).get();
   return res.data || null;
 }
 
@@ -100,7 +100,7 @@ async function listPathways(options) {
   const page = Math.max(Number(opts.page || 1), 1);
   const pageSize = Math.min(Math.max(Number(opts.pageSize || 20), 1), 100);
   const query = opts.where || {};
-  const collection = db.collection('pathways');
+  const collection = common.getCollection('pathways');
   const totalRes = await collection.where(query).count();
   const listRes = await collection.where(query)
     .skip((page - 1) * pageSize)
@@ -130,7 +130,7 @@ async function main(event) {
       return common.ok(await savePathway(event.pathway || {}));
     }
     if (action === 'delete') {
-      await db.collection('pathways').doc(event.id).remove();
+      await common.getCollection('pathways').doc(event.id).remove();
       return common.ok({ removed: true });
     }
     return common.fail('UNKNOWN_ACTION', '不支持的 Pathways 管理操作');

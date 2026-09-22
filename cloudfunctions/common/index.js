@@ -3,6 +3,8 @@ const parser = require('./parser');
 const deepseek = require('./deepseek');
 const agendaModel = require('./agenda-model');
 const signup = require('./signup');
+const config = require('./config');
+const meetingService = require('./meeting-service');
 
 let cloudInitialized = false;
 const ensuredCollections = new Set();
@@ -30,6 +32,15 @@ function getDb() {
 }
 
 /**
+ * 方法是什么：获取逻辑集合引用。
+ * 方法作用：统一把业务集合映射到当前开发或生产命名空间。
+ * 为什么添加：避免云函数直接写入旧集合，并为后续多俱乐部迁移保留单一入口。
+ */
+function getCollection(logicalName) {
+  return getDb().collection(config.resolveCollection(logicalName));
+}
+
+/**
  * 方法是什么：判断数据库错误是否表示集合不存在。
  * 方法作用：兼容 CloudBase SDK 的数字错误码和文本错误信息。
  * 为什么添加：新环境首次读取集合时会抛出 -502005，不能直接进入后续初始化逻辑。
@@ -47,17 +58,17 @@ function isCollectionMissingError(error) {
  */
 async function ensureCollection(collectionName) {
   if (ensuredCollections.has(collectionName)) {
-    return getDb().collection(collectionName);
+    return getCollection(collectionName);
   }
   const db = getDb();
   try {
-    await db.collection(collectionName).limit(1).get();
+    await getCollection(collectionName).limit(1).get();
   } catch (error) {
     if (!isCollectionMissingError(error)) {
       throw error;
     }
     try {
-      await db.createCollection(collectionName);
+      await db.createCollection(config.resolveCollection(collectionName));
     } catch (createError) {
       const message = String(createError && (createError.errMsg || createError.message) || '').toLowerCase();
       if (!message.includes('already exist') && !message.includes('collection exists')) {
@@ -66,7 +77,7 @@ async function ensureCollection(collectionName) {
     }
   }
   ensuredCollections.add(collectionName);
-  return db.collection(collectionName);
+  return getCollection(collectionName);
 }
 
 /**
@@ -116,10 +127,13 @@ async function listCollection(collectionName, options) {
   const opts = options || {};
   const page = Math.max(Number(opts.page || 1), 1);
   const pageSize = Math.min(Math.max(Number(opts.pageSize || 20), 1), 100);
-  const query = opts.where || {};
+  const scopedCollections = new Set(['memberships', 'pathways', 'agendaTemplates', 'agendas', 'membershipInvites']);
+  const query = scopedCollections.has(collectionName)
+    ? Object.assign({}, opts.where || {}, { clubId: config.getConfig().clubId })
+    : (opts.where || {});
   const orderBy = opts.orderBy || 'updatedAt';
   const order = opts.order || 'desc';
-  const collection = db.collection(collectionName);
+  const collection = getCollection(collectionName);
   const totalRes = await collection.where(query).count();
   const listRes = await collection
     .where(query)
@@ -136,10 +150,10 @@ async function listCollection(collectionName, options) {
  * 为什么添加：Excel 导入和管理页保存都需要避免重复创建同一条业务记录。
  */
 async function upsertByKey(collectionName, key, value, data) {
-  const db = getDb();
-  const collection = db.collection(collectionName);
+  const collection = getCollection(collectionName);
   const existing = await collection.where({ [key]: value }).limit(1).get();
-  const payload = Object.assign({}, data, { updatedAt: nowIso() });
+  const scopedCollections = new Set(['memberships', 'pathways', 'agendaTemplates', 'agendas', 'membershipInvites']);
+  const payload = Object.assign({}, data, scopedCollections.has(collectionName) ? { clubId: config.getConfig().clubId } : {}, { updatedAt: nowIso() });
   if (existing.data && existing.data.length) {
     await collection.doc(existing.data[0]._id).update({ data: payload });
     return { _id: existing.data[0]._id, action: 'updated' };
@@ -184,16 +198,31 @@ async function getUserRoles(openid) {
 
 const MEMBERSHIP_ROLES = ['super_admin', 'admin', 'member'];
 
+/**
+ * 方法是什么：规范化会员角色。
+ * 方法作用：把未知角色收敛为普通会员。
+ * 为什么添加：权限判断必须使用稳定的有限枚举。
+ */
 function normalizeMembershipRole(role) {
   return MEMBERSHIP_ROLES.includes(role) ? role : 'member';
 }
 
+/**
+ * 方法是什么：按 openid 查询会员。
+ * 方法作用：返回当前用户绑定的会员记录。
+ * 为什么添加：登录和邀请绑定共用同一查询入口。
+ */
 async function getMembershipByOpenid(openid) {
   if (!openid) return null;
-  const res = await (await ensureCollection('memberships')).where({ openid }).limit(1).get();
+  const res = await (await ensureCollection('memberships')).where({ openid, clubId: config.getConfig().clubId }).limit(1).get();
   return res.data && res.data.length ? res.data[0] : null;
 }
 
+/**
+ * 方法是什么：构建会员身份视图。
+ * 方法作用：把数据库会员转换为页面权限所需的统一身份对象。
+ * 为什么添加：前端不应自行解释角色编码和会员字段。
+ */
 function membershipIdentity(membership) {
   if (!membership) return { role: 'guest', roleLabel: '宾客', name: '', membership: null };
   const role = normalizeMembershipRole(membership.role);
@@ -271,16 +300,41 @@ async function ensureDefaultRoles() {
  * 为什么添加：解析、预览、保存和 PDF 导出必须共享同一份模板内容与规则。
  */
 async function getAgendaTemplate() {
-  const db = getDb();
-  const collection = await ensureCollection('agenda_templates');
+  const collection = await ensureCollection('agendaTemplates');
   const templateId = agendaModel.TEMPLATE_ID;
-  const result = await collection.where({ templateId }).limit(1).get();
+  const clubId = config.getConfig().clubId;
+  const result = await collection.where({ templateId, clubId }).limit(1).get();
   if (result.data && result.data.length) {
     return Object.assign(agendaModel.normalizeTemplate(result.data[0]), { _id: result.data[0]._id });
   }
   const template = agendaModel.createDefaultTemplate();
-  const addResult = await collection.add({ data: Object.assign({}, template, { createdAt: nowIso(), updatedAt: nowIso() }) });
+  const addResult = await collection.add({ data: Object.assign({}, template, { clubId, createdAt: nowIso(), updatedAt: nowIso() }) });
   return Object.assign({}, template, { _id: addResult._id });
+}
+
+/**
+ * 方法是什么：读取或初始化当前俱乐部配置。
+ * 方法作用：为报名、模板和未来多俱乐部切换提供统一上下文。
+ * 为什么添加：俱乐部名称和显示配置必须来自数据库，而不是散落在页面和云函数代码中。
+ */
+async function getClubContext() {
+  const collection = await ensureCollection('clubs');
+  const clubId = config.getConfig().clubId;
+  const result = await collection.doc(clubId).get();
+  if (result.data) return result.data;
+  const now = nowIso();
+  const club = {
+    _id: clubId,
+    clubId,
+    nameZh: '俱乐部名称',
+    nameEn: 'Club Name',
+    locale: 'zh',
+    settings: {},
+    createdAt: now,
+    updatedAt: now
+  };
+  await collection.doc(clubId).set({ data: club });
+  return club;
 }
 
 /**
@@ -311,8 +365,8 @@ async function saveAgendaTemplate(value) {
   ['fixedContent', 'sidebar', 'page2', 'timerRules'].forEach((field) => {
     delete template[field];
   });
-  const collection = await ensureCollection('agenda_templates');
-  const existing = await collection.where({ templateId: agendaModel.TEMPLATE_ID }).limit(1).get();
+  const collection = await ensureCollection('agendaTemplates');
+  const existing = await collection.where({ templateId: agendaModel.TEMPLATE_ID, clubId: config.getConfig().clubId }).limit(1).get();
   if (existing.data && existing.data.length) {
     const updateData = Object.assign({}, template, {
       fixedContent: db.command.remove(),
@@ -323,7 +377,7 @@ async function saveAgendaTemplate(value) {
     await collection.doc(existing.data[0]._id).update({ data: updateData });
     return Object.assign({}, template, { _id: existing.data[0]._id });
   }
-  const added = await collection.add({ data: Object.assign({}, template, { createdAt: nowIso() }) });
+  const added = await collection.add({ data: Object.assign({}, template, { clubId: config.getConfig().clubId, createdAt: nowIso() }) });
   return Object.assign({}, template, { _id: added._id });
 }
 
@@ -345,8 +399,12 @@ const commonExports = {
   deepseek,
   agendaModel,
   signup,
+  meetingService,
   initCloud,
   getDb,
+  getCollection,
+  collectionName: config.resolveCollection,
+  config,
   isCollectionMissingError,
   ensureCollection,
   getOpenid,
@@ -366,6 +424,7 @@ const commonExports = {
   requireAdmin,
   ensureDefaultRoles,
   getAgendaTemplate,
+  getClubContext,
   saveAgendaTemplate,
   handleError
 };

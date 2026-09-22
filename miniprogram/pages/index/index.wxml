@@ -2,8 +2,8 @@
   <view class="brand-hero">
     <image class="club-logo" src="/images/template/toastmasters-logo.png" mode="aspectFit" />
     <view class="brand-copy">
-      <text class="club-title">广州双语国际演讲俱乐部</text>
-      <text class="club-title-en">Guangzhou Bilingual Toastmasters Club</text>
+      <text class="club-title">{{clubName || '俱乐部名称'}}</text>
+      <text class="club-title-en">{{clubNameEn || 'Club Name'}}</text>
       <view class="brand-rule"></view>
       <text class="welcome-text">欢迎你，{{welcomeName}}</text>
     </view>

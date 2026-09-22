@@ -3,8 +3,7 @@ const path = require('path');
 const workbookParser = require('../cloudfunctions/seedWorkbookData/workbook-parser');
 const cloud = require('../cloudfunctions/seedWorkbookData/node_modules/wx-server-sdk');
 
-const DEFAULT_WORKBOOK_PATH = 'E:\\小程序\\广州双语议程表.xlsx';
-const DEFAULT_ENV_ID = 'ai-agenda-d1gxlfuz6843bbed0';
+const DEFAULT_WORKBOOK_PATH = '';
 const MAX_MEMBERS = 26;
 const MEMBER_FIELDS = [
   'birthday', 'competitionEligible', 'educationAwards', 'educationProgress',
@@ -23,7 +22,8 @@ const REMOVED_FIELDS = [
  */
 function getConfig() {
   const workbookPath = process.argv[2] || process.env.MEMBERSHIP_WORKBOOK_PATH || DEFAULT_WORKBOOK_PATH;
-  const envId = process.env.CLOUDBASE_ENV_ID || DEFAULT_ENV_ID;
+  const envId = process.env.TARGET_CLOUDBASE_ENV_ID || process.env.CLOUDBASE_ENV_ID || '';
+  if (!envId) throw new Error('请设置 TARGET_CLOUDBASE_ENV_ID，禁止导入到未确认的旧环境');
   const secretId = process.env.TENCENTCLOUD_SECRETID || process.env.TCB_SECRET_ID;
   const secretKey = process.env.TENCENTCLOUD_SECRETKEY || process.env.TCB_SECRET_KEY;
   if (!secretId || !secretKey) {
@@ -45,12 +45,22 @@ function prepareMembers(members) {
     for (const field of MEMBER_FIELDS) {
       payload[field] = member[field] === undefined || member[field] === null ? '' : member[field];
     }
-    payload.role = member.nameZh === '韦文耐' ? 'super_admin' : ['冉桂竹', '徐欢欢', '张蝶花', '郭聪聪', '黎建安', '陈程'].includes(member.nameZh) ? 'admin' : 'member';
+    payload.role = commonRole(member.role);
+    payload.clubId = process.env.DEFAULT_CLUB_ID || 'default-club';
     payload.searchText = [payload.nickName, payload.nameZh, payload.nameEn, payload.mentorName,
       payload.officerTitleZh, payload.officerTitleEn, payload.pathNameZh, payload.pathNameEn]
       .filter(Boolean).join(' ').toLowerCase();
     return payload;
   });
+}
+
+/**
+ * 方法是什么：规范化导入角色。
+ * 方法作用：只接受外部数据中明确的系统角色，不在代码内维护姓名白名单。
+ * 为什么添加：管理员身份属于数据配置，避免真实人名进入迁移脚本。
+ */
+function commonRole(role) {
+  return ['super_admin', 'admin', 'member'].includes(role) ? role : 'member';
 }
 
 /**
@@ -155,7 +165,7 @@ async function run() {
   const buffer = fs.readFileSync(config.workbookPath);
   const workbook = workbookParser.parseMembershipWorkbook(buffer);
   const db = cloud.database();
-  const collection = db.collection('memberships');
+  const collection = db.collection(`${process.env.DB_COLLECTION_PREFIX || 'dev_'}club_members`);
   const members = workbook.memberships.slice(0, MAX_MEMBERS);
   const removed = await removeExtraMembers(collection, members);
   const stats = { created: 0, updated: 0, removed, total: 0 };

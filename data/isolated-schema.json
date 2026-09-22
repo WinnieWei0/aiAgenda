@@ -1,0 +1,69 @@
+{
+  "version": 1,
+  "environmentNamespaces": {
+    "development": "dev_",
+    "production": "prod_"
+  },
+  "defaultClubId": "default-club",
+  "collections": {
+    "clubs": {
+      "primaryKey": "_id",
+      "fields": ["clubId", "nameZh", "nameEn", "locale", "settings", "createdAt", "updatedAt"]
+    },
+    "club_members": {
+      "primaryKey": "_id",
+      "indexes": ["clubId", "openid", "status", "searchText"],
+      "fields": ["clubId", "nameZh", "nameEn", "nickName", "status", "role", "openid", "searchText", "createdAt", "updatedAt"]
+    },
+    "club_pathways": {
+      "primaryKey": "_id",
+      "uniqueKeys": ["clubId", "code"],
+      "fields": ["clubId", "code", "level", "fullLabelZh", "fullLabelEn", "objectiveZh", "objectiveEn", "searchText", "createdAt", "updatedAt"]
+    },
+    "club_templates": {
+      "primaryKey": "_id",
+      "uniqueKeys": ["clubId", "templateId"],
+      "fields": ["clubId", "templateId", "schemaVersion", "locales", "agendaRules", "settings", "assets", "createdAt", "updatedAt"]
+    },
+    "meetings": {
+      "primaryKey": "_id",
+      "indexes": ["clubId", "updatedAt", "signupPublicId"],
+      "fields": ["clubId", "ownerOpenid", "agenda", "meetingSummary", "signupPublicId", "signupSlots", "signupVersion", "createdAt", "updatedAt"]
+    },
+    "meeting_signups": {
+      "primaryKey": "_id",
+      "indexes": ["meetingId", "slotId", "openid"],
+      "fields": ["meetingId", "agendaId", "slotId", "openid", "memberId", "personType", "roleLabel", "createdAt", "updatedAt"]
+    },
+    "meeting_signup_claims": {
+      "primaryKey": "_id",
+      "indexes": ["agendaId", "slotId", "claimantOpenid"],
+      "fields": ["agendaId", "slotId", "claimantOpenid", "createdAt", "expiresAt"]
+    },
+    "membership_invites": {
+      "primaryKey": "_id",
+      "uniqueKeys": ["clubId", "token"],
+      "fields": ["clubId", "token", "memberId", "creatorOpenid", "status", "expiresAt", "createdAt"]
+    },
+    "membership_identity_bindings": {
+      "primaryKey": "_id",
+      "uniqueKeys": ["openid", "memberId"],
+      "fields": ["openid", "memberId", "updatedAt"]
+    },
+    "users": {
+      "primaryKey": "_id",
+      "uniqueKeys": ["openid"],
+      "fields": ["openid", "nickName", "avatarUrl", "lastLoginAt", "createdAt", "updatedAt"]
+    },
+    "roles": {
+      "primaryKey": "_id",
+      "uniqueKeys": ["code"],
+      "fields": ["code", "labelZh", "labelEn", "createdAt", "updatedAt"]
+    },
+    "pdf_exports": {
+      "primaryKey": "_id",
+      "indexes": ["agendaId", "openid", "createdAt"],
+      "fields": ["agendaId", "language", "fileID", "openid", "createdAt"]
+    }
+  }
+}

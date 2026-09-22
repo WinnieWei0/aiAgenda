@@ -1,7 +1,8 @@
 Page({
   data: {
-    isAdmin: false,
-    welcomeName: '宾客'
+      isAdmin: false,
+    welcomeName: '宾客',
+    clubNameEn: 'Club Name'
   },
 
   /**
@@ -17,9 +18,12 @@ Page({
     await app.login();
     const identity = app.globalData.identity || {};
     const user = app.globalData.user || {};
+    const club = app.globalData.club || {};
     this.setData({
       isAdmin: app.isAdmin(),
-      welcomeName: identity.name || user.nickName || '宾客'
+      welcomeName: identity.name || user.nickName || '宾客',
+      clubName: club.nameZh || '俱乐部名称',
+      clubNameEn: club.nameEn || 'Club Name'
     });
   },
 
@@ -30,7 +34,7 @@ Page({
    */
   onShareAppMessage() {
     return {
-      title: '广州双语国际演讲俱乐部',
+      title: '俱乐部名称',
       path: '/pages/index/index',
       imageUrl: '/images/template/toastmasters-logo.png'
     };
@@ -43,7 +47,7 @@ Page({
    */
   onShareTimeline() {
     return {
-      title: '广州双语国际演讲俱乐部',
+      title: '俱乐部名称',
       query: '',
       imageUrl: '/images/template/toastmasters-logo.png'
     };

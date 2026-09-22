@@ -16,10 +16,10 @@ function escapeSearchKeyword(keyword) {
  */
 async function searchMembers(keyword) {
   const db = common.getDb();
-  const collection = db.collection('memberships');
+  const collection = common.getCollection('memberships');
   const query = keyword
-    ? collection.where({ searchText: db.RegExp({ regexp: escapeSearchKeyword(keyword), options: 'i' }) })
-    : collection;
+    ? collection.where({ clubId: common.config.getConfig().clubId, searchText: db.RegExp({ regexp: escapeSearchKeyword(keyword), options: 'i' }) })
+    : collection.where({ clubId: common.config.getConfig().clubId });
   const res = await query.limit(keyword ? 8 : 100).get();
   return sortMembers(res.data || []).map(sanitizeMember);
 }
@@ -54,10 +54,10 @@ function sortMembers(list) {
  */
 async function searchPathways(keyword) {
   const db = common.getDb();
-  const collection = db.collection('pathways');
+  const collection = common.getCollection('pathways');
   const query = keyword
-    ? collection.where({ searchText: db.RegExp({ regexp: escapeSearchKeyword(keyword), options: 'i' }) })
-    : collection;
+    ? collection.where({ clubId: common.config.getConfig().clubId, searchText: db.RegExp({ regexp: escapeSearchKeyword(keyword), options: 'i' }) })
+    : collection.where({ clubId: common.config.getConfig().clubId });
   const res = await query
     .orderBy('code', 'asc')
     .limit(keyword ? 8 : 100)

@@ -25,11 +25,16 @@ function hydrateRecord(record) {
  */
 async function getCurrentDraft() {
   const collection = await common.ensureCollection('agendas');
-  const result = await collection.where({ _id: common.CURRENT_AGENDA_ID }).limit(1).get();
+  const result = await collection.where({ _id: common.CURRENT_AGENDA_ID, clubId: common.config.getConfig().clubId }).limit(1).get();
   const record = result.data && result.data[0] || null;
   return hydrateRecord(record);
 }
 
+/**
+ * 方法是什么：把会议记录转换为摘要。
+ * 方法作用：只返回首页和报名入口需要的稳定字段。
+ * 为什么添加：摘要转换集中后可避免编辑页、报名页各自解释数据库结构。
+ */
 function toMeetingSummary(record) {
   if (!record) return null;
   const info = record.meetingSummary || record.agenda && record.agenda.meetingInfo || record.meetingInfo || {};
@@ -50,7 +55,7 @@ function toMeetingSummary(record) {
  */
 async function getCurrentSummary() {
   const collection = await common.ensureCollection('agendas');
-  const result = await collection.where({ _id: common.CURRENT_AGENDA_ID }).field({ meetingSummary: true, signupPublicId: true, updatedAt: true }).limit(1).get();
+  const result = await collection.where({ _id: common.CURRENT_AGENDA_ID, clubId: common.config.getConfig().clubId }).field({ meetingSummary: true, signupPublicId: true, updatedAt: true }).limit(1).get();
   const record = result.data && result.data[0];
   if (!record) return null;
   if (record.meetingSummary) return toMeetingSummary(record);

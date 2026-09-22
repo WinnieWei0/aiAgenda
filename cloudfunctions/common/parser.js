@@ -1,5 +1,5 @@
-const DEFAULT_CLUB_NAME_ZH = '广州双语';
-const DEFAULT_CLUB_NAME_EN = 'Bilingual';
+const DEFAULT_CLUB_NAME_ZH = '';
+const DEFAULT_CLUB_NAME_EN = '';
 const agendaModel = require('./agenda-model');
 
 const SECTION_DEFINITIONS = [

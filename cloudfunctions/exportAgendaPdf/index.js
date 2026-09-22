@@ -7,7 +7,7 @@ const common = require('agenda-common');
  */
 async function loadAgenda() {
   const db = common.getDb();
-  const res = await db.collection('agendas').doc(common.CURRENT_AGENDA_ID).get();
+  const res = await common.getCollection('agendas').doc(common.CURRENT_AGENDA_ID).get();
   if (!res.data) {
     return null;
   }
@@ -115,7 +115,7 @@ async function hydrateAssetBuffers(template, agenda) {
 
 /**
  * 方法是什么：使用会员库记录补齐议程中的人员信息。
- * 方法作用：按会员 ID 或姓名恢复教育进度、职位及广州双语俱乐部字段。
+ * 方法作用：按会员 ID 或姓名恢复教育进度、职位及当前俱乐部字段。
  * 为什么添加：旧草稿可能只保存姓名，PDF 导出仍必须显示完整会员格式。
  */
 function hydrateAgendaMembers(agenda, memberships) {
@@ -142,8 +142,8 @@ function hydrateAgendaMembers(agenda, memberships) {
       pathNameEn: member.pathNameEn || '',
       officerTitleZh: member.officerTitleZh || '',
       officerTitleEn: member.officerTitleEn || '',
-      clubZh: '广州双语',
-      clubEn: 'Bilingual',
+      clubZh: '',
+      clubEn: '',
       unresolved: false
     });
   };
@@ -160,13 +160,13 @@ function hydrateAgendaMembers(agenda, memberships) {
 }
 
 async function hydrateAgendaMembersFromDb(agenda) {
-  const res = await common.getDb().collection('memberships').limit(100).get();
+  const res = await common.getCollection('memberships').where({ clubId: common.config.getConfig().clubId }).limit(100).get();
   return hydrateAgendaMembers(agenda, res.data || []);
 }
 
 /**
  * 方法是什么：使用会员库记录补齐议程中的人员信息。
- * 方法作用：按会员 ID 或姓名恢复教育进度、职位及广州双语俱乐部字段。
+ * 方法作用：按会员 ID 或姓名恢复教育进度、职位及当前俱乐部字段。
  * 为什么添加：旧草稿可能只保存姓名，PDF 导出仍必须显示完整会员格式。
  */
 function hydrateAgendaMembers(agenda, memberships) {
@@ -192,8 +192,8 @@ function hydrateAgendaMembers(agenda, memberships) {
       pathNameEn: matched.pathNameEn || '',
       officerTitleZh: matched.officerTitleZh || '',
       officerTitleEn: matched.officerTitleEn || '',
-      clubZh: '广州双语',
-      clubEn: 'Bilingual',
+      clubZh: '',
+      clubEn: '',
       unresolved: false
     });
   };
@@ -210,7 +210,7 @@ function hydrateAgendaMembers(agenda, memberships) {
 }
 
 async function hydrateAgendaMembersFromDb(agenda) {
-  const res = await common.getDb().collection('memberships').limit(100).get();
+  const res = await common.getCollection('memberships').where({ clubId: common.config.getConfig().clubId }).limit(100).get();
   return hydrateAgendaMembers(agenda, res.data || []);
 }
 

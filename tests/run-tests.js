@@ -25,39 +25,41 @@ const signupView = require('../miniprogram/utils/signup-view');
 const pdfPreview = require('../miniprogram/utils/pdf-preview');
 const membershipInvites = require('../cloudfunctions/membershipInvites');
 const singletonAgendaMigration = require('../scripts/migrate-singleton-agenda');
+const isolatedMigration = require('../scripts/migrate-isolated-data');
+const workbookSeed = require('../cloudfunctions/seedWorkbookData');
 const { PDFDocument } = require('../cloudfunctions/common/node_modules/pdf-lib');
 
 let memberships = [];
 let pathways = [];
 
 const SAMPLE_TEXT = `#接龙
-广州双语国际演讲俱乐部第760期中文会议，欢迎大家报名角色
+示例俱乐部第760期中文会议，欢迎大家报名角色
 
 📆时间：2026年7月8日周三19:30-21:30
-🏠地址：广州市天河区珠江新城华穗路172号星辰大厦西塔1904-A房（5号线珠江新城B1出口）
+🏠地址：会议地点由俱乐部模板配置
 
-礼宾官（宾客） ：维奇
-会议经理：马威
-总主持人：文烨彬
-时间官：谢仁
+礼宾官（宾客） ：匿名来宾
+会议经理：示例甲
+总主持人：示例乙
+时间官：示例丙
 语法师：[太阳]
-总体点评：不懂
+总体点评：示例丁
 
-即兴主持人：文耐
-即兴点评：建安
+即兴主持人：示例戊
+即兴点评：示例己
 
-备稿演讲者1：周沫
+备稿演讲者1：示例庚
 项目级别：L4P3
-点评者1：张国聪
+点评者1：示例甲
 
-备稿演讲者2：文耐
+备稿演讲者2：示例戊
 项目级别：L2P2
-点评者2：佩欣
+点评者2：示例乙
 
 参与者请接龙报名：
-1. 文耐
-2. Brittany.蔡
-3. 张国聪(省直中文)`;
+1. 示例戊
+2. Member.A
+3. External.Member(Other Club)`;
 
 /**
  * 方法是什么：断言姓名可以匹配到指定会员中文名。
@@ -79,12 +81,12 @@ function createWorkbookFixture() {
   const workbook = XLSX.utils.book_new();
   const membershipRows = [
     ['昵称', '姓名', '英文名', '加入头马时间', 'Title on Agenda', '议程表填写', '路径', '路径(中文)'],
-    ['', '马威', 'Will Ma', '2010-11-01', 'Will Ma(PM)', '马威(PM)', 'Presentation Mastery', '精通演讲'],
-    ['', '韦文耐', 'Wen Nai', '', 'Wen Nai(PM)', '韦文耐(PM)', '', ''],
-    ['', '不懂先生', 'Franco Huang', '', 'Franco Huang(MS)', '不懂先生(MS)', '', ''],
-    ['', '陈佩欣', 'Penny Chen', '', 'Penny Chen(IP1)', '陈佩欣(IP1)', '', ''],
-    ['', '蔡艳灵', 'Brittany Cai', '', 'Brittany Cai(IP1)', '蔡艳灵(IP1)', '', ''],
-    ['', '周沫', 'Mo Zhou', '', 'Mo Zhou(PM)', '周沫(PM)', '', ''],
+    ['', '示例甲', 'Member A', '2010-11-01', 'Member A(PM)', '示例甲(PM)', 'Presentation Mastery', '精通演讲'],
+    ['', '示例乙', 'Member B', '', 'Member B(PM)', '示例乙(PM)', '', ''],
+    ['', '示例丙', 'Member C', '', 'Member C(MS)', '示例丙(MS)', '', ''],
+    ['', '示例丁', 'Member D', '', 'Member D(IP1)', '示例丁(IP1)', '', ''],
+    ['', '示例戊', 'Member E', '', 'Member E(IP1)', '示例戊(IP1)', '', ''],
+    ['', '示例庚', 'Member F', '', 'Member F(PM)', '示例庚(PM)', '', ''],
     ['', '历史会员', '', '', '', '', '', ''],
     ['', '历史姓名', 'History Name', '', 'History Name(PM)', '历史姓名(PM)', '', '']
   ];
@@ -116,8 +118,8 @@ function testWorkbookData() {
   assert.strictEqual(memberships[0].joinedAt, '2010-11-01', 'Excel 日期转换异常');
   assert.strictEqual(memberships[6].status, 'history', '历史会员区域识别异常');
   assert.ok(memberships.some(function findMo(member) {
-    return member.nameZh === '周沫';
-  }), '应包含周沫');
+    return member.nameZh === '示例庚';
+  }), '应包含示例庚');
   assert.ok(pathways.some(function findL2P2(item) {
     return item.code === 'L2P2';
   }), '应包含 L2P2 项目');
@@ -130,6 +132,12 @@ function testWorkbookData() {
   assert.ok(!Object.prototype.hasOwnProperty.call(prepared[0], 'titleOnAgenda'), '不应保存 titleOnAgenda');
   const pathway = pathwayImporter.preparePathway(pathways[0]);
   assert.deepStrictEqual(Object.keys(pathway).sort(), ['code', 'fullLabelEn', 'fullLabelZh', 'level', 'objectiveEn', 'objectiveZh', 'searchText'].sort(), 'Pathways 字段白名单异常');
+  const seededMember = workbookSeed.sanitizeMembership(Object.assign({}, memberships[0], { rawRow: ['private'], sourceKey: 'source-key' }));
+  assert.strictEqual(Object.prototype.hasOwnProperty.call(seededMember, 'rawRow'), false, '云端导入不应保存 rawRow');
+  assert.strictEqual(Object.prototype.hasOwnProperty.call(seededMember, 'sourceKey'), false, '云端导入不应保存 sourceKey');
+  assert.strictEqual(seededMember.clubId, 'default-club');
+  const seededPathway = workbookSeed.sanitizePathway(Object.assign({}, pathways[0], { rawRow: ['private'], sourceKey: 'source-key' }));
+  assert.strictEqual(Object.prototype.hasOwnProperty.call(seededPathway, 'rawRow'), false, '云端路径导入不应保存 rawRow');
 }
 
 /**
@@ -138,11 +146,11 @@ function testWorkbookData() {
  * 为什么添加：接龙里姓名写法非常自由，需要确保关键样例能匹配 Membership。
  */
 function testNameMatching() {
-  assertMember('文耐', '韦文耐');
-  assertMember('不懂', '不懂先生');
-  assertMember('佩欣', '陈佩欣');
-  assertMember('Brittany.蔡', '蔡艳灵');
-  assert.strictEqual(parser.matchMemberByName('张国聪(省直中文)', memberships).matched, false, '外部人员应保留待确认');
+  assertMember('示例乙', '示例乙');
+  assertMember('示例丙', '示例丙');
+  assertMember('示例丁', '示例丁');
+  assertMember('Member E', '示例戊');
+  assert.strictEqual(parser.matchMemberByName('External.Member(Other Club)', memberships).matched, false, '外部人员应保留待确认');
 }
 
 /**
@@ -155,7 +163,7 @@ function testRuleParser() {
   assert.strictEqual(agenda.meetingInfo.meetingNo, '760');
   assert.strictEqual(agenda.meetingInfo.language, 'zh');
   assert.strictEqual(agenda.meetingInfo.date, '2026-07-08');
-  assert.strictEqual(agenda.roles.meetingManager.rawName, '马威');
+  assert.strictEqual(agenda.roles.meetingManager.rawName, '示例甲');
   assert.strictEqual(agenda.roles.grammarian.rawName, '');
   assert.strictEqual(agenda.preparedSpeeches.length, 2);
   assert.ok(agenda.items.length >= 10, '应生成基础流程项目');
@@ -262,23 +270,23 @@ function testPathwayEditingAndSearch() {
  */
 function testAgendaPersonDefaultsAndOfficerSync() {
   const template = agendaUtil.createDefaultTemplate();
-  template.locales.zh.page2.officers[0] = { role: '会长 President', name: '韦文耐 Winnie Wei', phone: '13800000000', wechat: 'winnie' };
+  template.locales.zh.page2.officers[0] = { role: '会长 President', name: '示例会长 Example President', phone: '00000000000', wechat: 'example-president' };
   const chineseAgenda = agendaUtil.createAgendaFromFacts({}, template);
   const signIn = chineseAgenda.sections.find((section) => section.id === 'signIn').row;
   assert.ok(signIn.persons.every((person) => !person.rawName && !person.clubZh && !person.clubEn));
   const chineseOpening = chineseAgenda.sections.find((section) => section.id === 'opening').children.find((row) => row.id === 'openingRemarks');
-  assert.strictEqual(chineseOpening.person.displayNameZh, '韦文耐');
+  assert.strictEqual(chineseOpening.person.displayNameZh, '示例会长');
 
   const englishAgenda = agendaUtil.createAgendaFromFacts({ meetingInfo: { language: 'en' } }, template);
   const englishOpening = englishAgenda.sections.find((section) => section.id === 'opening').children.find((row) => row.id === 'openingRemarks');
-  assert.strictEqual(englishOpening.person.displayNameEn, 'Winnie Wei');
+  assert.strictEqual(englishOpening.person.displayNameEn, 'Example President');
 
   const normalizedTemplate = agendaUtil.normalizeTemplate({
-    locales: { zh: { page2: { officers: [{ role: '会长 President', name: '新会长', phone: '13900000000', wechat: 'new-president' }] } } }
+    locales: { zh: { page2: { officers: [{ role: '会长 President', name: '匿名负责人', phone: '00000000000', wechat: 'anonymous-contact' }] } } }
   });
-  assert.strictEqual(normalizedTemplate.page2.officers[0].phone, '13900000000');
-  assert.strictEqual(normalizedTemplate.locales.en.page2.officers[0].wechat, 'new-president');
-  assert.strictEqual(normalizedTemplate.locales.en.page2.officers[0].name, '新会长');
+  assert.strictEqual(normalizedTemplate.page2.officers[0].phone, '00000000000');
+  assert.strictEqual(normalizedTemplate.locales.en.page2.officers[0].wechat, 'anonymous-contact');
+  assert.strictEqual(normalizedTemplate.locales.en.page2.officers[0].name, '匿名负责人');
 }
 
 function testSignupRoleSlots() {
@@ -499,7 +507,7 @@ function testTemplateAndLegacyUpgrade() {
 function testLocalizedTemplateAndAnchors() {
   const migrated = agendaUtil.normalizeTemplate({ fixedContent: { clubTitle: '旧中文模板' } });
   assert.strictEqual(migrated.locales.zh.fixedContent.clubTitle, '旧中文模板');
-  assert.ok(migrated.locales.en.fixedContent.clubTitle.includes('Bilingual'));
+  assert.ok(migrated.locales.en.fixedContent.clubTitle.includes('Club Name'));
   const englishView = agendaUtil.resolveTemplateLocale(migrated, 'en');
   assert.strictEqual(englishView.activeLanguage, 'en');
   assert.strictEqual(englishView.timerRules[0][0], 'Timer Signals');
@@ -618,15 +626,15 @@ function testEnglishAgendaCompatibility() {
  * 为什么添加：Free Talk 和模板文案选择依赖稳定的语言字段。
  */
 function testMeetingLanguageDetection() {
-  const english = parser.parseAgendaByRules('广州双语国际演讲俱乐部第800期英文会议，欢迎大家报名角色\n时间：2026年7月8日周三 19:30-21:30', [], []);
-  const chinese = parser.parseAgendaByRules('广州双语国际演讲俱乐部第801期中文会议，欢迎大家报名角色\n时间：2026年7月8日周三 19:30-21:30', [], []);
+  const english = parser.parseAgendaByRules('示例俱乐部第800期英文会议，欢迎大家报名角色\n时间：2026年7月8日周三 19:30-21:30', [], []);
+  const chinese = parser.parseAgendaByRules('示例俱乐部第801期中文会议，欢迎大家报名角色\n时间：2026年7月8日周三 19:30-21:30', [], []);
   assert.strictEqual(english.meetingInfo.language, 'en');
   assert.strictEqual(english.meetingInfo.meetingNo, '800');
   assert.strictEqual(chinese.meetingInfo.language, 'zh');
   assert.strictEqual(chinese.meetingInfo.meetingNo, '801');
 
   const aiAgenda = parser.buildAgendaFromAi({
-    rawText: '#接龙\n【广州双语国际演讲俱乐部第760期中文会议】',
+    rawText: '#接龙\n【示例俱乐部第760期中文会议】',
     meetingInfo: { meetingNo: '', language: 'en' }
   }, [], []);
   assert.strictEqual(aiAgenda.meetingInfo.meetingNo, '760');
@@ -645,7 +653,7 @@ function testMeetingLanguageDetection() {
  */
 function testEmptyRolePlaceholders() {
   const text = [
-    '广州双语国际演讲俱乐部第802期中文会议，欢迎大家报名角色',
+    '示例俱乐部第802期中文会议，欢迎大家报名角色',
     '会议经理：☀️',
     '总主持人：🌞',
     '时间官：🌹',
@@ -679,7 +687,7 @@ function testEmptyRolePlaceholders() {
   assert.strictEqual(preparedBlock.evaluator.rawName, '');
 
   const openingRow = aiAgenda.sections.find((section) => section.id === 'opening').children.find((row) => row.id === 'openingRemarks');
-  assert.strictEqual(openingRow.person.rawName, '白俊杰');
+  assert.strictEqual(openingRow.person.rawName, '会长');
   assert.strictEqual(openingRow.permissions.memberPerson, true);
 }
 
@@ -726,12 +734,12 @@ async function testExportRecordCollectionInitialization() {
       }
     };
   };
-  const exportId = await exportAgendaPdf.saveExportRecord('agenda-1', 'zh', 'cloud://pdf', 'openid-1', ensureCollection, async function wait() {});
+  const exportId = await exportAgendaPdf.saveExportRecord('agenda-1', 'zh', 'cloud://pdf', 'test-openid-a', ensureCollection, async function wait() {});
   assert.strictEqual(requestedCollection, 'pdf_exports');
   assert.strictEqual(attempts, 3);
   assert.strictEqual(exportId, 'export-1');
 
-  const missingExportId = await exportAgendaPdf.saveExportRecord('agenda-1', 'zh', 'cloud://pdf', 'openid-1', async function missingCollection() {
+  const missingExportId = await exportAgendaPdf.saveExportRecord('agenda-1', 'zh', 'cloud://pdf', 'test-openid-a', async function missingCollection() {
     const error = new Error('database collection not exists');
     error.errCode = -502005;
     throw error;
@@ -746,9 +754,9 @@ async function testExportRecordCollectionInitialization() {
  */
 function testMemberOptionsAndAgendaPayload() {
   const sorted = lookupOptions.sortMembers([
-    { _id: '2', nameZh: '周沫' },
-    { _id: '1', nameZh: '马威' },
-    { _id: '3', nameEn: 'Brittany Cai' }
+    { _id: '2', nameZh: '示例乙' },
+    { _id: '1', nameZh: '示例甲' },
+    { _id: '3', nameEn: 'Member C' }
   ]);
   assert.deepStrictEqual(sorted.map((member) => member._id), ['1', '2', '3']);
 
@@ -764,12 +772,12 @@ function testMemberOptionsAndAgendaPayload() {
   assert.strictEqual(Object.prototype.hasOwnProperty.call(payload, 'expiresAt'), false);
 
   const legacyAgenda = agendaUtil.createAgendaFromFacts({
-    rolePeople: { tableTopicsMaster: { rawName: '韦文耐', clubZh: '广州双语' } }
+    rolePeople: { tableTopicsMaster: { rawName: '示例甲', clubZh: '默认俱乐部' } }
   }, agendaUtil.createDefaultTemplate());
   exportAgendaPdf.hydrateAgendaMembers(legacyAgenda, [{
     _id: 'member-wennai',
-    nameZh: '韦文耐',
-    nameEn: 'Wen Nai',
+    nameZh: '示例甲',
+    nameEn: 'Member A',
     educationAwards: '三冠王',
     educationProgress: 'MS',
     pathNameZh: '战略关系',
@@ -777,7 +785,7 @@ function testMemberOptionsAndAgendaPayload() {
     officerTitleEn: 'VPE'
   }]);
   const topicsMaster = legacyAgenda.sections.find((section) => section.id === 'tableTopics').children.find((row) => row.id === 'topicExplanation').person;
-  assert.strictEqual(pdfRenderer.formatPersonName(topicsMaster, 'zh'), '韦文耐(三冠王)<教育副会长>', '旧议程姓名应从会员库补齐教育奖项和职位');
+  assert.strictEqual(pdfRenderer.formatPersonName(topicsMaster, 'zh'), '示例甲(三冠王)<教育副会长>', '旧议程姓名应从会员库补齐教育奖项和职位');
 }
 
 /**
@@ -868,12 +876,12 @@ function testPdfAgendaLineStyle() {
   }).map((winner) => winner.value), ['角色丙', '即兴乙', '备稿甲', '点评丁'], '右侧最佳名单应读取当前议程最佳模块');
   assert.strictEqual(pdfRenderer.formatPersonName({
     memberId: 'member-1',
-    displayNameZh: '廖凤媚',
+    displayNameZh: '示例秘书',
     educationAwards: 'DTM',
     educationProgress: 'PM2',
     pathNameZh: '精通演讲',
     officerTitleZh: '<<秘书长>>'
-  }, 'zh'), '廖凤媚(DTM)<秘书长>');
+  }, 'zh'), '示例秘书(DTM)<秘书长>');
   assert.strictEqual(pdfRenderer.formatPersonName({ displayNameZh: '外部来宾' }, 'zh'), '外部来宾');
   const rectangles = [];
   const lines = [];
@@ -997,25 +1005,47 @@ function testEnglishRoleLabels() {
 }
 
 function testMembershipRolesAndSearch() {
-  assert.strictEqual(membershipRoleMigration.roleForName('韦文耐'), 'super_admin');
-  assert.strictEqual(membershipRoleMigration.roleForName('冉桂竹'), 'admin');
-  assert.strictEqual(membershipRoleMigration.roleForName('普通会员'), 'member');
+  assert.strictEqual(membershipRoleMigration.roleForName('super_admin'), 'super_admin');
+  assert.strictEqual(membershipRoleMigration.roleForName('admin'), 'admin');
+  assert.strictEqual(membershipRoleMigration.roleForName('unknown'), 'member');
   assert.strictEqual(adminMemberships.buildMemberPayload({ nameZh: '新会员' }).role, 'member');
   assert.throws(() => adminMemberships.buildMemberPayload({ nameZh: '错误角色', role: 'owner' }), /会员角色无效/);
   assert.strictEqual(adminMemberships.hasAuthorizedPersonalInfo({ nameZh: '新会员' }), false);
-  assert.strictEqual(adminMemberships.hasAuthorizedPersonalInfo({ phone: '13800138000' }), true);
+  assert.strictEqual(adminMemberships.hasAuthorizedPersonalInfo({ phone: '00000000000' }), true);
   const members = [
-    { _id: '1', nameZh: '韦文耐', nameEn: 'Winnie Wei', nickName: '文耐' },
-    { _id: '2', nameZh: '冉桂竹', nameEn: 'Grace Ran', nickName: '桂竹' }
+    { _id: '1', nameZh: '示例甲', nameEn: 'Member A', nickName: '甲' },
+    { _id: '2', nameZh: '示例乙', nameEn: 'Member B', nickName: '乙' }
   ];
-  assert.deepStrictEqual(memberSearch.filterMembers(members, 'WINNIE').map((item) => item._id), ['1']);
-  assert.deepStrictEqual(memberSearch.filterMembers(members.map((member) => ({ member })), '桂竹').map((item) => item._id), ['2']);
+  assert.deepStrictEqual(memberSearch.filterMembers(members, 'MEMBER A').map((item) => item._id), ['1']);
+  assert.deepStrictEqual(memberSearch.filterMembers(members.map((member) => ({ member })), '乙').map((item) => item._id), ['2']);
   assert.strictEqual(memberSearch.filterMembers(members, '').length, 2);
   assert.strictEqual(Object.prototype.hasOwnProperty.call(lookupOptions.sanitizeMember({ _id: '1', openid: 'secret-openid' }), 'openid'), false);
   const now = new Date('2026-08-15T00:00:00.000Z');
   assert.doesNotThrow(() => membershipInvites.assertInviteUsable({ status: 'pending', expiresAt: '2026-08-16T00:00:00.000Z' }, now));
   assert.throws(() => membershipInvites.assertInviteUsable({ status: 'used', expiresAt: '2026-08-16T00:00:00.000Z' }, now), /邀请已使用/);
   assert.throws(() => membershipInvites.assertInviteUsable({ status: 'pending', expiresAt: '2026-08-14T00:00:00.000Z' }, now), /邀请已过期/);
+}
+
+/**
+ * 方法是什么：测试隔离库数据清洗和会议版本控制。
+ * 方法作用：确认新库只保留白名单字段，并拒绝旧快照覆盖新数据。
+ * 为什么添加：数据库迁移和编辑/报名一致性是本次重构的核心风险。
+ */
+function testIsolatedDatabaseModel() {
+  const config = { clubId: 'test-club' };
+  const member = isolatedMigration.sanitizeRecord('memberships', { _id: 'm1', nameZh: '匿名会员', rawRow: ['secret'], openid: 'openid-value' }, config);
+  assert.strictEqual(member.clubId, 'test-club');
+  assert.strictEqual(member.nameZh, '匿名会员');
+  assert.strictEqual(Object.prototype.hasOwnProperty.call(member, 'rawRow'), false);
+  assert.strictEqual(Object.prototype.hasOwnProperty.call(member, 'openid'), false);
+  assert.throws(() => common.meetingService.assertVersion(1, 2), /刷新后重试/);
+  assert.doesNotThrow(() => common.meetingService.assertVersion(2, 2));
+  const schema = JSON.parse(fs.readFileSync(path.join(__dirname, '../data/isolated-schema.json'), 'utf8'));
+  assert.deepStrictEqual(schema.environmentNamespaces, { development: 'dev_', production: 'prod_' });
+  assert.ok(schema.collections.meetings.fields.includes('signupVersion'));
+  assert.ok(schema.collections.meeting_signups.fields.includes('meetingId'));
+  assert.ok(schema.collections.roles.fields.includes('code'));
+  assert.ok(schema.collections.pdf_exports.fields.includes('fileID'));
 }
 
 /**
@@ -1117,6 +1147,7 @@ async function main() {
   testPdfFontFallback();
   testEnglishRoleLabels();
   testMembershipRolesAndSearch();
+  testIsolatedDatabaseModel();
   testMemberFilters();
   await testExportRecordCollectionInitialization();
   await testRetireMember();

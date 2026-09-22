@@ -16,7 +16,7 @@ async function loadAll(collectionName) {
   let skip = 0;
   const pageSize = 100;
   while (true) {
-    const res = await db.collection(collectionName).skip(skip).limit(pageSize).get();
+    const res = await common.getCollection(collectionName).skip(skip).limit(pageSize).get();
     const data = res.data || [];
     list.push(...data);
     if (data.length < pageSize) {
@@ -35,6 +35,7 @@ async function loadAll(collectionName) {
 function buildDraftPayload(agenda, openid, now) {
   const info = agenda && agenda.meetingInfo || {};
   return {
+    clubId: common.config.getConfig().clubId,
     ownerOpenid: openid,
     agenda,
     meetingSummary: { meetingNo: info.meetingNo || '', date: info.date || '', startTime: info.startTime || '', endTime: info.endTime || '' },
@@ -51,7 +52,7 @@ function buildDraftPayload(agenda, openid, now) {
 async function saveCurrentDraft(db, openid, agenda) {
   const now = new Date();
   const collection = await common.ensureCollection('agendas');
-  const existing = await collection.where({ _id: common.CURRENT_AGENDA_ID }).limit(1).get();
+  const existing = await collection.where({ _id: common.CURRENT_AGENDA_ID, clubId: common.config.getConfig().clubId }).limit(1).get();
   const payload = buildDraftPayload(agenda, openid, now);
   const record = existing.data && existing.data[0];
   if (record) {

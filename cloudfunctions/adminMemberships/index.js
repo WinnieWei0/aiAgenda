@@ -36,7 +36,7 @@ const LEGACY_FIELDS = ['clubEn', 'clubZh', 'rawRow', 'sourceKey', 'agendaNameZh'
  * 为什么添加：编辑接口不能让旧字段重新写回数据库。
  */
 function buildMemberPayload(member) {
-  const payload = {};
+  const payload = { clubId: common.config.getConfig().clubId };
   for (const field of MEMBER_FIELDS) {
     payload[field] = member[field] === undefined || member[field] === null ? '' : member[field];
   }
@@ -78,17 +78,17 @@ async function saveMember(member) {
     LEGACY_FIELDS.forEach((field) => {
       updateData[field] = db.command.remove();
     });
-    const existing = await db.collection('memberships').doc(id).get();
-    const allowedFields = new Set(MEMBER_FIELDS.concat(['openid', 'searchText', 'createdAt', 'updatedAt']));
+    const existing = await common.getCollection('memberships').doc(id).get();
+    const allowedFields = new Set(MEMBER_FIELDS.concat(['clubId', 'openid', 'searchText', 'createdAt', 'updatedAt']));
     Object.keys(existing.data || {}).forEach((field) => {
       if (field !== '_id' && !allowedFields.has(field)) {
         updateData[field] = db.command.remove();
       }
     });
-    await db.collection('memberships').doc(id).update({ data: updateData });
+    await common.getCollection('memberships').doc(id).update({ data: updateData });
     return { _id: id, action: 'updated' };
   }
-  const res = await db.collection('memberships').add({
+  const res = await common.getCollection('memberships').add({
     data: Object.assign({}, payload, { createdAt: common.nowIso() })
   });
   return { _id: res._id, action: 'created' };
@@ -101,7 +101,7 @@ async function saveMember(member) {
  */
 async function getMember(id) {
   const db = common.getDb();
-  const res = await db.collection('memberships').doc(id).get();
+  const res = await common.getCollection('memberships').doc(id).get();
   return res.data || null;
 }
 
@@ -112,7 +112,10 @@ async function getMember(id) {
  */
 async function retireMember(db, id) {
   const updatedAt = common.nowIso();
-  await db.collection('memberships').doc(id).update({ data: { status: 'history', updatedAt } });
+  const collection = db && typeof db.collection === 'function'
+    ? db.collection(common.collectionName('memberships'))
+    : common.getCollection('memberships');
+  await collection.doc(id).update({ data: { status: 'history', updatedAt } });
   return { retired: true, status: 'history', updatedAt };
 }
 
@@ -143,20 +146,20 @@ async function main(event) {
       return common.ok(await saveMember(event.member || {}));
     }
     if (action === 'delete') {
-      await db.collection('memberships').doc(event.id).remove();
+      await common.getCollection('memberships').doc(event.id).remove();
       return common.ok({ removed: true });
     }
     if (action === 'retire') {
       return common.ok(await retireMember(db, event.id));
     }
     if (action === 'clearBinding') {
-      const memberRes = await db.collection('memberships').doc(event.id).get();
+      const memberRes = await common.getCollection('memberships').doc(event.id).get();
       const member = memberRes.data;
-      await db.collection('memberships').doc(event.id).update({ data: { openid: db.command.remove(), updatedAt: common.nowIso() } });
+      await common.getCollection('memberships').doc(event.id).update({ data: { openid: db.command.remove(), updatedAt: common.nowIso() } });
       if (member && member.openid) {
         const crypto = require('crypto');
         const bindingId = crypto.createHash('sha256').update(member.openid).digest('hex');
-        try { await db.collection('membership_identity_bindings').doc(bindingId).remove(); } catch (error) { /* Legacy bindings may not have a lock document. */ }
+        try { await common.getCollection('membershipIdentityBindings').doc(bindingId).remove(); } catch (error) { /* Legacy bindings may not have a lock document. */ }
       }
       return common.ok({ cleared: true });
     }

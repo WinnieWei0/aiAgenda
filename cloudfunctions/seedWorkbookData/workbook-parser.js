@@ -276,8 +276,8 @@ function parseMembershipSheet(sheet) {
       menteeCount: toText(getCellByAliases(row, headerMap, MEMBERSHIP_HEADERS.menteeCount)),
       competitionEligible: toBoolean(getCellByAliases(row, headerMap, MEMBERSHIP_HEADERS.competitionEligible)),
       notes: toText(getCellByAliases(row, headerMap, MEMBERSHIP_HEADERS.notes)),
-      clubZh: historyStarted ? '历史会员' : '广州双语',
-      clubEn: historyStarted ? 'History' : 'Bilingual',
+      clubZh: historyStarted ? '历史会员' : '',
+      clubEn: historyStarted ? 'History' : '',
       aliases: uniqueValues([nickName, nameZh, nameEn, titleOnAgenda, agendaNameZh]),
       rawRow: buildRawObject(headers, row)
     };

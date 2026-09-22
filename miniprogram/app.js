@@ -1,9 +1,13 @@
+const environment = require('./config/environment');
+
 App({
   globalData: {
-    envId: 'ai-agenda-d1gxlfuz6843bbed0',
+    envId: '',
+    environment: environment.environment,
     user: null,
     roles: [],
     identity: { role: 'guest', roleLabel: '宾客', name: '', membership: null },
+    club: { nameZh: '俱乐部名称', nameEn: 'Club Name' },
     currentAgenda: null
   },
 
@@ -13,7 +17,7 @@ App({
    * 为什么添加：所有页面都依赖云函数和用户身份，启动时统一准备可以减少页面重复逻辑。
    */
   async onLaunch() {
-    this.initCloud();
+    if (!this.initCloud()) return;
     await this.login();
   },
 
@@ -31,10 +35,19 @@ App({
       });
       return;
     }
+    let runtime;
+    try {
+      runtime = environment.getEnvironment();
+    } catch (error) {
+      wx.showModal({ title: '环境未配置', content: error.message, showCancel: false });
+      return false;
+    }
+    this.globalData.envId = runtime.envId;
     wx.cloud.init({
-      env: this.globalData.envId,
+      env: runtime.envId,
       traceUser: true
     });
+    return true;
   },
 
   /**
@@ -52,6 +65,7 @@ App({
         this.globalData.user = res.result.data.user;
         this.globalData.roles = res.result.data.roles || [];
         this.globalData.identity = res.result.data.identity || { role: 'guest', roleLabel: '宾客', name: '', membership: null };
+        this.globalData.club = res.result.data.club || this.globalData.club;
       }
     } catch (error) {
       console.warn('登录失败', error);

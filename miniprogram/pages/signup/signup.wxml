@@ -4,7 +4,7 @@
   <view class="meeting-hero">
     <image class="hero-logo" src="/images/template/toastmasters-logo.png" mode="aspectFit" />
     <view class="hero-copy">
-      <text class="club-name">{{data.language === 'en' ? 'GZ Bilingual Toastmasters Club' : '广州双语国际演讲俱乐部'}}</text>
+      <text class="club-name">{{data.language === 'en' ? data.club.nameEn : data.club.nameZh}}</text>
       <view class="hero-rule"></view>
       <text class="meeting-name">{{data.language === 'en' ? 'Meeting No. ' : '第'}}{{data.meetingInfo.meetingNo || '--'}}{{data.language === 'en' ? '' : '次会议'}}</text>
     </view>
@@ -45,7 +45,7 @@
     <text class="card-title">{{data.language === 'en' ? 'Signed-up People' : '已报名人员'}}</text>
     <view wx:if="{{!data.people.length}}" class="empty">{{data.language === 'en' ? 'No sign-ups yet' : '暂无报名'}}</view>
     <view wx:for="{{data.people}}" wx:key="key" class="person">
-      <view class="person-identity"><text class="person-name">{{item.name}}</text><text wx:if="{{item.personType === 'club' && item.club}}" class="club-tag">{{item.club}}</text><text wx:if="{{item.personType === 'guest'}}" class="club-tag">{{data.language === 'en' ? 'Guest' : '宾客'}}</text><text wx:if="{{item.personType === 'preset' && item.club && item.club !== '广州双语'}}" class="club-tag">{{item.club}}</text></view>
+      <view class="person-identity"><text class="person-name">{{item.name}}</text><text wx:if="{{item.personType === 'club' && item.club}}" class="club-tag">{{item.club}}</text><text wx:if="{{item.personType === 'guest'}}" class="club-tag">{{data.language === 'en' ? 'Guest' : '宾客'}}</text><text wx:if="{{item.personType === 'preset' && item.club}}" class="club-tag">{{item.club}}</text></view>
       <text wx:if="{{item.roles.length}}" class="person-role-labels role-label">{{item.rolesText}}</text>
       <button wx:elif="{{item.attendanceOnly && item.mine}}" class="x-button" size="mini" data-id="{{item.attendanceSignupId}}" bindtap="cancelSignup">X</button>
       <text wx:else class="attendance-label"></text>

@@ -33,9 +33,9 @@ async function clearCollection(db, collectionName) {
  * 方法作用：优先使用数据库模板，没有时回退代码默认模板。
  * 为什么添加：迁移创建的空白议程必须与线上编辑器规则一致。
  */
-async function loadTemplate(db) {
+async function loadTemplate(db, collectionName) {
   try {
-    const result = await db.collection('agenda_templates').where({ templateId: agendaModel.TEMPLATE_ID }).limit(1).get();
+    const result = await db.collection(collectionName || 'club_templates').where({ templateId: agendaModel.TEMPLATE_ID }).limit(1).get();
     if (result.data && result.data.length) return agendaModel.normalizeTemplate(result.data[0]);
   } catch (error) {
     if (!String(error && (error.errMsg || error.message) || '').includes('collection not exists')) throw error;
@@ -71,15 +71,16 @@ function buildCurrentRecord(template, nowValue) {
  */
 async function run() {
   const config = membershipImporter.getConfig();
+  const prefix = process.env.DB_COLLECTION_PREFIX || 'dev_';
   cloud.init({ env: config.envId, secretId: config.secretId, secretKey: config.secretKey });
   const db = cloud.database();
   const removed = {};
-  removed.agenda_signups = await clearCollection(db, 'agenda_signups');
-  removed.agenda_signup_claims = await clearCollection(db, 'agenda_signup_claims');
-  removed.agendas = await clearCollection(db, 'agendas');
-  const template = await loadTemplate(db);
-  await db.collection('agendas').doc(CURRENT_AGENDA_ID).set({ data: buildCurrentRecord(template) });
-  console.log(`单例议程迁移完成：${JSON.stringify(removed)}，已创建 agendas/${CURRENT_AGENDA_ID}`);
+  removed.agenda_signups = await clearCollection(db, `${prefix}meeting_signups`);
+  removed.agenda_signup_claims = await clearCollection(db, `${prefix}meeting_signup_claims`);
+  removed.agendas = await clearCollection(db, `${prefix}meetings`);
+  const template = await loadTemplate(db, `${prefix}club_templates`);
+  await db.collection(`${prefix}meetings`).doc(CURRENT_AGENDA_ID).set({ data: Object.assign({}, buildCurrentRecord(template), { clubId: process.env.DEFAULT_CLUB_ID || 'default-club' }) });
+  console.log(`隔离会议迁移完成：${JSON.stringify(removed)}，已创建 ${prefix}meetings/${CURRENT_AGENDA_ID}`);
   return { removed, agendaId: CURRENT_AGENDA_ID };
 }
 

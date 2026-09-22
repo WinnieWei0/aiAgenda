@@ -12,7 +12,8 @@ async function main(event) {
     const user = await common.upsertUser(openid, event && event.profile ? event.profile : {});
     const membership = await common.getMembershipByOpenid(openid);
     const identity = common.membershipIdentity(membership);
-    return common.ok({ user, roles: identity.role === 'guest' ? [] : [identity.role], identity });
+    const club = await common.getClubContext();
+    return common.ok({ user, roles: identity.role === 'guest' ? [] : [identity.role], identity, club: { nameZh: club.nameZh || '', nameEn: club.nameEn || '' } });
   } catch (error) {
     return common.handleError(error);
   }

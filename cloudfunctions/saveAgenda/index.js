@@ -1,9 +1,6 @@
 const common = require('agenda-common');
 
-const LEGACY_FIELDS = [
-  'rawText', 'meetingInfo', 'items', 'sections', 'participants', 'warnings', 'unresolvedNames',
-  'confidence', 'source', 'expiresAt'
-];
+const LEGACY_FIELDS = common.meetingService.LEGACY_FIELDS;
 
 /**
  * 方法是什么：构建议程保存对象。
@@ -11,16 +8,14 @@ const LEGACY_FIELDS = [
  * 为什么添加：编辑保存和解析保存必须使用相同的数据形状。
  */
 function buildAgendaPayload(agenda, template) {
-  const normalized = common.agendaModel.normalizeAgenda(agenda, template || common.agendaModel.createDefaultTemplate());
-  // sections 是当前唯一的流程来源；接龙解析产生的旧字段不再写入数据库。
-  ['rawText', 'items', 'participants', 'warnings', 'unresolvedNames', 'confidence', 'source'].forEach((field) => {
-    delete normalized[field];
-  });
-  delete normalized._id;
-  delete normalized.expiresAt;
-  return normalized;
+  return common.meetingService.normalizeAgenda(common.agendaModel, agenda, template || common.agendaModel.createDefaultTemplate());
 }
 
+/**
+ * 方法是什么：构建会议摘要。
+ * 方法作用：从规范化议程提取列表、分享和报名页需要的时间字段。
+ * 为什么添加：所有页面都通过同一摘要结构读取会议基本信息。
+ */
 function buildMeetingSummary(agenda) {
   const info = agenda && agenda.meetingInfo || {};
   return {
@@ -61,8 +56,9 @@ async function main(event) {
     }
     const db = common.getDb();
     const collection = await common.ensureCollection('agendas');
-    const existingResult = await collection.where({ _id: common.CURRENT_AGENDA_ID }).limit(1).get();
+    const existingResult = await collection.where({ _id: common.CURRENT_AGENDA_ID, clubId: common.config.getConfig().clubId }).limit(1).get();
     const existing = existingResult.data && existingResult.data[0] || null;
+    common.meetingService.assertVersion(submitted.signupVersion, existing && existing.signupVersion || 0);
     const now = new Date();
     const template = await common.getAgendaTemplate();
     const agenda = buildAgendaPayload(submitted, template);
@@ -72,6 +68,7 @@ async function main(event) {
         : (existing.signupSlots || []))
       : [];
     const payload = {
+      clubId: common.config.getConfig().clubId,
       ownerOpenid: openid,
       agenda,
       meetingSummary: buildMeetingSummary(agenda),
@@ -82,9 +79,7 @@ async function main(event) {
     };
     if (existing) {
       const updateData = Object.assign({}, payload);
-      LEGACY_FIELDS.forEach((field) => {
-        updateData[field] = db.command.remove();
-      });
+      Object.assign(updateData, common.meetingService.legacyRemovalFields(db));
       await collection.doc(existing._id).update({ data: updateData });
       return common.ok({ _id: common.CURRENT_AGENDA_ID, action: 'updated', agenda: Object.assign({}, agenda, { _id: common.CURRENT_AGENDA_ID, signupPublicId: common.CURRENT_AGENDA_ID, signupSlots }) });
     }

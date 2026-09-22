@@ -1,6 +1,7 @@
 const app = getApp();
 const cloud = require('../../utils/cloud');
 const agendaUtil = require('../../utils/agenda');
+const meetingService = require('../../services/meeting-service');
 
 function summarizeAgenda(agenda) {
   const info = agenda && agenda.meetingInfo;
@@ -43,7 +44,7 @@ Page({
 
   async loadSummary() {
     try {
-      const data = await cloud.callCloud('agendaQuery', { action: 'summary' });
+      const data = await meetingService.query('summary');
       this.setData({ summary: data.summary || null });
     } catch (error) {
       console.warn('load agenda summary failed', error);
@@ -51,7 +52,7 @@ Page({
   },
 
   async loadAgenda() {
-    const data = await cloud.callCloud('agendaQuery', { action: 'current' });
+      const data = await meetingService.query('current');
     const agenda = data.agenda || null;
     app.setCurrentAgenda(agenda);
     this.setData({ summary: summarizeAgenda(agenda) });
@@ -61,7 +62,7 @@ Page({
   async ensureAgenda() {
     const current = await this.loadAgenda();
     if (current) return current;
-    const data = await cloud.callCloud('saveAgenda', { agenda: agendaUtil.createEmptyAgenda() });
+    const data = await meetingService.save(agendaUtil.createEmptyAgenda());
     app.setCurrentAgenda(data.agenda);
     this.setData({ summary: summarizeAgenda(data.agenda) });
     return data.agenda;
@@ -93,7 +94,7 @@ Page({
     this.setData({ creatingSignup: true });
     try {
       const agenda = await this.ensureAgenda();
-      await cloud.callCloud('signupService', { action: 'create' });
+      await meetingService.signup('create');
       wx.navigateTo({ url: '/pages/signup/signup' });
     } catch (error) {
       cloud.showError(error);

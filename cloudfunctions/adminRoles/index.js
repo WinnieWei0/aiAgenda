@@ -30,7 +30,7 @@ async function saveRole(role) {
  */
 async function getRole(code) {
   const db = common.getDb();
-  const res = await db.collection('roles').where({ code }).limit(1).get();
+  const res = await common.getCollection('roles').where({ code }).limit(1).get();
   return res.data && res.data.length ? res.data[0] : null;
 }
 
@@ -60,7 +60,7 @@ async function main(event) {
       if (['super_admin', 'admin', 'member', 'guest'].includes(roleCode)) {
         return common.fail('ROLE_LOCKED', '系统角色不可删除');
       }
-      const res = await db.collection('roles').where({ code: roleCode }).remove();
+      const res = await common.getCollection('roles').where({ code: roleCode }).remove();
       return common.ok({ removed: res.stats ? res.stats.removed : 0 });
     }
     if (action === 'assign') {

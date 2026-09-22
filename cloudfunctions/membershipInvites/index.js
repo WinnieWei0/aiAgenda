@@ -22,7 +22,7 @@ function assertInviteUsable(invite, nowValue) {
 }
 
 async function listAvailableMembers() {
-  const res = await common.getDb().collection('memberships').limit(100).get();
+  const res = await common.getCollection('memberships').where({ clubId: common.config.getConfig().clubId }).limit(100).get();
   return (res.data || [])
     .filter((member) => !member.openid)
     .sort((left, right) => String(left.nameZh || left.nameEn || '').localeCompare(String(right.nameZh || right.nameEn || ''), 'zh-CN'))
@@ -32,7 +32,7 @@ async function listAvailableMembers() {
 async function createInvite(memberId, creatorOpenid, nowValue) {
   await common.requireAdmin(creatorOpenid);
   const db = common.getDb();
-  const memberRes = await db.collection('memberships').doc(memberId).get();
+  const memberRes = await common.getCollection('memberships').doc(memberId).get();
   const member = memberRes.data;
   if (!member) throw Object.assign(new Error('会员不存在'), { code: 'MEMBER_NOT_FOUND' });
   if (member.openid) throw Object.assign(new Error('该会员已绑定'), { code: 'MEMBER_BOUND' });
@@ -42,6 +42,7 @@ async function createInvite(memberId, creatorOpenid, nowValue) {
     data: {
       _id: token,
       token,
+      clubId: common.config.getConfig().clubId,
       memberId,
       creatorOpenid,
       status: 'pending',
@@ -56,7 +57,7 @@ async function getInvite(token, nowValue) {
   const res = await (await common.ensureCollection('membership_invites')).doc(token).get();
   const invite = res.data;
   assertInviteUsable(invite, nowValue);
-  const memberRes = await common.getDb().collection('memberships').doc(invite.memberId).get();
+  const memberRes = await common.getCollection('memberships').doc(invite.memberId).get();
   const member = memberRes.data;
   if (!member || member.openid) throw Object.assign(new Error('该会员已绑定'), { code: 'MEMBER_BOUND' });
   return { expiresAt: invite.expiresAt, member: publicMember(member) };
@@ -69,7 +70,7 @@ async function claimInvite(token, openid, nowValue) {
   if (existingMembership) throw Object.assign(new Error('当前用户已绑定会员'), { code: 'OPENID_BOUND' });
   await common.ensureCollection('membership_identity_bindings');
   const bindingId = crypto.createHash('sha256').update(openid).digest('hex');
-  const inviteCollection = db.collection('membership_invites');
+  const inviteCollection = common.getCollection('membershipInvites');
   const inviteRes = await inviteCollection.doc(token).get();
   const invite = inviteRes.data;
   assertInviteUsable(invite, now);
@@ -87,13 +88,13 @@ async function claimInvite(token, openid, nowValue) {
   let bindingCreated = false;
   let memberBound = false;
   try {
-    const memberRes = await db.collection('memberships').doc(invite.memberId).get();
+    const memberRes = await common.getCollection('memberships').doc(invite.memberId).get();
     const member = memberRes.data;
     if (!member) throw Object.assign(new Error('会员不存在'), { code: 'MEMBER_NOT_FOUND' });
     if (member.openid) throw Object.assign(new Error('该会员已绑定'), { code: 'MEMBER_BOUND' });
 
     try {
-      await db.collection('membership_identity_bindings').add({ data: { _id: bindingId, openid, memberId: member._id, updatedAt: claimedAt } });
+      await common.getCollection('membershipIdentityBindings').add({ data: { _id: bindingId, openid, memberId: member._id, updatedAt: claimedAt } });
       bindingCreated = true;
     } catch (error) {
       const message = String(error && (error.errMsg || error.message) || '').toLowerCase();
@@ -103,16 +104,16 @@ async function claimInvite(token, openid, nowValue) {
       throw error;
     }
 
-    await db.collection('memberships').doc(member._id).update({ data: { openid, updatedAt: claimedAt } });
+    await common.getCollection('memberships').doc(member._id).update({ data: { openid, updatedAt: claimedAt } });
     memberBound = true;
     await inviteCollection.doc(invite._id).update({ data: { status: 'used', usedByOpenid: openid, usedAt: claimedAt, claimingByOpenid: db.command.remove(), claimedAt: db.command.remove() } });
     return { identity: common.membershipIdentity(Object.assign({}, member, { openid })) };
   } catch (error) {
     if (memberBound) {
-      await db.collection('memberships').where({ _id: invite.memberId, openid }).update({ data: { openid: db.command.remove(), updatedAt: claimedAt } }).catch(() => {});
+      await common.getCollection('memberships').where({ _id: invite.memberId, openid }).update({ data: { openid: db.command.remove(), updatedAt: claimedAt } }).catch(() => {});
     }
     if (bindingCreated) {
-      await db.collection('membership_identity_bindings').where({ _id: bindingId, openid, memberId: invite.memberId }).remove().catch(() => {});
+      await common.getCollection('membershipIdentityBindings').where({ _id: bindingId, openid, memberId: invite.memberId }).remove().catch(() => {});
     }
     await inviteCollection.where({ _id: invite._id, status: 'claiming', claimingByOpenid: openid }).update({ data: { status: 'pending', claimingByOpenid: db.command.remove(), claimedAt: db.command.remove() } }).catch(() => {});
     throw error;

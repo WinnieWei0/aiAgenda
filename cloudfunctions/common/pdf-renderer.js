@@ -623,7 +623,7 @@ function drawSidebar(page, font, template, agenda, images, y, height, language) 
   cursorY += headingHeight;
   drawText(page, font, template.fixedContent.values, x + 4, cursorY + 5, { width: width - 8, height: 20, fontSize: 6.9, lineHeight: 8.4, align: 'center' });
   cursorY += 28;
-  drawHeading(cursorY, language === 'en' ? 'GZ Bilingual Toastmasters Club' : '广州双语国际演讲俱乐部', 7.5, true);
+  drawHeading(cursorY, language === 'en' ? 'Club Name' : '俱乐部名称', 7.5, true);
   cursorY += 20;
   drawText(page, font, template.fixedContent.clubIntro, x + 5, cursorY, { width: width - 10, height: 55, fontSize: 6.9, lineHeight: 8.6, align: 'center' });
   cursorY += 62;
@@ -858,7 +858,7 @@ function drawClubInfoPage(pdfDoc, font, template, images) {
   const resourcesTop = 724;
   page.drawLine({ start: { x: PAGE.margin, y: topY(resourcesTop, 0) }, end: { x: PAGE.width - PAGE.margin, y: topY(resourcesTop, 0) }, thickness: 0.6, color: BORDER });
   drawText(page, font, template.page2.resources, PAGE.margin + 10, resourcesTop + 7, { width: PAGE.width - PAGE.margin * 2 - 20, height: 10, fontSize: 6.9, align: 'center', verticalAlign: 'middle' });
-  drawText(page, font, 'Recommended Resources: Toastmasters International - http://www.toastmasters.org    District 118 Official Account - Toastmasters D118', PAGE.margin + 10, resourcesTop + 20, { width: PAGE.width - PAGE.margin * 2 - 20, height: 10, fontSize: 6.7, align: 'center', verticalAlign: 'middle' });
+  drawText(page, font, 'Recommended Resources: Toastmasters International - http://www.toastmasters.org', PAGE.margin + 10, resourcesTop + 20, { width: PAGE.width - PAGE.margin * 2 - 20, height: 10, fontSize: 6.7, align: 'center', verticalAlign: 'middle' });
   page.drawLine({ start: { x: rightX, y: topY(resourcesTop, 0) }, end: { x: rightX, y: topY(top + 16, 0) }, thickness: 0.45, color: BORDER });
   page.drawRectangle({ x: PAGE.margin, y: topY(top, 640), width: PAGE.width - PAGE.margin * 2, height: 640, borderColor: BORDER, borderWidth: 0.6 });
 }

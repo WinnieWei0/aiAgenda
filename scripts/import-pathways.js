@@ -62,7 +62,7 @@ async function run() {
   }
   cloud.init({ env: config.envId, secretId: config.secretId, secretKey: config.secretKey });
   const workbook = workbookParser.parsePathwaysWorkbook(fs.readFileSync(config.workbookPath));
-  const collection = cloud.database().collection('pathways');
+  const collection = cloud.database().collection(`${process.env.DB_COLLECTION_PREFIX || 'dev_'}club_pathways`);
   const stats = { created: 0, updated: 0, total: 0 };
   for (const pathway of workbook.pathways) {
     const action = await upsertPathway(collection, pathway, cloud.database().command);

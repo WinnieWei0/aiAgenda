@@ -1,5 +1,5 @@
 {
-  "envId": "{{CLOUDBASE_ENV_ID}}",
+  "envId": "{{TARGET_CLOUDBASE_ENV_ID}}",
   "functionRoot": "./cloudfunctions",
   "functions": [
     {
