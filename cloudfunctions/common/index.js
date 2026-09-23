@@ -320,11 +320,16 @@ async function getAgendaTemplate() {
 async function getClubContext() {
   const collection = await ensureCollection('clubs');
   const clubId = config.getConfig().clubId;
-  const result = await collection.doc(clubId).get();
+  const result = await collection.doc(String(clubId)).get().catch((error) => {
+    const message = String(error && (error.errMsg || error.message) || '').toLowerCase();
+    if (message.includes('document') && (message.includes('does not exist') || message.includes('not exist'))) {
+      return { data: null };
+    }
+    throw error;
+  });
   if (result.data) return result.data;
   const now = nowIso();
   const club = {
-    _id: clubId,
     clubId,
     nameZh: '俱乐部名称',
     nameEn: 'Club Name',
@@ -333,7 +338,7 @@ async function getClubContext() {
     createdAt: now,
     updatedAt: now
   };
-  await collection.doc(clubId).set({ data: club });
+  await collection.doc(String(clubId)).set({ data: club });
   return club;
 }
 

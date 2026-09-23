@@ -22,7 +22,10 @@ function getConfig() {
     secretId,
     secretKey,
     prefix: process.env.DB_COLLECTION_PREFIX || schema.environmentNamespaces[environment],
-    clubId: process.env.DEFAULT_CLUB_ID || schema.defaultClubId,
+    clubId: Number.parseInt(process.env.DEFAULT_CLUB_ID || schema.defaultClubId, 10),
+    clubNameZh: process.env.DEFAULT_CLUB_NAME_ZH || '俱乐部名称',
+    clubNameEn: process.env.DEFAULT_CLUB_NAME_EN || 'Club Name',
+    clubNameConfigured: Boolean(process.env.DEFAULT_CLUB_NAME_ZH || process.env.DEFAULT_CLUB_NAME_EN),
     apply
   };
 }
@@ -34,7 +37,9 @@ function getConfig() {
  */
 function createClient(config) {
   if (typeof cloud.Cloud !== 'function') throw new Error('当前 wx-server-sdk 不支持独立 Cloud 实例');
-  return cloud.Cloud({ resourceEnv: config.envId, secretId: config.secretId, secretKey: config.secretKey });
+  const client = cloud.Cloud({ env: config.envId, resourceEnv: config.envId, secretId: config.secretId, secretKey: config.secretKey });
+  client.init();
+  return client;
 }
 
 /**
@@ -46,6 +51,16 @@ function isMissingCollection(error) {
   const code = Number(error && (error.errCode || error.code));
   const message = String(error && (error.errMsg || error.message) || '').toLowerCase();
   return code === -502005 || message.includes('collection not exist') || message.includes('collection_not_exist');
+}
+
+/**
+ * 方法是什么：判断文档不存在错误。
+ * 方法作用：区分首次初始化默认俱乐部和其他数据库异常。
+ * 为什么添加：CloudBase 对不存在的文档会返回独立错误，不能按集合不存在处理。
+ */
+function isMissingDocument(error) {
+  const message = String(error && (error.errMsg || error.message) || '').toLowerCase();
+  return message.includes('document') && (message.includes('does not exist') || message.includes('not exist'));
 }
 
 /**
@@ -72,29 +87,33 @@ async function ensureCollection(db, collectionName, apply) {
  */
 async function ensureDefaultClub(db, config) {
   const collection = db.collection(`${config.prefix}clubs`);
-  const existing = await collection.doc(config.clubId).get().catch((error) => {
-    if (isMissingCollection(error)) return { data: null };
+  const readDocument = (id) => collection.doc(id).get().catch((error) => {
+    if (isMissingCollection(error) || isMissingDocument(error)) return { data: null };
     throw error;
   });
-  if (existing.data) return 'exists';
+  const existing = await readDocument(String(config.clubId));
+  const legacy = !existing.data
+    ? await readDocument('default-club')
+    : { data: null };
+  if (existing.data && !config.clubNameConfigured) return 'exists';
   if (!config.apply) return 'planned';
   const now = new Date().toISOString();
-  await collection.doc(config.clubId).set({ data: {
-    _id: config.clubId,
+  const source = existing.data || legacy.data || {};
+  await collection.doc(String(config.clubId)).set({ data: {
     clubId: config.clubId,
-    nameZh: '俱乐部名称',
-    nameEn: 'Club Name',
-    locale: 'zh',
-    settings: {},
-    createdAt: now,
+    nameZh: config.clubNameConfigured ? config.clubNameZh : source.nameZh || config.clubNameZh,
+    nameEn: config.clubNameConfigured ? config.clubNameEn : source.nameEn || config.clubNameEn,
+    locale: source.locale || 'zh',
+    settings: source.settings || {},
+    createdAt: source.createdAt || now,
     updatedAt: now
   } });
-  return 'created';
+  return existing.data ? 'updated' : legacy.data ? 'migrated' : 'created';
 }
 
 /**
  * 方法是什么：执行隔离 schema 初始化。
- * 方法作用：按 schema 清单创建所有 dev_/prod_ 集合并初始化默认俱乐部。
+ * 方法作用：按 schema 清单创建所有 app_ 集合并初始化默认俱乐部。
  * 为什么添加：部署人员需要一个不修改旧库的标准建表入口。
  */
 async function run() {
@@ -119,4 +138,4 @@ async function run() {
 
 if (require.main === module) run().catch((error) => { console.error(error.message || error); process.exitCode = 1; });
 
-module.exports = { schema, getConfig, createClient, isMissingCollection, ensureCollection, ensureDefaultClub, run };
+module.exports = { schema, getConfig, createClient, isMissingCollection, isMissingDocument, ensureCollection, ensureDefaultClub, run };

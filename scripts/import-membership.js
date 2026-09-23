@@ -46,7 +46,7 @@ function prepareMembers(members) {
       payload[field] = member[field] === undefined || member[field] === null ? '' : member[field];
     }
     payload.role = commonRole(member.role);
-    payload.clubId = process.env.DEFAULT_CLUB_ID || 'default-club';
+    payload.clubId = Number.parseInt(process.env.DEFAULT_CLUB_ID || '1', 10);
     payload.searchText = [payload.nickName, payload.nameZh, payload.nameEn, payload.mentorName,
       payload.officerTitleZh, payload.officerTitleEn, payload.pathNameZh, payload.pathNameEn]
       .filter(Boolean).join(' ').toLowerCase();
@@ -165,7 +165,7 @@ async function run() {
   const buffer = fs.readFileSync(config.workbookPath);
   const workbook = workbookParser.parseMembershipWorkbook(buffer);
   const db = cloud.database();
-  const collection = db.collection(`${process.env.DB_COLLECTION_PREFIX || 'dev_'}club_members`);
+  const collection = db.collection(`${process.env.DB_COLLECTION_PREFIX || 'app_'}club_members`);
   const members = workbook.memberships.slice(0, MAX_MEMBERS);
   const removed = await removeExtraMembers(collection, members);
   const stats = { created: 0, updated: 0, removed, total: 0 };

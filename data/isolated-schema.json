@@ -1,10 +1,10 @@
 {
   "version": 1,
   "environmentNamespaces": {
-    "development": "dev_",
-    "production": "prod_"
+    "development": "app_",
+    "production": "app_"
   },
-  "defaultClubId": "default-club",
+  "defaultClubId": 1,
   "collections": {
     "clubs": {
       "primaryKey": "_id",

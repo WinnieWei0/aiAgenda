@@ -29,8 +29,8 @@
 - DeepSeek 请求超时时间固定为 15000ms，不使用规则解析降级。
 - `PDF_FONT_PATH`：可选，中文字体路径。项目已在 `cloudfunctions/common/fonts/` 内置一份中文字体，默认可直接生成中文 PDF。
 - `APP_ENV`：`development` 或 `production`，决定集合命名空间。
-- `DB_COLLECTION_PREFIX`：可选，默认开发环境为 `dev_`、生产环境为 `prod_`。
-- `DEFAULT_CLUB_ID`：当前默认俱乐部 ID，默认 `default-club`。
+- `DB_COLLECTION_PREFIX`：可选，当前单环境默认使用 `app_`。
+- `DEFAULT_CLUB_ID`：当前默认俱乐部 ID，默认数值为 `1`。后续俱乐部使用 `2`、`3` 递增。
 
 `parseAgenda` 云函数的 CloudBase 执行超时时间需要设置为至少 20 秒，为 DeepSeek 15 秒请求和数据库读取留出运行余量。
 
@@ -46,7 +46,7 @@
 
 ```powershell
 $env:TARGET_CLOUDBASE_ENV_ID = '你的新环境 ID'
-$env:DB_COLLECTION_PREFIX = 'dev_'
+$env:DB_COLLECTION_PREFIX = 'app_'
 $env:TENCENTCLOUD_SECRETID = '你的 SecretId'
 $env:TENCENTCLOUD_SECRETKEY = '你的 SecretKey'
 npm run import:membership -- '你的工作簿路径.xlsx'
@@ -72,7 +72,24 @@ npm run provision:isolated
 npm run provision:isolated -- --apply
 ```
 
-脚本只导入 `Membership` 工作表的前 26 条记录，并写入新环境的 `dev_club_members` / `prod_club_members` 集合。重复执行会按业务键更新，不会修改旧集合。
+将已经写入新环境的旧俱乐部编号 `default-club` 迁移为数字 `1`：
+
+```powershell
+$env:TARGET_CLOUDBASE_ENV_ID = '新环境 ID'
+$env:DB_COLLECTION_PREFIX = 'app_'
+$env:DEFAULT_CLUB_ID = '1'
+npm run migrate:club-id
+npm run migrate:club-id -- --apply
+```
+
+为目标环境的全部现有云函数合并公共环境变量（会保留已有的 `DEEPSEEK_API_KEY` 等变量）：
+
+```powershell
+npm run configure:cloudfunctions
+npm run configure:cloudfunctions -- --apply
+```
+
+脚本只导入 `Membership` 工作表的前 26 条记录，并写入新环境的 `app_club_members` 集合。重复执行会按业务键更新，不会修改旧集合。
 `import:pathways` 会导入同一文件中 `Pathways(新)` 工作表的全部项目到隔离集合，按 `code` 更新，并只保留路径白名单字段。
 
 ## 开发验证

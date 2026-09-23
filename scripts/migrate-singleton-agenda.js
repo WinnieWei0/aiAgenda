@@ -71,7 +71,7 @@ function buildCurrentRecord(template, nowValue) {
  */
 async function run() {
   const config = membershipImporter.getConfig();
-  const prefix = process.env.DB_COLLECTION_PREFIX || 'dev_';
+  const prefix = process.env.DB_COLLECTION_PREFIX || 'app_';
   cloud.init({ env: config.envId, secretId: config.secretId, secretKey: config.secretKey });
   const db = cloud.database();
   const removed = {};
@@ -79,7 +79,7 @@ async function run() {
   removed.agenda_signup_claims = await clearCollection(db, `${prefix}meeting_signup_claims`);
   removed.agendas = await clearCollection(db, `${prefix}meetings`);
   const template = await loadTemplate(db, `${prefix}club_templates`);
-  await db.collection(`${prefix}meetings`).doc(CURRENT_AGENDA_ID).set({ data: Object.assign({}, buildCurrentRecord(template), { clubId: process.env.DEFAULT_CLUB_ID || 'default-club' }) });
+  await db.collection(`${prefix}meetings`).doc(CURRENT_AGENDA_ID).set({ data: Object.assign({}, buildCurrentRecord(template), { clubId: Number.parseInt(process.env.DEFAULT_CLUB_ID || '1', 10) }) });
   console.log(`隔离会议迁移完成：${JSON.stringify(removed)}，已创建 ${prefix}meetings/${CURRENT_AGENDA_ID}`);
   return { removed, agendaId: CURRENT_AGENDA_ID };
 }

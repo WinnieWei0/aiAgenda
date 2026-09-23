@@ -35,7 +35,7 @@ function buildMeetingPayload(agenda, template, context) {
   const options = context || {};
   const normalized = normalizeAgenda(options.agendaModel, agenda, template);
   return {
-    clubId: options.clubId || 'default-club',
+    clubId: options.clubId || 1,
     ownerOpenid: options.ownerOpenid || '',
     agenda: normalized,
     meetingSummary: buildSummary(normalized),

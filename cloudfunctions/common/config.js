@@ -17,8 +17,18 @@ const ENVIRONMENT = String(process.env.APP_ENV || process.env.NODE_ENV || 'devel
   ? 'production'
   : 'development';
 
-const DEFAULT_PREFIX = ENVIRONMENT === 'production' ? 'prod_' : 'dev_';
+const DEFAULT_PREFIX = 'app_';
 const COLLECTION_PREFIX = String(process.env.DB_COLLECTION_PREFIX || DEFAULT_PREFIX).trim();
+
+/**
+ * 方法是什么：规范化俱乐部数字编号。
+ * 方法作用：把环境变量中的文本编号转换为正整数。
+ * 为什么添加：数据库使用递增数字 clubId，同时环境变量只能提供字符串。
+ */
+function normalizeClubId(value) {
+  const clubId = Number.parseInt(String(value || '1'), 10);
+  return Number.isSafeInteger(clubId) && clubId > 0 ? clubId : 1;
+}
 
 /**
  * 方法是什么：读取当前部署环境配置。
@@ -29,13 +39,13 @@ function getConfig() {
   return {
     environment: ENVIRONMENT,
     collectionPrefix: COLLECTION_PREFIX,
-    clubId: String(process.env.DEFAULT_CLUB_ID || 'default-club').trim()
+    clubId: normalizeClubId(process.env.DEFAULT_CLUB_ID)
   };
 }
 
 /**
  * 方法是什么：把逻辑集合转换为物理集合名。
- * 方法作用：为新环境集合增加 dev_/prod_ 命名空间，同时兼容显式逻辑名。
+ * 方法作用：为新环境集合增加统一 app_ 命名空间，同时兼容显式逻辑名。
  * 为什么添加：领域服务不应散落硬编码集合名，便于未来更换环境或迁移策略。
  */
 function resolveCollection(logicalName) {
@@ -44,4 +54,4 @@ function resolveCollection(logicalName) {
   return `${config.collectionPrefix}${value}`;
 }
 
-module.exports = { COLLECTIONS, getConfig, resolveCollection };
+module.exports = { COLLECTIONS, getConfig, normalizeClubId, resolveCollection };

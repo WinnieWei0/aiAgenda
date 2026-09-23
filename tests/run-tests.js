@@ -26,6 +26,8 @@ const pdfPreview = require('../miniprogram/utils/pdf-preview');
 const membershipInvites = require('../cloudfunctions/membershipInvites');
 const singletonAgendaMigration = require('../scripts/migrate-singleton-agenda');
 const isolatedMigration = require('../scripts/migrate-isolated-data');
+const clubIdMigration = require('../scripts/migrate-club-id');
+const cloudFunctionEnvironment = require('../scripts/configure-cloudfunction-env');
 const workbookSeed = require('../cloudfunctions/seedWorkbookData');
 const { PDFDocument } = require('../cloudfunctions/common/node_modules/pdf-lib');
 
@@ -135,7 +137,7 @@ function testWorkbookData() {
   const seededMember = workbookSeed.sanitizeMembership(Object.assign({}, memberships[0], { rawRow: ['private'], sourceKey: 'source-key' }));
   assert.strictEqual(Object.prototype.hasOwnProperty.call(seededMember, 'rawRow'), false, '云端导入不应保存 rawRow');
   assert.strictEqual(Object.prototype.hasOwnProperty.call(seededMember, 'sourceKey'), false, '云端导入不应保存 sourceKey');
-  assert.strictEqual(seededMember.clubId, 'default-club');
+  assert.strictEqual(seededMember.clubId, 1);
   const seededPathway = workbookSeed.sanitizePathway(Object.assign({}, pathways[0], { rawRow: ['private'], sourceKey: 'source-key' }));
   assert.strictEqual(Object.prototype.hasOwnProperty.call(seededPathway, 'rawRow'), false, '云端路径导入不应保存 rawRow');
 }
@@ -1037,11 +1039,23 @@ function testIsolatedDatabaseModel() {
   assert.strictEqual(member.clubId, 'test-club');
   assert.strictEqual(member.nameZh, '匿名会员');
   assert.strictEqual(Object.prototype.hasOwnProperty.call(member, 'rawRow'), false);
-  assert.strictEqual(Object.prototype.hasOwnProperty.call(member, 'openid'), false);
+  assert.strictEqual(member.openid, 'openid-value');
+  const bindings = isolatedMigration.buildIdentityBindings([member]);
+  assert.strictEqual(bindings.length, 1);
+  assert.strictEqual(bindings[0].memberId, 'm1');
+  assert.throws(() => isolatedMigration.buildIdentityBindings([
+    { _id: 'm1', openid: 'duplicate-openid' },
+    { _id: 'm2', openid: 'duplicate-openid' }
+  ]), /重复 OpenID/);
+  assert.strictEqual(clubIdMigration.needsMigration('default-club', 1), true);
+  assert.strictEqual(clubIdMigration.needsMigration('1', 1), true);
+  assert.strictEqual(clubIdMigration.needsMigration(1, 1), false);
+  assert.deepStrictEqual(cloudFunctionEnvironment.REQUIRED_VARIABLES, { DB_COLLECTION_PREFIX: 'app_', DEFAULT_CLUB_ID: '1' });
+  assert.deepStrictEqual(cloudFunctionEnvironment.variablesToObject({ Variables: [{ Key: 'EXISTING_KEY', Value: 'kept' }] }), { EXISTING_KEY: 'kept' });
   assert.throws(() => common.meetingService.assertVersion(1, 2), /刷新后重试/);
   assert.doesNotThrow(() => common.meetingService.assertVersion(2, 2));
   const schema = JSON.parse(fs.readFileSync(path.join(__dirname, '../data/isolated-schema.json'), 'utf8'));
-  assert.deepStrictEqual(schema.environmentNamespaces, { development: 'dev_', production: 'prod_' });
+  assert.deepStrictEqual(schema.environmentNamespaces, { development: 'app_', production: 'app_' });
   assert.ok(schema.collections.meetings.fields.includes('signupVersion'));
   assert.ok(schema.collections.meeting_signups.fields.includes('meetingId'));
   assert.ok(schema.collections.roles.fields.includes('code'));

@@ -18,7 +18,7 @@ async function run(superAdminOpenid) {
   if (!secretId || !secretKey) throw new Error('缺少 CloudBase 凭据');
   cloud.init({ env: envId, secretId, secretKey });
   const db = cloud.database();
-  const collection = db.collection(`${process.env.DB_COLLECTION_PREFIX || 'dev_'}club_members`);
+  const collection = db.collection(`${process.env.DB_COLLECTION_PREFIX || 'app_'}club_members`);
   const result = await collection.limit(1000).get();
   let updated = 0;
   for (const member of result.data || []) {

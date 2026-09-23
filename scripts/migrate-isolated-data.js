@@ -1,5 +1,6 @@
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
 const cloud = require('../cloudfunctions/seedWorkbookData/node_modules/wx-server-sdk');
 
 const SOURCE_COLLECTIONS = ['memberships', 'pathways', 'agenda_templates', 'agendas'];
@@ -11,6 +12,17 @@ const TARGET_COLLECTIONS = {
 };
 
 /**
+ * 方法是什么：判断集合不存在错误。
+ * 方法作用：允许迁移脚本区分首次初始化和真实数据库异常。
+ * 为什么添加：目标集合不存在时需要给出可重试的迁移行为。
+ */
+function isMissingCollection(error) {
+  const code = Number(error && (error.errCode || error.code));
+  const message = String(error && (error.errMsg || error.message) || '').toLowerCase();
+  return code === -502005 || message.includes('collection not exist') || message.includes('collection_not_exist');
+}
+
+/**
  * 方法是什么：创建指定环境的 CloudBase 客户端。
  * 方法作用：为源库和目标库分别创建独立 SDK 实例，避免 init 单例复用错误环境。
  * 为什么添加：同一进程迁移时必须保证源库只读、目标库只写。
@@ -19,7 +31,9 @@ function createClient(envId, secretId, secretKey) {
   if (typeof cloud.Cloud !== 'function') {
     throw new Error('当前 wx-server-sdk 不支持独立 Cloud 实例，不能安全执行跨环境迁移');
   }
-  return cloud.Cloud({ resourceEnv: envId, secretId, secretKey });
+  const client = cloud.Cloud({ env: envId, resourceEnv: envId, secretId, secretKey });
+  client.init();
+  return client;
 }
 
 /**
@@ -41,8 +55,8 @@ function getConfig() {
     targetEnv,
     secretId,
     secretKey,
-    prefix: process.env.DB_COLLECTION_PREFIX || 'dev_',
-    clubId: process.env.DEFAULT_CLUB_ID || 'default-club',
+    prefix: process.env.DB_COLLECTION_PREFIX || 'app_',
+    clubId: Number.parseInt(process.env.DEFAULT_CLUB_ID || '1', 10),
     apply: process.argv.includes('--apply')
   };
 }
@@ -56,7 +70,7 @@ function sanitizeRecord(collectionName, record, config) {
   const source = record || {};
   const base = { _id: source._id || '', clubId: config.clubId };
   if (collectionName === 'memberships') {
-    const fields = ['birthday', 'competitionEligible', 'educationAwards', 'educationProgress', 'educationProgressUpdatedAt', 'email', 'isMentor', 'joinedAt', 'menteeCount', 'mentorName', 'nameEn', 'nameZh', 'nickName', 'notes', 'officerTitleEn', 'officerTitleZh', 'pathNameEn', 'pathNameZh', 'phone', 'quarter', 'status', 'role', 'searchText'];
+    const fields = ['birthday', 'competitionEligible', 'educationAwards', 'educationProgress', 'educationProgressUpdatedAt', 'email', 'isMentor', 'joinedAt', 'menteeCount', 'mentorName', 'nameEn', 'nameZh', 'nickName', 'notes', 'officerTitleEn', 'officerTitleZh', 'openid', 'pathNameEn', 'pathNameZh', 'phone', 'quarter', 'status', 'role', 'searchText'];
     fields.forEach((field) => { if (source[field] !== undefined) base[field] = source[field]; });
     return base;
   }
@@ -82,6 +96,32 @@ function sanitizeRecord(collectionName, record, config) {
     };
   }
   return base;
+}
+
+/**
+ * 方法是什么：根据会员 OpenID 构建身份绑定记录。
+ * 方法作用：校验一个 OpenID 只能对应一个会员，并生成新库身份绑定集合数据。
+ * 为什么添加：直接复制旧身份时必须防止重复绑定导致登录匹配不确定。
+ */
+function buildIdentityBindings(members) {
+  const bindings = [];
+  const seen = new Map();
+  (members || []).forEach((member) => {
+    const openid = String(member.openid || '').trim();
+    if (!openid) return;
+    const existingMemberId = seen.get(openid);
+    if (existingMemberId && existingMemberId !== member._id) {
+      throw new Error(`旧会员数据存在重复 OpenID，关联会员 ${existingMemberId} 和 ${member._id}`);
+    }
+    seen.set(openid, member._id);
+    bindings.push({
+      _id: crypto.createHash('sha256').update(openid).digest('hex'),
+      openid,
+      memberId: member._id,
+      updatedAt: member.updatedAt || new Date().toISOString()
+    });
+  });
+  return bindings;
 }
 
 /**
@@ -149,8 +189,16 @@ async function run() {
   for (const name of SOURCE_COLLECTIONS) {
     records[name] = await readAll(sourceDb, name);
   }
+  const cleanedRecords = Object.fromEntries(SOURCE_COLLECTIONS.map((name) => [
+    name,
+    records[name].map((record) => sanitizeRecord(name, record, config))
+  ]));
+  const identityBindings = buildIdentityBindings(cleanedRecords.memberships);
   if (!config.apply) {
-    console.log(JSON.stringify(Object.fromEntries(Object.entries(records).map(([name, rows]) => [name, rows.length])), null, 2));
+    console.log(JSON.stringify(Object.assign(
+      Object.fromEntries(Object.entries(records).map(([name, rows]) => [name, rows.length])),
+      { membership_identity_bindings: identityBindings.length }
+    ), null, 2));
     console.log('dry-run：未写入任何环境。使用 --apply 才会写入目标环境。');
     return records;
   }
@@ -158,8 +206,11 @@ async function run() {
   const targetDb = targetCloud.database();
   const stats = {};
   for (const name of SOURCE_COLLECTIONS) {
-    const cleaned = records[name].map((record) => sanitizeRecord(name, record, config));
+    const cleaned = cleanedRecords[name];
     stats[name] = await writeCollection(targetDb, TARGET_COLLECTIONS[name], cleaned, config);
+    if (name === 'memberships') {
+      stats.membership_identity_bindings = await writeCollection(targetDb, 'membership_identity_bindings', identityBindings, config);
+    }
   }
   fs.writeFileSync(path.resolve('output', 'isolated-migration-summary.json'), JSON.stringify({ config: { targetEnv: config.targetEnv, prefix: config.prefix, clubId: config.clubId }, stats }, null, 2));
   console.log(JSON.stringify(stats, null, 2));
@@ -168,4 +219,4 @@ async function run() {
 
 if (require.main === module) run().catch((error) => { console.error(error.message || error); process.exitCode = 1; });
 
-module.exports = { getConfig, createClient, sanitizeRecord, readAll, writeCollection, run };
+module.exports = { getConfig, createClient, isMissingCollection, sanitizeRecord, buildIdentityBindings, readAll, writeCollection, run };

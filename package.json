@@ -11,11 +11,16 @@
     "migrate:singleton-agenda": "node scripts/migrate-singleton-agenda.js",
     "import:pathways": "node scripts/import-pathways.js",
     "migrate:isolated": "node scripts/migrate-isolated-data.js",
+    "migrate:club-id": "node scripts/migrate-club-id.js",
+    "configure:cloudfunctions": "node scripts/configure-cloudfunction-env.js",
     "provision:isolated": "node scripts/provision-isolated-schema.js",
     "test": "node tests/run-tests.js",
     "verify": "npm run check:comments && npm test"
   },
   "engines": {
     "node": ">=18"
+  },
+  "devDependencies": {
+    "@cloudbase/manager-node": "^5.8.8"
   }
 }
