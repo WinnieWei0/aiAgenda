@@ -17,11 +17,15 @@ Component({
     memberId: '',
     memberLabel: '',
     name: '',
-    club: ''
+    club: '',
+    keyboardHeight: 0
   },
   observers: {
     'visible,roleSlot,members': function sync(visible, slot, members) {
-      if (!visible) return;
+      if (!visible) {
+        this.setData({ keyboardHeight: 0 });
+        return;
+      }
       const allowed = slot ? (slot.allowedPersonTypes || ['member', 'club']) : ['member', 'club', 'guest'];
       const person = slot && slot.person || {};
       const member = (members || []).map(memberSearch.unwrapMember).find((item) => item && item._id === person.memberId);
@@ -37,10 +41,23 @@ Component({
       });
     }
   },
+  lifetimes: {
+    attached() {
+      this.keyboardHeightHandler = (event) => {
+        const height = Number(event && event.height || 0);
+        if (!this.properties.visible) return;
+        this.setData({ keyboardHeight: Math.max(0, height) });
+      };
+      if (wx.onKeyboardHeightChange) wx.onKeyboardHeightChange(this.keyboardHeightHandler);
+    },
+    detached() {
+      if (wx.offKeyboardHeightChange && this.keyboardHeightHandler) wx.offKeyboardHeightChange(this.keyboardHeightHandler);
+    }
+  },
   methods: {
     close() { if (!this.properties.submitting) this.triggerEvent('cancel'); },
     noop() {},
-    chooseType(event) { this.setData({ personType: event.currentTarget.dataset.type }); },
+    chooseType(event) { this.setData({ personType: event.currentTarget.dataset.type, keyboardHeight: 0 }); },
     openMemberSelector() { this.setData({ memberSelectorVisible: true }); },
     closeMemberSelector() { this.setData({ memberSelectorVisible: false }); },
     confirmMemberSelector(event) {

@@ -7,7 +7,7 @@
 
   <view class="editor-band section-divider">
     <view class="band-title">二维码</view>
-    <view class="asset-actions"><button class="upload-button icon-button" data-field="officialQr" bindtap="replaceAsset"><image class="button-icon" src="/images/icons/upload.png" mode="aspectFit" />上传公众号二维码</button><button class="upload-button icon-button" data-field="membershipQr" bindtap="replaceAsset"><image class="button-icon" src="/images/icons/upload.png" mode="aspectFit" />上传会员副会长二维码</button></view>
+    <view class="asset-actions"><view class="asset-item"><button class="upload-button icon-button" data-field="officialQr" bindtap="replaceAsset"><image class="button-icon" src="/images/icons/upload.png" mode="aspectFit" />上传公众号二维码</button><image wx:if="{{template.assets.officialQr}}" class="asset-preview" src="{{template.assets.officialQr}}" mode="aspectFit" /></view><view class="asset-item"><button class="upload-button icon-button" data-field="membershipQr" bindtap="replaceAsset"><image class="button-icon" src="/images/icons/upload.png" mode="aspectFit" />上传会员副会长二维码</button><image wx:if="{{template.assets.membershipQr}}" class="asset-preview" src="{{template.assets.membershipQr}}" mode="aspectFit" /></view></view>
   </view>
 
   <view class="editor-band section-divider">

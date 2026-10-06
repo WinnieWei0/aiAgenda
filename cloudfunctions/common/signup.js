@@ -8,7 +8,8 @@ const ROLE_DEFINITIONS = {
   grammarian: '语法师',
   generalEvaluator: '总点评',
   tableTopicsMaster: '即兴主持人',
-  tableTopicsEvaluator: '即兴点评师'
+  tableTopicsEvaluator: '即兴点评师',
+  nextMeetingHost: '会议角色预定'
 };
 
 const ROLE_DEFINITIONS_EN = {
@@ -16,7 +17,8 @@ const ROLE_DEFINITIONS_EN = {
   ahCounter: 'Ah-Counter', toastmaster: 'TOM', timer: 'Timer', grammarian: 'Grammarian',
   generalEvaluator: 'General Evaluator', tableTopicsMaster: 'Table Topics Master',
   tableTopicsEvaluator: 'Table Topics Evaluator', preparedSpeaker: 'Prepared Speaker',
-  preparedEvaluator: 'IE', icebreaker: 'Icebreaker', workshop: 'Workshop Facilitator'
+  preparedEvaluator: 'IE', icebreaker: 'Icebreaker', workshop: 'Workshop Facilitator',
+  nextMeetingHost: 'Next Meeting Role Booking'
 };
 
 const GUEST_ROLE_KEYS = ['guestReception', 'ahCounter', 'photographer'];

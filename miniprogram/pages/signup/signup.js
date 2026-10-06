@@ -5,6 +5,7 @@ const meetingService = require('../../services/meeting-service');
 Page({
   data: { data: null, loading: true, loadError: '', modal: false, selectedSlot: null, personType: 'member', allowMember: true, allowClub: true, allowGuest: true, members: [], memberLabels: [], memberIndex: -1, memberSelectorVisible: false, name: '', club: '', submitting: false },
   onLoad() {
+    this.destroyed = false;
     wx.showShareMenu({
       menus: ['shareAppMessage', 'shareTimeline']
     });
@@ -12,6 +13,10 @@ Page({
     this.requestVersion = 0;
     this.load();
     this.loadMembers();
+  },
+  onUnload() {
+    this.destroyed = true;
+    this.requestVersion += 1;
   },
   onShow() {
     if (this.hasShown) {
@@ -51,7 +56,7 @@ Page({
       imageUrl: '/images/template/toastmasters-logo.png'
     };
   },
-  async load() { const version = ++this.requestVersion; try { const data = await meetingService.signup('get'); if (version !== this.requestVersion) return; this.setData({ data, loadError: '' }); } catch (error) { if (version !== this.requestVersion) return; this.setData({ data: null, loadError: '当前会议尚未开放报名' }); } finally { if (version === this.requestVersion) this.setData({ loading: false }); } },
+  async load() { const version = ++this.requestVersion; try { const data = await meetingService.signup('get'); if (this.destroyed || version !== this.requestVersion) return; this.setData({ data, loadError: '' }); } catch (error) { if (this.destroyed || version !== this.requestVersion) return; this.setData({ data: null, loadError: '当前会议尚未开放报名' }); } finally { if (!this.destroyed && version === this.requestVersion) this.setData({ loading: false }); } },
   async loadMembers() { try { const result = await cloud.callCloud('lookupOptions', { type: 'memberships', keyword: '' }); const members = result.list || []; this.setData({ members, memberLabels: members.map((m) => m.nameZh || m.nameEn || m.nickName || '未命名会员') }); } catch (error) { cloud.showError(error); } },
   openSignup(event) {
     const slotId = event.currentTarget.dataset.slotId || '';
@@ -72,7 +77,7 @@ Page({
   async submitSignup(event) {
     if (this.data.submitting) return;
     const detail = event.detail || {};
-    const payload = { action: 'signup', slotId: this.data.selectedSlot && this.data.selectedSlot.id || '', personType: detail.personType, memberId: detail.memberId || '', name: detail.name || '', club: detail.club || '' };
+    const payload = { action: 'signup', slotId: this.data.selectedSlot && this.data.selectedSlot.id || '', personType: detail.personType, memberId: detail.memberId || '', name: detail.name || '', club: detail.club || '', signupVersion: this.data.data && this.data.data.signupVersion };
     this.setData({ submitting: true });
     try {
       const data = await meetingService.signup('signup', payload);
@@ -86,6 +91,39 @@ Page({
       }
     }
   },
-  cancelSignup(event) { const signupId = event.currentTarget.dataset.id; wx.showModal({ title:'取消报名', content:'确认取消这项报名吗？', success: async (res) => { if (!res.confirm) return; try { const data = await meetingService.signup('cancel', { signupId }); this.setData({ data }); cloud.showSuccess('已取消'); } catch (error) { cloud.showError(error); } } }); },
-  clearSlot(event) { const slotId = event.currentTarget.dataset.slotId; wx.showModal({ title:'清空角色', content:'确认清空该角色并释放名额吗？', success: async (res) => { if (!res.confirm) return; try { const data = await meetingService.signup('cancelSlot', { slotId }); this.setData({ data }); cloud.showSuccess('已清空'); } catch (error) { cloud.showError(error); } } }); }
+  cancelSignup(event) {
+    if (this.cancelingSignup) return;
+    const signupId = event.currentTarget.dataset.id;
+    const slotId = event.currentTarget.dataset.slotId || '';
+    wx.showModal({ title: '取消报名', content: '确认取消这项报名吗？', success: async (res) => {
+      if (!res.confirm || this.cancelingSignup) return;
+      this.cancelingSignup = true;
+      try {
+        const data = await meetingService.signup('cancel', { signupId, slotId });
+        this.setData({ data });
+        cloud.showSuccess('已取消');
+      } catch (error) {
+        cloud.showError(error);
+      } finally {
+        this.cancelingSignup = false;
+      }
+    } });
+  },
+  clearSlot(event) {
+    if (this.cancelingSignup) return;
+    const slotId = event.currentTarget.dataset.slotId;
+    wx.showModal({ title: '清空角色', content: '确认清空该角色并释放名额吗？', success: async (res) => {
+      if (!res.confirm || this.cancelingSignup) return;
+      this.cancelingSignup = true;
+      try {
+        const data = await meetingService.signup('cancelSlot', { slotId });
+        this.setData({ data });
+        cloud.showSuccess('已清空');
+      } catch (error) {
+        cloud.showError(error);
+      } finally {
+        this.cancelingSignup = false;
+      }
+    } });
+  }
 });

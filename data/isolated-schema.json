@@ -1,5 +1,5 @@
 {
-  "version": 1,
+  "version": 2,
   "environmentNamespaces": {
     "development": "app_",
     "production": "app_"
@@ -28,17 +28,7 @@
     "meetings": {
       "primaryKey": "_id",
       "indexes": ["clubId", "updatedAt", "signupPublicId"],
-      "fields": ["clubId", "ownerOpenid", "agenda", "meetingSummary", "signupPublicId", "signupSlots", "signupVersion", "createdAt", "updatedAt"]
-    },
-    "meeting_signups": {
-      "primaryKey": "_id",
-      "indexes": ["meetingId", "slotId", "openid"],
-      "fields": ["meetingId", "agendaId", "slotId", "openid", "memberId", "personType", "roleLabel", "createdAt", "updatedAt"]
-    },
-    "meeting_signup_claims": {
-      "primaryKey": "_id",
-      "indexes": ["agendaId", "slotId", "claimantOpenid"],
-      "fields": ["agendaId", "slotId", "claimantOpenid", "createdAt", "expiresAt"]
+      "fields": ["clubId", "ownerOpenid", "agenda", "meetingSummary", "signupPublicId", "signupSlots", "signups", "signupVersion", "createdAt", "updatedAt"]
     },
     "membership_invites": {
       "primaryKey": "_id",

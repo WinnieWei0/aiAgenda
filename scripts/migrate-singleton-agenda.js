@@ -58,6 +58,7 @@ function buildCurrentRecord(template, nowValue) {
     meetingSummary: { meetingNo: info.meetingNo || '', date: info.date || '', startTime: info.startTime || '', endTime: info.endTime || '' },
     signupPublicId: CURRENT_AGENDA_ID,
     signupSlots: [],
+    signups: [],
     signupVersion: 0,
     createdAt: now,
     updatedAt: now
@@ -75,8 +76,6 @@ async function run() {
   cloud.init({ env: config.envId, secretId: config.secretId, secretKey: config.secretKey });
   const db = cloud.database();
   const removed = {};
-  removed.agenda_signups = await clearCollection(db, `${prefix}meeting_signups`);
-  removed.agenda_signup_claims = await clearCollection(db, `${prefix}meeting_signup_claims`);
   removed.agendas = await clearCollection(db, `${prefix}meetings`);
   const template = await loadTemplate(db, `${prefix}club_templates`);
   await db.collection(`${prefix}meetings`).doc(CURRENT_AGENDA_ID).set({ data: Object.assign({}, buildCurrentRecord(template), { clubId: Number.parseInt(process.env.DEFAULT_CLUB_ID || '1', 10) }) });

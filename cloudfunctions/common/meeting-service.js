@@ -13,6 +13,10 @@ function normalizeAgenda(agendaModel, agenda, template) {
   ['rawText', 'items', 'participants', 'warnings', 'unresolvedNames', 'confidence', 'source'].forEach((field) => delete normalized[field]);
   delete normalized._id;
   delete normalized.expiresAt;
+  delete normalized.signupPublicId;
+  delete normalized.signupSlots;
+  delete normalized.signups;
+  delete normalized.signupVersion;
   return normalized;
 }
 
@@ -41,6 +45,7 @@ function buildMeetingPayload(agenda, template, context) {
     meetingSummary: buildSummary(normalized),
     signupPublicId: options.signupPublicId || 'current',
     signupSlots: Array.isArray(options.signupSlots) ? options.signupSlots : [],
+    signups: Array.isArray(options.signups) ? options.signups : [],
     signupVersion: Number(options.signupVersion || 0),
     updatedAt: options.updatedAt || new Date().toISOString()
   };

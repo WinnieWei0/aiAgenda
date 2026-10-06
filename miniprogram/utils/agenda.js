@@ -232,7 +232,7 @@ function createDefaultTemplate() {
       { id: 'vote', titleZh: '最佳演讲者投票', duration: 1 },
       { id: 'feedback', titleZh: '宾客和会员反馈', duration: 4, memberPersonEditable: true },
       { id: 'award', titleZh: '给最佳演讲者颁奖', duration: 2, memberPersonEditable: true },
-      { id: 'roleBooking', titleZh: '会议角色预定', duration: 1, memberPersonEditable: true }
+      { id: 'roleBooking', titleZh: '会议角色预定', duration: 1, roleKey: 'nextMeetingHost', memberPersonEditable: true }
     ]
   };
   const titleEnMap = {
@@ -488,7 +488,7 @@ function createAgendaFromFacts(factsValue, templateValue) {
     { id: 'closing', type: 'group', titleZh: '会议尾声', titleEn: 'Closing Remark', transitionPolicy: 'none', children: [
       createRow(template, 'feedback', { person: president }),
       createRow(template, 'award', { person: president }),
-      createRow(template, 'roleBooking', { person: rolePerson(facts, 'nextMeetingHost') })
+      createRow(template, 'roleBooking', { person: rolePerson(facts, 'nextMeetingHost'), roleKey: 'nextMeetingHost' })
     ] },
     { id: 'end', type: 'end', titleZh: '会议结束', titleEn: 'Meeting Adjourned', duration: 0, children: [] }
   ];
@@ -704,6 +704,7 @@ function applyTemplateRules(agenda, template) {
       memberPerson: Boolean(rule.memberPersonEditable),
       memberClub: Boolean(rule.memberPersonEditable)
     };
+    row.roleKey = row.roleKey || rule.roleKey || '';
   };
   (agenda.sections || []).forEach((section) => {
     applyRow(section.row);
@@ -978,7 +979,10 @@ function validateAgendaForPreview(agendaValue) {
       ? person.displayNameEn || person.rawName
       : person.displayNameZh || person.rawName;
     const club = language === 'en' ? person.clubEn : person.clubZh;
-    addTextError(`${label}姓名`, name);
+    if (!hasText(name)) {
+      errors.push(`${label}尚未报名`);
+      return;
+    }
     if (requireClub) {
       addTextError(`${label}俱乐部`, club);
     }

@@ -4,8 +4,6 @@ const COLLECTIONS = {
   memberships: 'club_members',
   pathways: 'club_pathways',
   agendas: 'meetings',
-  agendaSignups: 'meeting_signups',
-  agendaSignupClaims: 'meeting_signup_claims',
   agendaTemplates: 'club_templates',
   membershipInvites: 'membership_invites',
   membershipIdentityBindings: 'membership_identity_bindings',

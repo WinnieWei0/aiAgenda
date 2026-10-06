@@ -29,6 +29,9 @@ async function uploadPdf(buffer, fileName, timestamp) {
   const cloud = common.initCloud();
   const cloudPath = buildPdfCloudPath(fileName, timestamp);
   const res = await cloud.uploadFile({ cloudPath, fileContent: buffer });
+  if (!res || !res.fileID) {
+    throw Object.assign(new Error('PDF 上传失败，未返回云文件标识'), { code: 'PDF_UPLOAD_FAILED' });
+  }
   return res.fileID;
 }
 
@@ -93,21 +96,26 @@ async function saveExportRecord(agendaId, language, fileID, openid, ensureCollec
  * 方法作用：把 cloud 文件 ID 转换为 PDF 渲染器可嵌入的 base64 图片数据。
  * 为什么添加：服务端渲染不能直接用小程序 image 控件使用的云存储标识。
  */
-async function hydrateAssetBuffers(template, agenda) {
+async function hydrateAssetBuffers(template, agenda, downloadFileValue) {
   template.assetBuffers = {};
   agenda.assetBuffers = {};
+  const downloadFile = downloadFileValue || ((options) => common.cloud.downloadFile(options));
   const jobs = [];
   Object.entries(template.assets || {}).forEach(([field, fileID]) => {
     if (String(fileID || '').startsWith('cloud://')) {
-      jobs.push(common.cloud.downloadFile({ fileID }).then((result) => {
+      jobs.push(downloadFile({ fileID }).then((result) => {
         template.assetBuffers[field] = Buffer.from(result.fileContent).toString('base64');
+      }).catch((error) => {
+        throw Object.assign(new Error(`模板图片 ${field} 读取失败，请重新上传后预览`), { code: 'PDF_ASSET_DOWNLOAD_FAILED', cause: error });
       }));
     }
   });
   const meetingGroupQr = agenda.assets && agenda.assets.meetingGroupQr;
   if (String(meetingGroupQr || '').startsWith('cloud://')) {
-    jobs.push(common.cloud.downloadFile({ fileID: meetingGroupQr }).then((result) => {
+    jobs.push(downloadFile({ fileID: meetingGroupQr }).then((result) => {
       agenda.assetBuffers.meetingGroupQr = Buffer.from(result.fileContent).toString('base64');
+    }).catch((error) => {
+      throw Object.assign(new Error('例会群图片读取失败，请重新上传后预览'), { code: 'PDF_ASSET_DOWNLOAD_FAILED', cause: error });
     }));
   }
   await Promise.all(jobs);
@@ -250,4 +258,4 @@ exports.saveExportRecord = saveExportRecord;
 exports.buildPdfFileName = buildPdfFileName;
 exports.buildPdfCloudPath = buildPdfCloudPath;
 exports.hydrateAgendaMembers = hydrateAgendaMembers;
-exports.hydrateAgendaMembers = hydrateAgendaMembers;
+exports.hydrateAssetBuffers = hydrateAssetBuffers;

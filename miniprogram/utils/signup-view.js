@@ -1,6 +1,7 @@
 const GUEST_ROLE_KEYS = ['guestReception', 'photographer', 'ahCounter'];
 const TABLE_TOPICS_ROLE_KEYS = ['tableTopicsMaster', 'tableTopicsEvaluator'];
 const PREPARED_ROLE_KEYS = ['preparedSpeaker', 'preparedEvaluator'];
+const EDITOR_ONLY_ROLE_KEYS = ['nextMeetingHost'];
 
 /**
  * 方法是什么：按议程模块整理报名槽位。
@@ -60,9 +61,19 @@ function buildSlotGroups(slotsValue, languageValue) {
 function decorateSignupData(dataValue) {
   if (!dataValue) return dataValue;
   const data = Object.assign({}, dataValue);
-  data.slotGroups = buildSlotGroups(data.slots, data.language);
-  data.slots = data.slotGroups.reduce((all, group) => all.concat(group.slots), []);
+  const allGroups = buildSlotGroups(data.slots, data.language);
+  data.slots = allGroups.reduce((all, group) => all.concat(group.slots), []);
+  const publicSlots = data.slots.filter((slot) => !EDITOR_ONLY_ROLE_KEYS.includes(slot.roleKey));
+  const publicSlotIds = new Set(publicSlots.map((slot) => slot.id));
+  data.slotGroups = allGroups.filter((group) => group.slots.some((slot) => publicSlotIds.has(slot.id)))
+    .map((group) => Object.assign({}, group, { slots: group.slots.filter((slot) => publicSlotIds.has(slot.id)) }));
+  data.remainingRoles = publicSlots.filter((slot) => !slot.occupied).length;
+  data.people = (data.people || []).map((person) => {
+    const roles = (person.roles || []).filter((role) => publicSlotIds.has(role.slotId));
+    return Object.assign({}, person, { roles, rolesText: roles.map((role) => role.label).join('&') });
+  }).filter((person) => person.roles.length || person.attendanceOnly);
+  data.attendeeCount = data.people.length;
   return data;
 }
 
-module.exports = { GUEST_ROLE_KEYS, buildSlotGroups, decorateSignupData };
+module.exports = { GUEST_ROLE_KEYS, EDITOR_ONLY_ROLE_KEYS, buildSlotGroups, decorateSignupData };

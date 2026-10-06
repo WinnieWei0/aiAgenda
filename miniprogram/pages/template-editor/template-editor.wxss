@@ -10,6 +10,8 @@
 .field input, .field textarea { box-sizing: border-box; width: 100%; min-height: 72rpx; padding: 14rpx 16rpx; border: 1rpx solid #c6d0d6; border-radius:10rpx; background: #ffffff; }
 .field textarea { min-height: 150rpx; }
 .asset-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 14rpx; margin-top: 24rpx; }
+.asset-item { min-width: 0; }
+.asset-preview { display: block; width: 180rpx; height: 180rpx; margin: 18rpx auto 0; }
 .asset-actions .upload-button { box-sizing: border-box; width: 100%; min-height: 84rpx; margin: 0; padding: 14rpx 12rpx; border: 2rpx solid #004165; border-radius: 10rpx; color: #004165; background: #ffffff; font-size: 25rpx; font-weight: 600; line-height: 52rpx; }
 .asset-actions .upload-button::after { border: 0; }
 .setting-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20rpx; padding: 20rpx 0; border-bottom: 1rpx solid #e2e8f0; }

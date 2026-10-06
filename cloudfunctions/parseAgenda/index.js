@@ -65,7 +65,7 @@ async function saveCurrentDraft(db, openid, agenda) {
     await collection.doc(common.CURRENT_AGENDA_ID).update({ data: updateData });
     return { _id: common.CURRENT_AGENDA_ID };
   }
-  await collection.doc(common.CURRENT_AGENDA_ID).set({ data: Object.assign({}, payload, { signupSlots: [], signupVersion: 0, createdAt: now.toISOString() }) });
+  await collection.doc(common.CURRENT_AGENDA_ID).set({ data: Object.assign({}, payload, { signupSlots: [], signups: [], signupVersion: 0, createdAt: now.toISOString() }) });
   return { _id: common.CURRENT_AGENDA_ID };
 }
 

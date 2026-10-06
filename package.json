@@ -12,7 +12,9 @@
     "import:pathways": "node scripts/import-pathways.js",
     "migrate:isolated": "node scripts/migrate-isolated-data.js",
     "migrate:club-id": "node scripts/migrate-club-id.js",
+    "migrate:embedded-signups": "node scripts/migrate-embedded-signups.js",
     "configure:cloudfunctions": "node scripts/configure-cloudfunction-env.js",
+    "configure:pdf-function": "node scripts/configure-pdf-function.js",
     "provision:isolated": "node scripts/provision-isolated-schema.js",
     "test": "node tests/run-tests.js",
     "verify": "npm run check:comments && npm test"

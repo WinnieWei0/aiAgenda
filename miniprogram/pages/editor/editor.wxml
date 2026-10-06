@@ -74,12 +74,12 @@
 
   <view wx:if="{{addModuleOptions.length}}" class="panel add-module-panel"><text class="panel-title">新增模块</text><picker range="{{addModuleLabels}}" bindchange="addDynamicModule"><view class="add-module-picker">选择要新增的模块<text class="picker-arrow">⌄</text></view></picker></view>
 
-  <view class="panel qr-panel"><view class="qr-row"><text class="panel-title">例会群二维码</text><button class="icon-button" size="mini" bindtap="chooseMeetingGroupQr"><image class="button-icon small" src="/images/icons/upload.png" mode="aspectFit" />{{meetingGroupQrCustom ? '替换图片' : '上传图片'}}</button></view><image wx:if="{{meetingGroupQrCustom}}" class="meeting-group-qr-preview" src="{{agenda.assets.meetingGroupQr}}" mode="aspectFit" /><button wx:if="{{isAdmin}}" class="reset-button" bindtap="resetMeeting">重置当前会议</button></view>
+  <view class="panel qr-panel"><view class="qr-row"><text class="panel-title">例会群二维码</text><button class="icon-button" size="mini" bindtap="chooseMeetingGroupQr"><image class="button-icon small" src="/images/icons/upload.png" mode="aspectFit" />{{meetingGroupQrCustom ? '替换图片' : '上传图片'}}</button></view><image wx:if="{{meetingGroupQrCustom && meetingGroupQrPreviewSrc}}" class="meeting-group-qr-preview" src="{{meetingGroupQrPreviewSrc}}" mode="aspectFit" binderror="onMeetingGroupQrPreviewError" /><button wx:if="{{isAdmin}}" class="reset-button" bindtap="resetMeeting">重置当前会议</button></view>
   <view class="bottom-actions"><button class="save-agenda-button icon-button" disabled="{{saving || previewing}}" bindtap="saveAgendaFromButton"><image class="button-icon" src="{{agendaGenerated ? '/images/icons/save-white.png' : '/images/icons/plus-white.png'}}" mode="aspectFit" />{{saving ? '保存中...' : (agendaGenerated ? '保存' : '生成议程表')}}</button><button class="preview-button icon-button" disabled="{{saving || previewing}}" bindtap="goPreview"><image class="button-icon" src="/images/icons/eye-white.png" mode="aspectFit" />{{previewing ? '生成中...' : '预览'}}</button></view>
 
   <view wx:if="{{validationDialogVisible}}" class="validation-mask">
     <view class="validation-dialog">
-      <text class="validation-title">请完善议程表单</text>
+      <text class="validation-title">存在未报名或未完善内容</text>
       <scroll-view scroll-y class="validation-list">
         <text wx:for="{{validationErrors}}" wx:key="*this" class="validation-error">{{item}}</text>
         <text wx:if="{{validationRemaining > 0}}" class="validation-error validation-more">另有{{validationRemaining}}项未填写</text>
@@ -108,7 +108,7 @@
     <text wx:if="{{person.inputMode === 'select' && memberLoading}}" class="member-status">会员列表加载中...</text>
     <text wx:if="{{person.inputMode === 'select' && memberLoadError}}" class="member-status error">会员列表加载失败，请稍后重试</text>
     <text wx:if="{{person.inputMode === 'select' && !memberLoading && !memberLoadError && !memberLabels.length}}" class="member-status">暂无可选会员</text>
-    <view wx:if="{{row.id !== 'openingIcebreaker' && row.id !== 'openingRemarks'}}" class="club-line"><text class="club-label">俱乐部</text><input class="club-input" disabled="{{person.memberId || !row.canEditClub}}" value="{{language === 'en' ? person.clubEn : person.clubZh}}" placeholder="{{row.id === 'venueIntroduction' || row.id === 'signIn' ? '宾客' : '俱乐部'}}" data-scope="{{scope}}" data-section-index="{{sectionIndex}}" data-child-index="{{childIndex}}" data-person-field="{{personField}}" data-person-index="{{personIndex}}" data-field="{{language === 'en' ? 'clubEn' : 'clubZh'}}" bindinput="handlePersonInput" /></view>
+    <view wx:if="{{row.id !== 'openingIcebreaker' && row.id !== 'openingRemarks'}}" class="club-line"><text class="club-label">俱乐部</text><input class="club-input" disabled="{{true}}" value="{{language === 'en' ? person.clubEn : person.clubZh}}" placeholder="{{row.id === 'venueIntroduction' || row.id === 'signIn' ? '宾客' : '俱乐部'}}" data-scope="{{scope}}" data-section-index="{{sectionIndex}}" data-child-index="{{childIndex}}" data-person-field="{{personField}}" data-person-index="{{personIndex}}" data-field="{{language === 'en' ? 'clubEn' : 'clubZh'}}" bindinput="handlePersonInput" /></view>
   </view>
 </template>
 

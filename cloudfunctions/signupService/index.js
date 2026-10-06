@@ -1,4 +1,5 @@
 const common = require('agenda-common');
+const crypto = require('crypto');
 const CURRENT_AGENDA_ID = common.CURRENT_AGENDA_ID || 'current';
 
 const EN_ROLE_LABELS = {
@@ -6,11 +7,87 @@ const EN_ROLE_LABELS = {
   ahCounter: 'Ah-Counter', toastmaster: 'TOM', timer: 'Timer', grammarian: 'Grammarian',
   generalEvaluator: 'General Evaluator', tableTopicsMaster: 'Table Topics Master',
   tableTopicsEvaluator: 'Table Topics Evaluator', preparedSpeaker: 'Prepared Speaker',
-  preparedEvaluator: 'IE', icebreaker: 'Icebreaker', workshop: 'Workshop Facilitator'
+  preparedEvaluator: 'IE', icebreaker: 'Icebreaker', workshop: 'Workshop Facilitator',
+  nextMeetingHost: 'Next Meeting Role Booking'
 };
 
 const WEEKDAY_LABELS_ZH = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
 const WEEKDAY_LABELS_EN = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
+/**
+ * 方法是什么：生成会议内嵌报名记录 ID。
+ * 方法作用：为角色报名和仅参会记录提供稳定引用，不再依赖独立集合文档 ID。
+ * 为什么添加：报名明细改为 meetings.signups 数组后仍需支持取消和槽位关联。
+ */
+function createSignupId(nowValue) {
+  return `signup_${Number(nowValue || Date.now())}_${crypto.randomBytes(6).toString('hex')}`;
+}
+
+/**
+ * 方法是什么：规范化会议内嵌报名数组。
+ * 方法作用：兼容迁移时带 `_id` 的旧报名记录，并过滤无稳定 ID 的异常条目。
+ * 为什么添加：新旧数据切换期间报名页只能读取会议文档这一份业务来源。
+ */
+function normalizeSignups(value) {
+  return (Array.isArray(value) ? value : []).map((item) => {
+    const normalized = Object.assign({}, item, { id: item.id || item._id || '' });
+    delete normalized._id;
+    delete normalized.agendaId;
+    delete normalized.meetingId;
+    delete normalized.claimId;
+    return normalized;
+  }).filter((item) => item.id);
+}
+
+/**
+ * 方法是什么：读取会议聚合中的完整报名数组。
+ * 方法作用：优先使用 meetings.signups，并从旧 signupSlots 恢复尚未迁移的角色报名。
+ * 为什么添加：部署新云函数和执行迁移之间不能让已有角色报名暂时消失。
+ */
+function getMeetingSignups(record) {
+  const source = record || {};
+  const signups = normalizeSignups(source.signups);
+  const ids = new Set(signups.map((item) => item.id));
+  (source.signupSlots || []).forEach((slot) => {
+    const person = slot.person || {};
+    if (!slot.occupied || !slot.signupId || ids.has(slot.signupId) || !(person.rawName || person.displayNameZh || person.displayNameEn)) return;
+    signups.push({
+      id: slot.signupId,
+      slotId: slot.id,
+      openid: slot.signupOpenid || '',
+      memberId: person.memberId || '',
+      personType: person.memberId ? 'member' : (person.clubZh && person.clubZh !== '宾客' ? 'club' : 'guest'),
+      roleLabel: slot.label || '',
+      name: person.rawName || person.displayNameZh || person.displayNameEn || '',
+      displayNameZh: person.displayNameZh || person.rawName || '',
+      displayNameEn: person.displayNameEn || person.rawName || '',
+      club: person.clubZh || '',
+      clubEn: person.clubEn || person.clubZh || '',
+      createdAt: source.updatedAt || '',
+      updatedAt: source.updatedAt || ''
+    });
+    ids.add(slot.signupId);
+  });
+  return signups;
+}
+
+/**
+ * 方法是什么：构建会议内嵌报名记录。
+ * 方法作用：把身份档案、槽位和审计字段合并成可直接写入 meetings.signups 的对象。
+ * 为什么添加：所有报名入口需要共享同一套稳定字段和 ID 生成规则。
+ */
+function buildSignupRecord(profile, context) {
+  const options = context || {};
+  const now = options.now || new Date().toISOString();
+  return Object.assign({
+    id: options.id || createSignupId(),
+    slotId: options.slotId || '',
+    openid: options.openid || '',
+    roleLabel: options.roleLabel || '',
+    createdAt: now,
+    updatedAt: now
+  }, profile || {});
+}
 
 /**
  * 方法是什么：生成报名页展示用的星期文案。
@@ -59,7 +136,7 @@ function profileFromEvent(event, member) {
   if (!['member', 'club', 'guest'].includes(kind)) throw Object.assign(new Error('请选择报名身份'), { code: 'INVALID_PROFILE' });
   if (kind === 'member') {
     if (!member) throw Object.assign(new Error('请选择双语会员'), { code: 'MEMBER_NOT_FOUND' });
-    return { personType: kind, memberId: member._id, name: member.nameZh || member.nameEn || member.nickName, displayNameZh: member.nameZh || member.nickName, displayNameEn: member.nameEn || member.nameZh, club: member.clubZh || '', clubEn: member.clubEn || '', educationAwards: member.educationAwards || '', officerTitleZh: member.officerTitleZh || '', officerTitleEn: member.officerTitleEn || '' };
+    return { personType: kind, memberId: member._id, name: member.nameZh || member.nameEn || member.nickName, displayNameZh: member.nameZh || member.nickName, displayNameEn: member.nameEn || member.nameZh, club: member.clubZh || member.club || '', clubEn: member.clubEn || member.club || '', educationAwards: member.educationAwards || '', officerTitleZh: member.officerTitleZh || '', officerTitleEn: member.officerTitleEn || '' };
   }
   const name = String(event.name || '').trim();
   const club = String(event.club || '').trim();
@@ -79,7 +156,7 @@ async function getCurrentAgenda(db, options = {}) {
   if (!record || !options.allowEmpty && !meetingNo) {
     throw Object.assign(new Error('当前会议尚未开放报名'), { code: 'SIGNUP_NOT_FOUND' });
   }
-  return Object.assign({}, record, { _id: CURRENT_AGENDA_ID });
+  return Object.assign({}, record, { _id: CURRENT_AGENDA_ID, signups: getMeetingSignups(record) });
 }
 
 /**
@@ -88,18 +165,12 @@ async function getCurrentAgenda(db, options = {}) {
  * 为什么添加：报名页不应自行拼接数据库多表数据。
  */
 async function response(db, record, openid) {
-  const signups = await common.getCollection('agendaSignups').where({ agendaId: record._id }).get();
-  const list = signups.data || [];
+  const template = await common.getAgendaTemplate();
+  const agenda = common.agendaModel.normalizeAgenda(record.agenda, template);
+  const list = getMeetingSignups(record);
   const signupBySlot = new Map(list.filter((item) => item.slotId).map((item) => [item.slotId, item]));
-  const claimResult = await common.getCollection('agendaSignupClaims').where({ agendaId: record._id }).get();
-  for (const claim of claimResult.data || []) {
-    const hasSignup = list.some((item) => item.claimId === claim._id || item.slotId === claim.slotId);
-    const age = claim.createdAt ? Date.now() - new Date(claim.createdAt).getTime() : Infinity;
-    if (!hasSignup && age > 30000 && (typeof claim._id === 'string' || typeof claim._id === 'number')) {
-      await common.getCollection('agendaSignupClaims').doc(claim._id).remove();
-    }
-  }
-  const language = record.agenda.meetingInfo && record.agenda.meetingInfo.language === 'en' ? 'en' : 'zh';
+  const currentSlots = common.signup.mergeSlots(record.signupSlots, agenda);
+  const language = agenda.meetingInfo && agenda.meetingInfo.language === 'en' ? 'en' : 'zh';
   const isAdmin = await common.isAdmin(openid);
   const people = new Map();
   list.forEach((item) => {
@@ -108,18 +179,18 @@ async function response(db, record, openid) {
     current.mine = current.mine || item.openid === openid;
     if (item.slotId) {
       const slot = (record.signupSlots || []).find((value) => value.id === item.slotId);
-      const role = { signupId: item._id, slotId: item.slotId, label: displayRoleLabel(slot && slot.roleKey, item.roleLabel, language), mine: item.openid === openid, canCancel: isAdmin || item.openid === openid };
+      const role = { signupId: item.id, slotId: item.slotId, label: displayRoleLabel(slot && slot.roleKey, item.roleLabel, language), mine: item.openid === openid, canCancel: isAdmin || item.openid === openid };
       if (!current.roles.some((value) => value.slotId === role.slotId || value.label === role.label)) current.roles.push(role);
     }
-    else { current.attendanceOnly = true; current.attendanceSignupId = item._id; }
+    else { current.attendanceOnly = true; current.attendanceSignupId = item.id; }
     people.set(key, current);
   });
-  const slots = (record.signupSlots || []).map((slot) => {
+  const slots = currentSlots.map((slot) => {
     const signupItem = signupBySlot.get(slot.id);
     const occupied = Boolean(slot.preset && slot.occupied || signupItem);
     return Object.assign({}, slot, {
       occupied,
-      signupId: signupItem && signupItem._id || '',
+      signupId: signupItem && signupItem.id || '',
       signupOpenid: signupItem && signupItem.openid || '',
       mine: Boolean(signupItem && signupItem.openid === openid),
       canCancel: Boolean(signupItem && (isAdmin || signupItem.openid === openid)),
@@ -134,15 +205,14 @@ async function response(db, record, openid) {
   slots.filter((slot) => slot.preset && slot.occupied && slot.person).forEach((slot) => {
     const name = language === 'en' ? slot.person.displayNameEn || slot.person.rawName || 'Organizer preset' : slot.person.displayNameZh || slot.person.rawName || '组织者预设';
     const key = common.signup.signupPersonKey(Object.assign({ personType: 'preset', name }, slot.person));
-    const current = people.get(key) || { key, name, personType: 'preset', club: language === 'en' ? slot.person.clubEn || '' : slot.person.clubZh || '', roles: [], attendanceOnly: false, mine: false };
+    const current = people.get(key) || { key, name, memberId: slot.person.memberId || '', personType: 'preset', club: language === 'en' ? slot.person.clubEn || '' : slot.person.clubZh || '', roles: [], attendanceOnly: false, mine: false };
     const role = { slotId: slot.id, label: displayRoleLabel(slot.roleKey, slot.label, language), mine: false, canCancel: isAdmin };
     if (!current.roles.some((value) => value.slotId === role.slotId || value.label === role.label)) current.roles.push(role);
     people.set(key, current);
   });
   people.forEach((person) => { person.rolesText = person.roles.map((role) => role.label).join('&'); });
-  const preparation = (record.agenda.sections || []).find((section) => section.id === 'preparation');
+  const preparation = (agenda.sections || []).find((section) => section.id === 'preparation');
   const manager = preparation && preparation.row && preparation.row.person || {};
-  const template = await common.getAgendaTemplate();
   const club = await common.getClubContext();
   const locales = template.locales || {};
   const locale = locales[language] || {};
@@ -154,12 +224,18 @@ async function response(db, record, openid) {
   return {
     publicId: CURRENT_AGENDA_ID,
     agendaId: CURRENT_AGENDA_ID,
-    meetingInfo: record.agenda.meetingInfo,
+    agenda: Object.assign({}, agenda, {
+      _id: CURRENT_AGENDA_ID,
+      signupPublicId: CURRENT_AGENDA_ID,
+      signupSlots: slots,
+      signupVersion: Number(record.signupVersion || 0)
+    }),
+    meetingInfo: agenda.meetingInfo,
     club: { nameZh: club.nameZh || '', nameEn: club.nameEn || '' },
     language,
     templateVenue,
     signupDisplay: {
-      weekdayLabel: resolveWeekdayLabel(record.agenda.meetingInfo, language),
+      weekdayLabel: resolveWeekdayLabel(agenda.meetingInfo, language),
       venueSuffix: locale.signupVenueSuffix || '',
       guestFee: locale.guestFee || ''
     },
@@ -168,6 +244,7 @@ async function response(db, record, openid) {
     remainingRoles: slots.filter((s) => !s.occupied).length,
     attendeeCount: people.size,
     people: Array.from(people.values()),
+    signupVersion: Number(record.signupVersion || 0),
     myOpenid: openid,
     isAdmin
   };
@@ -183,8 +260,11 @@ async function createSession(db, openid) {
   const membership = await common.getMembershipByOpenid(openid);
   if (!canCreateSession(record, openid, membership, await common.isAdmin(openid))) throw Object.assign(new Error('无权创建报名页'), { code: 'FORBIDDEN' });
   const slots = common.signup.mergeSlots(record.signupSlots, record.agenda);
-  await common.getCollection('agendas').doc(CURRENT_AGENDA_ID).update({ data: { signupPublicId: CURRENT_AGENDA_ID, signupSlots: slots, signupVersion: Number(record.signupVersion || 0) + 1, updatedAt: new Date().toISOString() } });
-  return response(db, Object.assign({}, record, { _id: CURRENT_AGENDA_ID, signupPublicId: CURRENT_AGENDA_ID, signupSlots: slots }), openid);
+  const slotIds = new Set(slots.map((slot) => slot.id));
+  const signups = getMeetingSignups(record).filter((item) => !item.slotId || slotIds.has(item.slotId));
+  const signupVersion = Number(record.signupVersion || 0) + 1;
+  await common.getCollection('agendas').doc(CURRENT_AGENDA_ID).update({ data: { signupPublicId: CURRENT_AGENDA_ID, signupSlots: slots, signups, signupVersion, updatedAt: new Date().toISOString() } });
+  return response(db, Object.assign({}, record, { _id: CURRENT_AGENDA_ID, signupPublicId: CURRENT_AGENDA_ID, signupSlots: slots, signups, signupVersion }), openid);
 }
 
 /**
@@ -198,29 +278,34 @@ async function signup(db, openid, event) {
   if (event.personType === 'member') { const res = await common.getCollection('memberships').doc(event.memberId).get(); member = res.data; }
   const profile = profileFromEvent(event, member);
   const now = new Date().toISOString();
-  if (!event.slotId) {
-    const existing = await common.getCollection('agendaSignups').where({ agendaId: record._id, openid, slotId: '' }).limit(1).get();
-    if (!existing.data.length) await common.getCollection('agendaSignups').add({ data: Object.assign({ agendaId: record._id, openid, slotId: '', roleLabel: '', createdAt: now, updatedAt: now }, profile) });
-    return response(db, record, openid);
-  }
   const template = await common.getAgendaTemplate();
   const transactionResult = await db.runTransaction(async (transaction) => {
     const agendaRef = transaction.collection(common.collectionName('agendas')).doc(record._id);
     const latestResult = await agendaRef.get();
     const latest = latestResult.data;
     common.meetingService.assertVersion(event.signupVersion, latest.signupVersion || 0);
+    const signups = getMeetingSignups(latest);
+    if (!event.slotId) {
+      const existing = signups.find((item) => item.openid === openid && !item.slotId);
+      if (!existing) signups.push(buildSignupRecord(profile, { openid, now }));
+      const signupVersion = Number(latest.signupVersion || 0) + (existing ? 0 : 1);
+      if (!existing) await agendaRef.update({ data: { signups, signupVersion, updatedAt: now } });
+      return { agenda: latest.agenda, signupSlots: latest.signupSlots || [], signups, signupVersion };
+    }
     const slot = (latest.signupSlots || []).find((item) => item.id === event.slotId);
     if (!slot || slot.occupied) throw Object.assign(new Error('该角色已被报名'), { code: 'SLOT_TAKEN' });
     if (!common.signup.canSignupAs(slot.roleKey, event.personType)) throw Object.assign(new Error('该身份不能报名此角色'), { code: 'ROLE_IDENTITY_FORBIDDEN' });
-    const result = await transaction.collection(common.collectionName('agendaSignups')).add({ data: Object.assign({ agendaId: latest._id, openid, slotId: slot.id, roleLabel: slot.label, createdAt: now, updatedAt: now }, profile) });
+    const signupItem = buildSignupRecord(profile, { openid, slotId: slot.id, roleLabel: slot.label, now });
+    signups.push(signupItem);
     slot.occupied = true;
     slot.preset = false;
-    slot.signupId = result._id;
+    slot.signupId = signupItem.id;
     slot.signupOpenid = openid;
     slot.person = common.signup.personFromProfile(profile);
     const agenda = common.agendaModel.normalizeAgenda(common.signup.writeSlotPerson(latest.agenda, slot, profile), template);
-    await agendaRef.update({ data: { agenda, signupSlots: latest.signupSlots, signupVersion: Number(latest.signupVersion || 0) + 1, updatedAt: now } });
-    return { agenda, signupSlots: latest.signupSlots };
+    const signupVersion = Number(latest.signupVersion || 0) + 1;
+    await agendaRef.update({ data: { agenda, signupSlots: latest.signupSlots, signups, signupVersion, updatedAt: now } });
+    return { agenda, signupSlots: latest.signupSlots, signups, signupVersion };
   });
   return response(db, Object.assign({}, record, transactionResult), openid);
 }
@@ -232,32 +317,37 @@ async function signup(db, openid, event) {
  */
 async function cancel(db, openid, event) {
   const record = await getCurrentAgenda(db);
-  const signupResult = await common.getCollection('agendaSignups').doc(event.signupId).get();
-  const item = signupResult.data;
   const manage = record.ownerOpenid === openid || await common.isAdmin(openid);
-  if (!item) {
-    const staleSlot = (record.signupSlots || []).find((slot) => slot.signupId === event.signupId);
-    const staleOwner = staleSlot && staleSlot.signupOpenid === openid;
-    if (!staleSlot || !manage && !staleOwner) throw Object.assign(new Error('只能取消自己的报名'), { code: 'FORBIDDEN' });
-    staleSlot.occupied = false;
-    staleSlot.preset = false;
-    staleSlot.person = null;
-    delete staleSlot.signupId;
-    delete staleSlot.signupOpenid;
-    const agenda = common.agendaModel.normalizeAgenda(common.signup.writeSlotPerson(record.agenda, staleSlot, null), await common.getAgendaTemplate());
-    await common.getCollection('agendas').doc(record._id).update({ data: { agenda, signupSlots: record.signupSlots, signupVersion: Number(record.signupVersion || 0) + 1, updatedAt: new Date().toISOString() } });
-    return response(db, Object.assign({}, record, { agenda }), openid);
-  }
-  if (item.agendaId !== record._id || item.openid !== openid && !manage) throw Object.assign(new Error('只能取消自己的报名'), { code: 'FORBIDDEN' });
-  await common.getCollection('agendaSignups').doc(event.signupId).remove();
-  if (item.claimId) await common.getCollection('agendaSignupClaims').doc(item.claimId).remove();
-  if (item.slotId) {
-    const slot = (record.signupSlots || []).find((value) => value.id === item.slotId);
-    if (slot) { slot.occupied = false; slot.preset = false; delete slot.signupId; delete slot.signupOpenid; slot.person = null; record.agenda = common.signup.writeSlotPerson(record.agenda, slot, null); }
-    const agenda = common.agendaModel.normalizeAgenda(record.agenda, await common.getAgendaTemplate());
-    await common.getCollection('agendas').doc(record._id).update({ data: { agenda, signupSlots: record.signupSlots, signupVersion: Number(record.signupVersion || 0) + 1, updatedAt: new Date().toISOString() } });
-  }
-  return response(db, record, openid);
+  const template = await common.getAgendaTemplate();
+  const now = new Date().toISOString();
+  const transactionResult = await db.runTransaction(async (transaction) => {
+    const agendaRef = transaction.collection(common.collectionName('agendas')).doc(record._id);
+    const latestResult = await agendaRef.get();
+    const latest = latestResult.data;
+    const signups = getMeetingSignups(latest);
+    const item = signups.find((signupItem) => signupItem.id === event.signupId);
+    const slotId = item && item.slotId || event.slotId || '';
+    const slot = (latest.signupSlots || []).find((value) => value.id === slotId || value.signupId === event.signupId);
+    if (item && item.openid !== openid && !manage) throw Object.assign(new Error('只能取消自己的报名'), { code: 'FORBIDDEN' });
+    if (!item && slot && slot.signupOpenid !== openid && !manage) throw Object.assign(new Error('只能取消自己的报名'), { code: 'FORBIDDEN' });
+    if (!item && !slot) {
+      return { agenda: latest.agenda, signupSlots: latest.signupSlots || [], signups, signupVersion: Number(latest.signupVersion || 0) };
+    }
+    const remainingSignups = signups.filter((signupItem) => signupItem.id !== event.signupId && (!slotId || signupItem.slotId !== slotId));
+    let agenda = latest.agenda;
+    if (slot) {
+      slot.occupied = false;
+      slot.preset = false;
+      slot.person = null;
+      delete slot.signupId;
+      delete slot.signupOpenid;
+      agenda = common.agendaModel.normalizeAgenda(common.signup.writeSlotPerson(agenda, slot, null), template);
+    }
+    const signupVersion = Number(latest.signupVersion || 0) + 1;
+    await agendaRef.update({ data: { agenda, signupSlots: latest.signupSlots || [], signups: remainingSignups, signupVersion, updatedAt: now } });
+    return { agenda, signupSlots: latest.signupSlots || [], signups: remainingSignups, signupVersion };
+  });
+  return response(db, Object.assign({}, record, transactionResult), openid);
 }
 
 /**
@@ -268,17 +358,27 @@ async function cancel(db, openid, event) {
 async function cancelSlot(db, openid, event) {
   const record = await getCurrentAgenda(db);
   if (record.ownerOpenid !== openid && !(await common.isAdmin(openid))) throw Object.assign(new Error('无权取消该角色'), { code: 'FORBIDDEN' });
-  const slot = (record.signupSlots || []).find((item) => item.id === event.slotId);
-  if (!slot) return response(db, record, openid);
-  if (slot.signupId) {
-    const signupResult = await common.getCollection('agendaSignups').doc(slot.signupId).get();
-    if (signupResult.data && signupResult.data.claimId) await common.getCollection('agendaSignupClaims').doc(signupResult.data.claimId).remove();
-    await common.getCollection('agendaSignups').doc(slot.signupId).remove();
-  }
-  slot.occupied = false; slot.preset = false; slot.person = null; delete slot.signupId; delete slot.signupOpenid;
-  const agenda = common.agendaModel.normalizeAgenda(common.signup.writeSlotPerson(record.agenda, slot, null), await common.getAgendaTemplate());
-  await common.getCollection('agendas').doc(record._id).update({ data: { agenda, signupSlots: record.signupSlots, signupVersion: Number(record.signupVersion || 0) + 1, updatedAt: new Date().toISOString() } });
-  return response(db, Object.assign({}, record, { agenda }), openid);
+  const template = await common.getAgendaTemplate();
+  const now = new Date().toISOString();
+  const transactionResult = await db.runTransaction(async (transaction) => {
+    const agendaRef = transaction.collection(common.collectionName('agendas')).doc(record._id);
+    const latestResult = await agendaRef.get();
+    const latest = latestResult.data;
+    const slot = (latest.signupSlots || []).find((item) => item.id === event.slotId);
+    const signups = getMeetingSignups(latest);
+    if (!slot) return { agenda: latest.agenda, signupSlots: latest.signupSlots || [], signups, signupVersion: Number(latest.signupVersion || 0) };
+    const remainingSignups = signups.filter((item) => item.id !== slot.signupId && item.slotId !== slot.id);
+    slot.occupied = false;
+    slot.preset = false;
+    slot.person = null;
+    delete slot.signupId;
+    delete slot.signupOpenid;
+    const agenda = common.agendaModel.normalizeAgenda(common.signup.writeSlotPerson(latest.agenda, slot, null), template);
+    const signupVersion = Number(latest.signupVersion || 0) + 1;
+    await agendaRef.update({ data: { agenda, signupSlots: latest.signupSlots || [], signups: remainingSignups, signupVersion, updatedAt: now } });
+    return { agenda, signupSlots: latest.signupSlots || [], signups: remainingSignups, signupVersion };
+  });
+  return response(db, Object.assign({}, record, transactionResult), openid);
 }
 
 /**
@@ -290,12 +390,10 @@ async function reset(db, openid) {
   await common.requireAdmin(openid);
   const record = await getCurrentAgenda(db, { allowEmpty: true });
   const agendaId = CURRENT_AGENDA_ID;
-  await common.getCollection('agendaSignups').where({ agendaId }).remove();
-  await common.getCollection('agendaSignupClaims').where({ agendaId }).remove();
   const agenda = common.agendaModel.createAgendaFromFacts({}, await common.getAgendaTemplate());
   const info = agenda.meetingInfo || {};
   const meetingSummary = { meetingNo: info.meetingNo || '', date: info.date || '', startTime: info.startTime || '', endTime: info.endTime || '' };
-  await common.getCollection('agendas').doc(agendaId).update({ data: { agenda, meetingSummary, expiresAt: db.command.remove(), signupPublicId: CURRENT_AGENDA_ID, signupSlots: [], signupVersion: Number(record.signupVersion || 0) + 1, updatedAt: new Date().toISOString() } });
+  await common.getCollection('agendas').doc(agendaId).update({ data: { agenda, meetingSummary, expiresAt: db.command.remove(), signupPublicId: CURRENT_AGENDA_ID, signupSlots: [], signups: [], signupVersion: Number(record.signupVersion || 0) + 1, updatedAt: new Date().toISOString() } });
   return { agenda: Object.assign({}, agenda, { _id: agendaId, signupPublicId: CURRENT_AGENDA_ID, signupSlots: [] }) };
 }
 
@@ -307,8 +405,6 @@ async function reset(db, openid) {
 async function main(event) {
   try {
     common.initCloud();
-    await common.ensureCollection('agendaSignups');
-    await common.ensureCollection('agendaSignupClaims');
     const db = common.getDb(); const openid = common.getOpenid(); const action = event.action;
     if (action === 'create') return common.ok(await createSession(db, openid));
     if (action === 'get') return common.ok(await response(db, await getCurrentAgenda(db), openid));
@@ -320,5 +416,5 @@ async function main(event) {
   } catch (error) { return common.handleError(error); }
 }
 
-module.exports = { profileFromEvent, canCreateSession, getCurrentAgenda, response, resolveWeekdayLabel, main };
+module.exports = { profileFromEvent, canCreateSession, getCurrentAgenda, response, resolveWeekdayLabel, createSignupId, normalizeSignups, getMeetingSignups, buildSignupRecord, main };
 exports.main = main;

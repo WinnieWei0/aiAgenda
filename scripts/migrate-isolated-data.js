@@ -90,6 +90,7 @@ function sanitizeRecord(collectionName, record, config) {
       meetingSummary: source.meetingSummary || {},
       signupPublicId: source.signupPublicId || 'current',
       signupSlots: Array.isArray(source.signupSlots) ? source.signupSlots : [],
+      signups: Array.isArray(source.signups) ? source.signups : [],
       signupVersion: Number(source.signupVersion || 0),
       updatedAt: source.updatedAt || new Date().toISOString(),
       createdAt: source.createdAt || new Date().toISOString()

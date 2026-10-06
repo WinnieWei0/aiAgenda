@@ -28,6 +28,8 @@ const singletonAgendaMigration = require('../scripts/migrate-singleton-agenda');
 const isolatedMigration = require('../scripts/migrate-isolated-data');
 const clubIdMigration = require('../scripts/migrate-club-id');
 const cloudFunctionEnvironment = require('../scripts/configure-cloudfunction-env');
+const embeddedSignupMigration = require('../scripts/migrate-embedded-signups');
+const pdfFunctionConfig = require('../scripts/configure-pdf-function');
 const workbookSeed = require('../cloudfunctions/seedWorkbookData');
 const { PDFDocument } = require('../cloudfunctions/common/node_modules/pdf-lib');
 
@@ -299,8 +301,16 @@ function testSignupRoleSlots() {
   agenda = agendaUtil.addDynamicModule(agenda, 'icebreaker');
   agenda = agendaUtil.addDynamicModule(agenda, 'workshop');
   const slots = signupModel.buildRoleSlots(agenda);
-  assert.strictEqual(slots.length, 16, '应生成10个固定角色、4个备稿槽位和2个动态角色');
+  assert.strictEqual(slots.length, 17, '应生成11个固定角色、4个备稿槽位和2个动态角色');
   assert.strictEqual(slots.find((slot) => slot.id === 'role:toastmaster').preset, true);
+  assert.strictEqual(slots.find((slot) => slot.id === 'role:nextMeetingHost').label, '会议角色预定');
+  const mergedLegacySlots = signupModel.mergeSlots(slots.filter((slot) => slot.id !== 'role:nextMeetingHost'), agenda);
+  assert.ok(mergedLegacySlots.some((slot) => slot.id === 'role:nextMeetingHost'), '旧报名快照应自动补齐角色预定槽位');
+  const legacyRoleBooking = agenda.sections.find((section) => section.id === 'closing').children.find((row) => row.id === 'roleBooking');
+  legacyRoleBooking.roleKey = '';
+  const upgradedAgenda = agendaUtil.normalizeAgenda(agenda, agendaUtil.createDefaultTemplate());
+  const upgradedRoleBooking = upgradedAgenda.sections.find((section) => section.id === 'closing').children.find((row) => row.id === 'roleBooking');
+  assert.strictEqual(upgradedRoleBooking.roleKey, 'nextMeetingHost', '旧会议应自动补齐角色预定槽位标识');
   assert.ok(slots.some((slot) => slot.id === 'prepared:speech-two:evaluator'));
   assert.ok(slots.some((slot) => slot.roleKey === 'icebreaker'));
   assert.ok(slots.some((slot) => slot.roleKey === 'workshop'));
@@ -367,6 +377,7 @@ function testSignupAggregationKeys() {
 }
 
 async function testPdfPreviewFileHandling() {
+  await assert.rejects(() => pdfPreview.openCloudPdf({ cloud: { downloadFile: async () => { throw new Error('不应调用下载'); } } }, ''), /云文件标识为空/);
   await assert.rejects(() => pdfPreview.openCloudPdf({ cloud: { downloadFile: async () => ({ tempFilePath: '' }) } }, 'cloud://file'), /未返回本地文件路径/);
   const opened = [];
   const wxApi = {
@@ -383,6 +394,86 @@ async function testPdfPreviewFileHandling() {
   const openPath = await pdfPreview.openCloudPdf(wxApi, 'cloud://file', 'agenda.pdf');
   assert.strictEqual(openPath, '/user-data/' + openPath.split('/').pop());
   assert.strictEqual(opened.length, 1);
+  let downloads = 0;
+  const retryApi = {
+    cloud: { async downloadFile() { downloads += 1; return { tempFilePath: `/tmp/agenda-${downloads}.pdf` }; } },
+    getFileSystemManager: () => ({ saveFile({ fail }) { fail(new Error('save failed')); } }),
+    async openDocument({ filePath }) { if (filePath.endsWith('agenda-1.pdf')) throw new Error('first path unavailable'); }
+  };
+  assert.strictEqual(await pdfPreview.openCloudPdf(retryApi, 'cloud://file'), '/tmp/agenda-2.pdf');
+  assert.strictEqual(downloads, 2);
+}
+
+/**
+ * 方法是什么：在 Node 测试中加载编辑页 Page 定义。
+ * 方法作用：使用最小微信全局对象捕获页面方法，便于验证按钮流程。
+ * 为什么添加：保存和预览的先后顺序属于页面行为，纯领域测试无法覆盖。
+ */
+function loadEditorPageDefinition() {
+  const editorPath = require.resolve('../miniprogram/pages/editor/editor');
+  const previousGetApp = global.getApp;
+  const previousPage = global.Page;
+  const previousWx = global.wx;
+  let definition;
+  global.getApp = () => ({
+    globalData: { identity: { role: 'admin' }, club: {} },
+    isAdmin: () => true,
+    setCurrentAgenda() {},
+    async login() {}
+  });
+  global.Page = (value) => { definition = value; };
+  global.wx = {};
+  delete require.cache[editorPath];
+  try {
+    require(editorPath);
+  } finally {
+    if (previousGetApp === undefined) delete global.getApp; else global.getApp = previousGetApp;
+    if (previousPage === undefined) delete global.Page; else global.Page = previousPage;
+    if (previousWx === undefined) delete global.wx; else global.wx = previousWx;
+  }
+  return definition;
+}
+
+/**
+ * 方法是什么：测试编辑页保存与预览按钮工作流。
+ * 方法作用：确认独立保存只提示成功，预览则先保存并在用户确认缺失角色后打开 PDF。
+ * 为什么添加：按钮点击后的实际顺序是本次回归的核心验收条件。
+ */
+async function testEditorSaveAndPreviewWorkflow() {
+  const definition = loadEditorPageDefinition();
+  const incompleteAgenda = agendaUtil.createAgendaFromFacts({
+    meetingInfo: { meetingNo: '901', date: '2026-09-30', theme: '预览流程' }
+  }, agendaUtil.createDefaultTemplate());
+  incompleteAgenda._id = 'current';
+  const events = [];
+  const page = Object.assign({}, definition, {
+    data: { agenda: incompleteAgenda, agendaGenerated: true, saving: false, previewing: false, validationDialogVisible: false },
+    setData(update) { Object.assign(this.data, update); },
+    async saveAgenda(options) { events.push({ type: 'save', options }); return incompleteAgenda; },
+    async openPdfPreview(id) { events.push({ type: 'pdf', id }); }
+  });
+  await page.goPreview();
+  assert.strictEqual(events[0].type, 'save');
+  assert.strictEqual(events[0].options.silent, true, '预览保存不应用 toast 遮挡缺失提示');
+  assert.strictEqual(events.some((event) => event.type === 'pdf'), false, '未确认缺失角色前不应生成 PDF');
+  assert.strictEqual(page.data.validationDialogVisible, true);
+  assert.ok(page.data.validationErrors.some((message) => message.includes('尚未报名')));
+  await page.continuePreview();
+  assert.strictEqual(events[1].type, 'pdf');
+  assert.strictEqual(events[1].id, 'current');
+
+  const cloudModule = require('../miniprogram/utils/cloud');
+  const originalShowSuccess = cloudModule.showSuccess;
+  let successMessage = '';
+  cloudModule.showSuccess = (message) => { successMessage = message; };
+  events.length = 0;
+  try {
+    await page.saveAgendaFromButton();
+  } finally {
+    cloudModule.showSuccess = originalShowSuccess;
+  }
+  assert.deepStrictEqual(events.map((event) => event.type), ['save']);
+  assert.strictEqual(successMessage, '已保存');
 }
 
 /**
@@ -417,6 +508,10 @@ function testAgendaPreviewValidation() {
     }]
   }, template);
   assert.deepStrictEqual(agendaUtil.validateAgendaForPreview(agenda), []);
+  const missingRoleAgenda = agendaUtil.cloneJson(agenda);
+  const missingTimer = missingRoleAgenda.sections.find((section) => section.id === 'facilitatorIntroduction').children.find((row) => row.roleKey === 'timer');
+  missingTimer.person = agendaUtil.createPerson({});
+  assert.ok(agendaUtil.validateAgendaForPreview(missingRoleAgenda).includes('计时员尚未报名'));
   const legacyAgenda = agendaUtil.cloneJson(agenda);
   const facilitator = legacyAgenda.sections.find((section) => section.id === 'facilitatorIntroduction');
   facilitator.children.push({ id: 'legacy-icebreaker', moduleKind: 'icebreaker', titleZh: '破冰', duration: 0, personMode: 'editable', person: {} });
@@ -766,12 +861,75 @@ function testMemberOptionsAndAgendaPayload() {
   agenda.bestAwards = { preparedSpeech: '甲', tableTopics: '乙', role: '丙', evaluator: '丁' };
   agenda._id = 'temporary-id';
   agenda.expiresAt = '2026-07-25T00:00:00.000Z';
+  agenda.signupPublicId = 'current';
+  agenda.signupSlots = [{ id: 'role:timer' }];
+  agenda.signups = [{ id: 'signup-timer' }];
+  agenda.signupVersion = 3;
   const payload = saveAgenda.buildAgendaPayload(agenda, agendaUtil.createDefaultTemplate());
   assert.strictEqual(payload.schemaVersion, 2);
   assert.strictEqual(payload.meetingInfo.theme, '保存测试');
   assert.deepStrictEqual(payload.bestAwards, { preparedSpeech: '甲', tableTopics: '乙', role: '丙', evaluator: '丁' });
   assert.strictEqual(Object.prototype.hasOwnProperty.call(payload, '_id'), false);
   assert.strictEqual(Object.prototype.hasOwnProperty.call(payload, 'expiresAt'), false);
+  assert.strictEqual(Object.prototype.hasOwnProperty.call(payload, 'signupPublicId'), false);
+  assert.strictEqual(Object.prototype.hasOwnProperty.call(payload, 'signupSlots'), false);
+  assert.strictEqual(Object.prototype.hasOwnProperty.call(payload, 'signups'), false);
+  assert.strictEqual(Object.prototype.hasOwnProperty.call(payload, 'signupVersion'), false);
+
+  const serverAgenda = agendaUtil.createAgendaFromFacts({
+    meetingInfo: { meetingNo: '900', theme: '服务端会议' },
+    rolePeople: { timer: { rawName: '最新报名人', clubZh: '示例俱乐部' } }
+  }, agendaUtil.createDefaultTemplate());
+  const serverSlots = signupModel.buildRoleSlots(serverAgenda);
+  const serverTimerSlot = serverSlots.find((slot) => slot.id === 'role:timer');
+  Object.assign(serverTimerSlot, { occupied: true, preset: false, signupId: 'signup-timer', signupOpenid: 'openid-timer' });
+  const staleAgenda = agendaUtil.cloneJson(serverAgenda);
+  staleAgenda.signupVersion = 1;
+  staleAgenda.sections.forEach((section) => (section.children || []).forEach((row) => {
+    if (row.roleKey === 'timer') row.person = agendaUtil.createPerson({ rawName: '过期编辑值', clubZh: '过期俱乐部' });
+  }));
+  staleAgenda.signupSlots = signupModel.buildRoleSlots(staleAgenda);
+  const saveState = saveAgenda.buildSaveState({
+    _id: 'current',
+    ownerOpenid: 'owner-openid',
+    agenda: serverAgenda,
+    signupSlots: serverSlots,
+    signups: [{ id: 'signup-timer', slotId: 'role:timer', name: '最新报名人' }],
+    signupVersion: 2
+  }, staleAgenda, agendaUtil.createDefaultTemplate(), {
+    clubId: 1,
+    openid: 'editor-openid',
+    updatedAt: '2026-09-30T00:00:00.000Z'
+  });
+  const savedTimerRows = [];
+  saveState.responseAgenda.sections.forEach((section) => (section.children || []).forEach((row) => {
+    if (row.roleKey === 'timer') savedTimerRows.push(row);
+  }));
+  assert.strictEqual(saveState.versionReconciled, true, '报名版本变化时应自动合并而不是拒绝保存');
+  assert.ok(savedTimerRows.every((row) => row.person.rawName === '最新报名人'), '过期编辑值不得覆盖最新报名');
+  assert.strictEqual(saveState.payload.signups[0].id, 'signup-timer');
+  assert.strictEqual(saveState.responseAgenda.signupVersion, 2);
+  assert.strictEqual(saveState.payload.ownerOpenid, 'owner-openid');
+
+  const attendanceVersionAgenda = agendaUtil.cloneJson(serverAgenda);
+  attendanceVersionAgenda.signupVersion = 1;
+  attendanceVersionAgenda.signupSlots = agendaUtil.cloneJson(serverSlots);
+  const localRoleBooking = attendanceVersionAgenda.sections.find((section) => section.id === 'closing').children.find((row) => row.roleKey === 'nextMeetingHost');
+  localRoleBooking.person = agendaUtil.createPerson({ rawName: '本地预定人', clubZh: '示例俱乐部' });
+  const attendanceSaveState = saveAgenda.buildSaveState({
+    _id: 'current',
+    ownerOpenid: 'owner-openid',
+    agenda: serverAgenda,
+    signupSlots: serverSlots,
+    signups: [{ id: 'signup-timer', slotId: 'role:timer', name: '最新报名人' }, { id: 'attendance-only', slotId: '', name: '参会人' }],
+    signupVersion: 2
+  }, attendanceVersionAgenda, agendaUtil.createDefaultTemplate(), {
+    clubId: 1,
+    openid: 'editor-openid',
+    updatedAt: '2026-09-30T00:00:00.000Z'
+  });
+  const savedRoleBooking = attendanceSaveState.responseAgenda.sections.find((section) => section.id === 'closing').children.find((row) => row.roleKey === 'nextMeetingHost');
+  assert.strictEqual(savedRoleBooking.person.rawName, '本地预定人', '仅参会报名的版本变化不应丢失本地角色编辑');
 
   const legacyAgenda = agendaUtil.createAgendaFromFacts({
     rolePeople: { tableTopicsMaster: { rawName: '示例甲', clubZh: '默认俱乐部' } }
@@ -817,6 +975,7 @@ function testSingletonAgendaAndSignupRoute() {
   const record = singletonAgendaMigration.buildCurrentRecord(agendaUtil.createDefaultTemplate(), '2026-08-16T08:00:00.000Z');
   assert.strictEqual(record.signupPublicId, 'current');
   assert.deepStrictEqual(record.signupSlots, []);
+  assert.deepStrictEqual(record.signups, []);
   assert.strictEqual(Object.prototype.hasOwnProperty.call(record, 'expiresAt'), false);
 
   const files = [
@@ -849,6 +1008,46 @@ function testSignupSlotGroups() {
   assert.deepStrictEqual(data.slotGroups[1].slots.map((slot) => slot.roleKey), ['tableTopicsMaster', 'tableTopicsEvaluator']);
   assert.deepStrictEqual(data.slotGroups[2].slots.map((slot) => slot.displayLabel), ['Prepared Speaker 1', 'IE 1']);
   assert.deepStrictEqual(data.slotGroups[3].slots.map((slot) => slot.displayLabel), ['Prepared Speaker 2', 'IE 2']);
+
+  const editorSlot = { id: 'role:nextMeetingHost', roleKey: 'nextMeetingHost', occupied: false };
+  const editorOnlyPerson = { key: 'editor', roles: [{ slotId: editorSlot.id, label: '会议角色预定' }], attendanceOnly: false };
+  const publicPerson = { key: 'public', roles: [{ slotId: 'guest', label: 'SAA (Guest)' }], attendanceOnly: false };
+  const signupPage = signupView.decorateSignupData({
+    language: 'zh',
+    slots: [slots[0], editorSlot],
+    people: [editorOnlyPerson, publicPerson],
+    remainingRoles: 2,
+    attendeeCount: 2
+  });
+  assert.strictEqual(signupPage.slots.length, 2, '编辑页仍需读取完整会议槽位');
+  assert.deepStrictEqual(signupPage.slotGroups.flatMap((group) => group.slots.map((slot) => slot.id)), ['guest']);
+  assert.strictEqual(signupPage.remainingRoles, 1);
+  assert.deepStrictEqual(signupPage.people.map((person) => person.key), ['public']);
+  assert.strictEqual(signupPage.attendeeCount, 1);
+}
+
+/**
+ * 方法是什么：测试 PDF 函数超时配置命令。
+ * 方法作用：确认默认只检查云端配置，显式应用时仅更新目标函数的运行限制。
+ * 为什么添加：云函数的实际超时时间不能仅由本地部署清单证明。
+ */
+async function testPdfFunctionConfig() {
+  const updates = [];
+  const functions = {
+    async getFunctionDetail(name) { assert.strictEqual(name, 'exportAgendaPdf'); return { Timeout: 3, MemorySize: 256 }; },
+    async updateFunctionConfig(value) { updates.push(value); }
+  };
+  const originalLog = console.log;
+  console.log = () => {};
+  try {
+    const preview = await pdfFunctionConfig.run({ envId: 'isolated-env', apply: false }, functions);
+    assert.deepStrictEqual(preview.before, { timeout: 3, memorySize: 256 });
+    assert.strictEqual(updates.length, 0);
+    await pdfFunctionConfig.run({ envId: 'isolated-env', apply: true }, functions);
+    assert.deepStrictEqual(updates, [{ name: 'exportAgendaPdf', timeout: 60, memorySize: 512 }]);
+  } finally {
+    console.log = originalLog;
+  }
 }
 
 /**
@@ -1029,6 +1228,44 @@ function testMembershipRolesAndSearch() {
 }
 
 /**
+ * 方法是什么：测试 PDF 可选云端素材下载降级。
+ * 方法作用：确认失效模板图片或二维码不会中断整份 PDF 生成。
+ * 为什么添加：历史 cloud fileID 可能已失效，预览应继续使用默认素材。
+ */
+async function testPdfAssetDownloadFallback() {
+  const template = { assets: { logo: 'cloud://missing-logo' } };
+  const agenda = { assets: { meetingGroupQr: 'cloud://missing-qr' } };
+  await assert.rejects(exportAgendaPdf.hydrateAssetBuffers(template, agenda, async function downloadFile() {
+    throw new Error('downloadFile:fail undefined');
+  }), /图片.*读取失败/);
+  await exportAgendaPdf.hydrateAssetBuffers(template, agenda, async function downloadFile() {
+    return { fileContent: Buffer.from('image-data') };
+  });
+  assert.strictEqual(template.assetBuffers.logo, Buffer.from('image-data').toString('base64'));
+  assert.strictEqual(agenda.assetBuffers.meetingGroupQr, Buffer.from('image-data').toString('base64'));
+}
+
+/**
+ * 方法是什么：测试会议内嵌报名记录模型。
+ * 方法作用：确认旧报名文档可以转成 meetings.signups 条目且不保留集合字段。
+ * 为什么添加：报名数据必须只存储在会议聚合中，不能继续依赖独立报名集合。
+ */
+function testEmbeddedSignupRecords() {
+  const normalized = signupService.normalizeSignups([{ _id: 'legacy-1', agendaId: 'current', claimId: 'claim-1', slotId: 'role:timer', openid: 'openid-1' }]);
+  assert.deepStrictEqual(normalized, [{ id: 'legacy-1', slotId: 'role:timer', openid: 'openid-1' }]);
+  const record = signupService.buildSignupRecord({ personType: 'guest', name: '匿名来宾' }, { id: 'signup-1', openid: 'openid-1', now: '2026-09-29T00:00:00.000Z' });
+  assert.strictEqual(record.id, 'signup-1');
+  assert.strictEqual(record.slotId, '');
+  assert.strictEqual(record.createdAt, record.updatedAt);
+  const restored = signupService.getMeetingSignups({ signupSlots: [{ id: 'role:timer', label: '时间官', occupied: true, signupId: 'legacy-slot-1', signupOpenid: 'openid-1', person: { rawName: '匿名会员', clubZh: '示例俱乐部' } }] });
+  assert.strictEqual(restored[0].id, 'legacy-slot-1');
+  assert.strictEqual(restored[0].slotId, 'role:timer');
+  const migrated = embeddedSignupMigration.sanitizeSignup({ _id: 'legacy-2', agendaId: 'current', claimId: 'claim-2', slotId: 'role:timer', name: '匿名会员' });
+  assert.deepStrictEqual(migrated, { id: 'legacy-2', slotId: 'role:timer', name: '匿名会员' });
+  assert.deepStrictEqual(embeddedSignupMigration.mergeSignups([Object.assign({}, migrated, { name: '会议内记录' })], [migrated]), [Object.assign({}, migrated, { name: '会议内记录' })]);
+}
+
+/**
  * 方法是什么：测试隔离库数据清洗和会议版本控制。
  * 方法作用：确认新库只保留白名单字段，并拒绝旧快照覆盖新数据。
  * 为什么添加：数据库迁移和编辑/报名一致性是本次重构的核心风险。
@@ -1057,7 +1294,9 @@ function testIsolatedDatabaseModel() {
   const schema = JSON.parse(fs.readFileSync(path.join(__dirname, '../data/isolated-schema.json'), 'utf8'));
   assert.deepStrictEqual(schema.environmentNamespaces, { development: 'app_', production: 'app_' });
   assert.ok(schema.collections.meetings.fields.includes('signupVersion'));
-  assert.ok(schema.collections.meeting_signups.fields.includes('meetingId'));
+  assert.ok(schema.collections.meetings.fields.includes('signups'));
+  assert.strictEqual(Object.prototype.hasOwnProperty.call(schema.collections, 'meeting_signups'), false);
+  assert.strictEqual(Object.prototype.hasOwnProperty.call(schema.collections, 'meeting_signup_claims'), false);
   assert.ok(schema.collections.roles.fields.includes('code'));
   assert.ok(schema.collections.pdf_exports.fields.includes('fileID'));
 }
@@ -1156,6 +1395,7 @@ async function main() {
   testPublicMeetingSummary();
   testSingletonAgendaAndSignupRoute();
   testSignupSlotGroups();
+  await testPdfFunctionConfig();
   testPdfAgendaLineStyle();
   testPdfHeaderFrame();
   testPdfFontFallback();
@@ -1168,6 +1408,9 @@ async function main() {
   await testPdfRenderer(agenda);
   await testPdfOverflow();
   await testPdfPreviewFileHandling();
+  await testEditorSaveAndPreviewWorkflow();
+  await testPdfAssetDownloadFallback();
+  testEmbeddedSignupRecords();
   console.log('核心测试通过。');
 }
 

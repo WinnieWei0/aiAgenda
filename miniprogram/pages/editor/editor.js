@@ -42,7 +42,8 @@ Page({
     signupEditingSlotId: '',
     signupSubmitting: false,
     agendaGenerated: false,
-    meetingGroupQrCustom: false
+    meetingGroupQrCustom: false,
+    meetingGroupQrPreviewSrc: ''
   },
 
   /**
@@ -51,6 +52,10 @@ Page({
    * 为什么添加：字段权限、默认规则和下拉选项必须在议程规范化前准备完成。
    */
   async onLoad(options) {
+    this.destroyed = false;
+    this.pageReady = false;
+    this.signupRequestVersion = 0;
+    this.meetingRequestVersion = 0;
     await app.login();
     if ((app.globalData.identity || {}).role === 'guest') {
       wx.showToast({ title: '宾客仅可访问报名页', icon: 'none' });
@@ -59,15 +64,21 @@ Page({
     }
     this.setData({ isAdmin: app.isAdmin() });
     await Promise.all([this.loadTemplate(), this.loadMembers(), this.loadPathways()]);
-    if (options && options.id) {
-      await this.loadAgendaById(options.id);
-    } else if (app.globalData.currentAgenda) {
-      this.setAgenda(app.globalData.currentAgenda);
-      this.setData({ agendaGenerated: Boolean(app.globalData.currentAgenda.meetingInfo && String(app.globalData.currentAgenda.meetingInfo.meetingNo || '').trim()) });
-    } else {
-      await this.loadCurrentAgenda();
-    }
+    await this.refreshMeetingSnapshot(options && options.id);
+    this.pageReady = true;
+    if (this.destroyed) return;
     this.setData({ loading: false });
+  },
+
+  /**
+   * 方法是什么：结束编辑页生命周期。
+   * 方法作用：让异步报名刷新知道页面已经离开，避免旧请求回写已销毁页面。
+   * 为什么添加：编辑页和报名页频繁切换时，旧请求可能晚于新请求完成。
+   */
+  onUnload() {
+    this.destroyed = true;
+    this.signupRequestVersion += 1;
+    this.meetingRequestVersion += 1;
   },
 
   /**
@@ -84,11 +95,28 @@ Page({
       this.setData({ isAdmin });
       this.setAgenda(this.data.agenda);
     }
-    if (this.data.agenda && this.data.agenda.signupPublicId) {
-      if (this.data.agenda._id) {
-        await this.loadAgendaById(this.data.agenda._id);
-      }
-      await this.loadSignupData();
+    if (!this.pageReady || this.destroyed) return;
+    await this.refreshMeetingSnapshot(this.data.agenda && this.data.agenda._id);
+  },
+
+  /**
+   * 方法是什么：从服务端重新读取当前会议聚合快照。
+   * 方法作用：每次显示编辑页时同步议程和报名槽位，并丢弃过期请求。
+   * 为什么添加：报名页取消后，页面栈中的编辑页不能继续使用旧的全局缓存。
+   */
+  async refreshMeetingSnapshot(id) {
+    const requestVersion = ++this.meetingRequestVersion;
+    try {
+      const data = await meetingService.query(id ? 'get' : 'current', id ? { id } : undefined);
+      if (this.destroyed || requestVersion !== this.meetingRequestVersion) return;
+      const agenda = data.agenda || agendaUtil.createEmptyAgenda();
+      this.setData({ signupData: null });
+      this.setAgenda(agenda);
+      this.setData({ agendaGenerated: Boolean(agenda.meetingInfo && String(agenda.meetingInfo.meetingNo || '').trim()) });
+      if (agenda.signupPublicId) await this.loadSignupData();
+    } catch (error) {
+      if (this.destroyed || requestVersion !== this.meetingRequestVersion) return;
+      cloud.showError(error);
     }
   },
 
@@ -98,12 +126,20 @@ Page({
    * 为什么添加：报名页和编辑页必须使用同一份服务端槽位数据。
    */
   async loadSignupData() {
+    const requestVersion = ++this.signupRequestVersion;
     try {
       const signupData = await meetingService.signup('get');
-      const agenda = this.reconcileAgendaWithSignupData(this.data.agenda, signupData);
-      this.setData({ signupData }, () => this.setAgenda(agenda));
+      if (this.destroyed || requestVersion !== this.signupRequestVersion) return;
+      const sourceAgenda = signupData.agenda || this.data.agenda;
+      const agenda = this.reconcileAgendaWithSignupData(sourceAgenda, signupData);
+      this.setData({ signupData }, () => {
+        if (!this.destroyed && requestVersion === this.signupRequestVersion) this.setAgenda(agenda);
+      });
     } catch (error) {
-      this.setData({ signupData: null }, () => this.setAgenda(this.data.agenda));
+      if (this.destroyed || requestVersion !== this.signupRequestVersion) return;
+      this.setData({ signupData: null }, () => {
+        if (!this.destroyed && requestVersion === this.signupRequestVersion) this.setAgenda(this.data.agenda);
+      });
     }
   },
 
@@ -220,7 +256,8 @@ Page({
     const mmMemberIndex = preparation && preparation.row && preparation.row.person ? preparation.row.person.memberIndex : -1;
     const meetingGroupQr = agenda.assets && agenda.assets.meetingGroupQr || '';
     app.setCurrentAgenda(agenda);
-    this.setData({ agenda, mmMemberIndex, meetingGroupQrCustom: Boolean(meetingGroupQr), addModuleOptions, addModuleLabels: addModuleOptions.map((item) => item.label) });
+    this.setData({ agenda, mmMemberIndex, meetingGroupQrCustom: Boolean(meetingGroupQr), meetingGroupQrPreviewSrc: this.qrPreviewFileID === meetingGroupQr ? this.data.meetingGroupQrPreviewSrc : '', addModuleOptions, addModuleLabels: addModuleOptions.map((item) => item.label) });
+    if (meetingGroupQr && this.qrPreviewFileID !== meetingGroupQr) this.loadMeetingGroupQrPreview(meetingGroupQr);
   },
 
   /**
@@ -507,8 +544,8 @@ Page({
       pathNameEn: member.pathNameEn || '',
       officerTitleZh: member.officerTitleZh || '',
       officerTitleEn: member.officerTitleEn || '',
-      clubZh: '',
-      clubEn: 'Bilingual',
+      clubZh: member.clubZh || member.club || app.globalData.club && app.globalData.club.nameZh || '',
+      clubEn: member.clubEn || member.club || app.globalData.club && app.globalData.club.nameEn || '',
       inputMode: 'select',
       unresolved: false
     });
@@ -705,7 +742,7 @@ Page({
       const slot = (signupData.slots || []).find((item) => item.id === slotId);
       if (!slot) return;
       if (slot.occupied && !editing) {
-        this.clearLocalSignupSlot(slot.id);
+        await this.confirmAndCancelSlots([slot.id], '该人员已有报名，清空后将取消报名。确认继续吗？');
         return;
       }
       const allowed = slot.allowedPersonTypes || ['member', 'club'];
@@ -756,8 +793,9 @@ Page({
     const member = this.data.memberOptions.find((option) => option.member._id === detail.memberId);
     const source = member && member.member;
     const name = source ? (source.nameZh || source.nameEn || source.nickName || '') : (detail.name || '');
-    const club = source ? '' : (detail.club || (detail.personType === 'guest' && name ? '宾客' : ''));
-    return agendaUtil.createPerson({ rawName: name, memberId: source ? source._id : '', displayNameZh: source ? (source.nameZh || name) : name, displayNameEn: source ? (source.nameEn || source.nameZh || name) : name, clubZh: club, clubEn: source ? '' : club, inputMode: source ? 'select' : 'input' });
+    const clubZh = source ? (source.clubZh || source.club || app.globalData.club && app.globalData.club.nameZh || '') : (detail.club || (detail.personType === 'guest' && name ? '宾客' : ''));
+    const clubEn = source ? (source.clubEn || source.club || app.globalData.club && app.globalData.club.nameEn || '') : (detail.club || (detail.personType === 'guest' && name ? 'Guest' : ''));
+    return agendaUtil.createPerson({ rawName: name, memberId: source ? source._id : '', displayNameZh: source ? (source.nameZh || name) : name, displayNameEn: source ? (source.nameEn || source.nameZh || name) : name, clubZh, clubEn, inputMode: source ? 'select' : 'input' });
   },
 
   applyLocalSignup(agendaValue, slot, detail) {
@@ -790,16 +828,6 @@ Page({
         club: person.clubZh || person.clubEn || ''
       });
     }, agendaUtil.cloneJson(agendaValue));
-  },
-
-  clearLocalSignupSlot(slotId) {
-    const slot = (this.data.signupData && this.data.signupData.slots || []).find((item) => item.id === slotId);
-    if (!slot) return;
-    const empty = { personType: 'guest', memberId: '', name: '', club: '' };
-    const agenda = this.applyLocalSignup(this.data.agenda, slot, empty);
-    const signupData = Object.assign({}, this.data.signupData, { slots: this.data.signupData.slots.map((item) => item.id === slotId ? Object.assign({}, item, { occupied: false, preset: false, person: null, signupId: '' }) : item) });
-    agenda.signupSlots = signupData.slots;
-    this.setData({ signupData }, () => this.setAgenda(agenda));
   },
 
   /**
@@ -882,6 +910,9 @@ Page({
     const row = this.getRowTarget(agenda, event.currentTarget.dataset);
     const person = this.getPersonTarget(agenda, event.currentTarget.dataset);
     const field = event.currentTarget.dataset.field;
+    if (field === 'clubZh' || field === 'clubEn') {
+      return;
+    }
     if (!row || !person || !this.canEditRow(row, field === 'clubZh' || field === 'clubEn' ? 'club' : 'person')) {
       return;
     }
@@ -1071,14 +1102,38 @@ Page({
       }
       const extension = String(file.tempFilePath).split('.').pop() || 'png';
       const upload = await wx.cloud.uploadFile({ cloudPath: `agenda-assets/meeting-group-${Date.now()}.${extension}`, filePath: file.tempFilePath });
+      if (!upload.fileID) throw new Error('图片上传失败，请重试');
       const agenda = agendaUtil.cloneJson(this.data.agenda);
       agenda.assets.meetingGroupQr = upload.fileID;
+      this.qrPreviewFileID = upload.fileID;
       this.setAgenda(agenda);
+      this.setData({ meetingGroupQrPreviewSrc: file.tempFilePath });
     } catch (error) {
       if (!String(error && error.errMsg || '').includes('cancel')) {
         cloud.showError(error);
       }
     }
+  },
+
+  /**
+   * 方法是什么：将云存储图片标识转换成小程序可渲染的临时地址。
+   * 方法作用：页面重进后仍显示已上传的例会群图片。
+   * 为什么添加：image 组件不能可靠地直接渲染 cloud:// 文件标识。
+   */
+  async loadMeetingGroupQrPreview(fileID) {
+    this.qrPreviewFileID = fileID;
+    try {
+      const result = await wx.cloud.getTempFileURL({ fileList: [fileID] });
+      const file = result.fileList && result.fileList[0];
+      if (!file || !file.tempFileURL || file.status && file.status !== 0) throw new Error('例会群图片读取失败，请重新上传');
+      if (!this.destroyed && this.qrPreviewFileID === fileID) this.setData({ meetingGroupQrPreviewSrc: file.tempFileURL });
+    } catch (error) {
+      if (!this.destroyed && this.qrPreviewFileID === fileID) cloud.showError(error);
+    }
+  },
+
+  onMeetingGroupQrPreviewError() {
+    cloud.showError(new Error('例会群图片无法显示，请重新上传'));
   },
 
   /**
@@ -1094,13 +1149,10 @@ Page({
     try {
       const data = await meetingService.save(this.data.agenda);
       const savedAgenda = data.agenda;
-      app.setCurrentAgenda(savedAgenda);
-      this.setData({
-        'agenda._id': savedAgenda._id || '',
-        'agenda.signupPublicId': savedAgenda.signupPublicId || '',
-        'agenda.signupSlots': savedAgenda.signupSlots || [],
-        agendaGenerated: true
-      });
+      this.setData({ signupData: null });
+      this.setAgenda(savedAgenda);
+      this.setData({ agendaGenerated: true });
+      if (savedAgenda.signupPublicId) await this.loadSignupData();
       if (!(options && options.silent)) {
         cloud.showSuccess('已保存');
       }
@@ -1152,8 +1204,9 @@ Page({
       if (!res.confirm) return;
       try {
         const data = await meetingService.signup('cancelSlot', { slotId });
+        const agenda = this.reconcileAgendaWithSignupData(data.agenda || this.data.agenda, data);
         this.setData({ signupData: data });
-        await this.loadAgendaById(this.data.agenda._id);
+        this.setAgenda(agenda);
         cloud.showSuccess('已取消');
       } catch (error) { cloud.showError(error); }
     } });
@@ -1184,7 +1237,7 @@ Page({
     }
     this.setData({ previewing: true });
     try {
-      const agenda = await this.saveAgenda({ manageSaving: false });
+      const agenda = await this.saveAgenda({ manageSaving: false, silent: true });
       if (!agenda || !agenda._id) {
         return;
       }
@@ -1217,6 +1270,9 @@ Page({
     this.setData({ previewing: true });
     try {
       const data = await cloud.callCloud('exportAgendaPdf', { agendaId });
+      if (!data || !data.fileID) {
+        throw new Error('PDF 尚未生成，请重新预览');
+      }
       await pdfPreview.openCloudPdf(wx, data && data.fileID, data && data.fileName);
     } catch (error) {
       cloud.showError(error);

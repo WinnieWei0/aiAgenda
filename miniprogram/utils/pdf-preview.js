@@ -1,7 +1,3 @@
-function accessFile(fileSystem, filePath) {
-  return new Promise((resolve, reject) => fileSystem.access({ path: filePath, success: resolve, fail: reject }));
-}
-
 function saveFile(fileSystem, tempFilePath, filePath) {
   return new Promise((resolve, reject) => fileSystem.saveFile({ tempFilePath, filePath, success: resolve, fail: reject }));
 }
@@ -17,11 +13,6 @@ async function openCloudPdf(wxApi, fileID, fileName) {
   const tempFilePath = download && download.tempFilePath;
   if (!tempFilePath) throw new Error('PDF 下载未返回本地文件路径');
   const fileSystem = wxApi.getFileSystemManager();
-  try {
-    await accessFile(fileSystem, tempFilePath);
-  } catch (error) {
-    throw new Error('PDF 临时文件不存在，请重新预览');
-  }
   let openPath = tempFilePath;
   const userDataPath = wxApi.env && wxApi.env.USER_DATA_PATH;
   if (userDataPath) {
@@ -30,7 +21,6 @@ async function openCloudPdf(wxApi, fileID, fileName) {
     try {
       const saved = await saveFile(fileSystem, tempFilePath, savedPath);
       openPath = saved.savedFilePath || savedPath;
-      await accessFile(fileSystem, openPath);
     } catch (error) {
       openPath = tempFilePath;
     }
@@ -38,7 +28,14 @@ async function openCloudPdf(wxApi, fileID, fileName) {
   try {
     await wxApi.openDocument({ filePath: openPath, fileType: 'pdf', showMenu: true });
   } catch (error) {
-    throw new Error(`PDF 打开失败：${error && (error.errMsg || error.message) || '未知错误'}`);
+    try {
+      const retry = await wxApi.cloud.downloadFile({ fileID });
+      if (!retry || !retry.tempFilePath) throw new Error('重新下载未返回本地文件路径');
+      await wxApi.openDocument({ filePath: retry.tempFilePath, fileType: 'pdf', showMenu: true });
+      return retry.tempFilePath;
+    } catch (retryError) {
+      throw new Error(`PDF 打开失败：${retryError && (retryError.errMsg || retryError.message) || '未知错误'}`);
+    }
   }
   return openPath;
 }

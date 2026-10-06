@@ -40,8 +40,7 @@
 2. 将 `project.config.json` 里的 `appid` 替换为真实小程序 AppID。
 3. 在 `miniprogram/config/environment.js` 中分别配置开发和生产 CloudBase 环境 ID。
 4. 执行 `npm run install:cloudfunctions` 安装所有云函数依赖。该脚本会使用 `--install-links`，避免本地公共包以 Windows 链接形式上传后导致云端运行时报 `Invalid or unexpected token`。
-5. 在云开发控制台打开 `exportAgendaPdf` 的函数配置，将超时时间设置为 60 秒、内存设置为 512 MB。普通云函数默认只有 3 秒，无法稳定完成字体嵌入、图片下载、PDF 生成和云存储上传。
-5. 上传并部署云函数。
+5. 上传并部署云函数，然后在云开发控制台将 `exportAgendaPdf` 的超时时间设置为 60 秒、内存设置为 512 MB。也可以设置目标环境和腾讯云凭据后运行 `npm run configure:pdf-function` 查看当前值，再运行 `npm run configure:pdf-function -- --apply` 更新。`cloudbaserc.json` 中的值不会自动改变已部署函数。
 6. 使用外部工作簿初始化新环境的会员和 Pathways 数据。脚本必须显式指定目标环境，不会写入旧环境。
 
 ```powershell
