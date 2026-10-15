@@ -347,8 +347,7 @@ async function getClubContext() {
  * 方法作用：合并默认结构、校验数组字段并更新模板单例。
  * 为什么添加：模拟超管需要维护两页固定内容、素材、环节规则和会员权限。
  */
-async function saveAgendaTemplate(value) {
-  const db = getDb();
+function buildAgendaTemplatePayload(value) {
   const source = value || {};
   const defaults = agendaModel.createDefaultTemplate();
   const template = agendaModel.normalizeTemplate(Object.assign({}, defaults, source, {
@@ -370,6 +369,17 @@ async function saveAgendaTemplate(value) {
   ['fixedContent', 'sidebar', 'page2', 'timerRules'].forEach((field) => {
     delete template[field];
   });
+  return template;
+}
+
+/**
+ * 方法是什么：保存全局议程模板。
+ * 方法作用：将规范化载荷写入模板单例记录。
+ * 为什么添加：参会费用和其他模板字段必须在重新读取后仍然存在。
+ */
+async function saveAgendaTemplate(value) {
+  const db = getDb();
+  const template = buildAgendaTemplatePayload(value);
   const collection = await ensureCollection('agendaTemplates');
   const existing = await collection.where({ templateId: agendaModel.TEMPLATE_ID, clubId: config.getConfig().clubId }).limit(1).get();
   if (existing.data && existing.data.length) {
@@ -429,6 +439,7 @@ const commonExports = {
   requireAdmin,
   ensureDefaultRoles,
   getAgendaTemplate,
+  buildAgendaTemplatePayload,
   getClubContext,
   saveAgendaTemplate,
   handleError

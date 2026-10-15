@@ -395,13 +395,55 @@ async function testPdfPreviewFileHandling() {
   assert.strictEqual(openPath, '/user-data/' + openPath.split('/').pop());
   assert.strictEqual(opened.length, 1);
   let downloads = 0;
+  const retryOpened = [];
   const retryApi = {
-    cloud: { async downloadFile() { downloads += 1; return { tempFilePath: `/tmp/agenda-${downloads}.pdf` }; } },
-    getFileSystemManager: () => ({ saveFile({ fail }) { fail(new Error('save failed')); } }),
-    async openDocument({ filePath }) { if (filePath.endsWith('agenda-1.pdf')) throw new Error('first path unavailable'); }
+    cloud: {
+      async downloadFile() { downloads += 1; return { tempFilePath: 'http://tmp/cloud.pdf' }; },
+      async getTempFileURL() { return { fileList: [{ status: 0, tempFileURL: 'https://example.com/agenda.pdf' }] }; }
+    },
+    downloadFile({ url, success }) {
+      assert.strictEqual(url, 'https://example.com/agenda.pdf');
+      success({ statusCode: 200, tempFilePath: 'http://tmp/url.pdf' });
+    },
+    getFileSystemManager: () => ({
+      saveFile({ tempFilePath, success, fail }) {
+        if (tempFilePath.includes('cloud.pdf')) fail(new Error('save failed'));
+        else success({ savedFilePath: 'wxfile://usr/agenda.pdf' });
+      }
+    }),
+    async openDocument({ filePath }) {
+      retryOpened.push(filePath);
+      if (filePath.startsWith('http://tmp')) throw new Error('openDocument:fail no such file or directory');
+    }
   };
-  assert.strictEqual(await pdfPreview.openCloudPdf(retryApi, 'cloud://file'), '/tmp/agenda-2.pdf');
-  assert.strictEqual(downloads, 2);
+  assert.strictEqual(await pdfPreview.openCloudPdf(retryApi, 'cloud://file'), 'wxfile://usr/agenda.pdf');
+  assert.deepStrictEqual(retryOpened, ['http://tmp/cloud.pdf', 'wxfile://usr/agenda.pdf']);
+  assert.strictEqual(downloads, 1);
+}
+
+function testSignupFeeUsesTemplateContent() {
+  const template = common.agendaModel.createDefaultTemplate();
+  template.locales.zh.fixedContent.fees = '入会费 500 元';
+  template.locales.en.fixedContent.fees = 'Joining fee: CNY 500';
+  template.locales.zh.fixedContent.venue = '统一地址';
+  template.attendanceFee = '参会 20 元';
+  assert.strictEqual(signupService.resolveSignupFee(template, 'zh'), '参会 20 元');
+  assert.strictEqual(signupService.resolveSignupFee(template, 'en'), '参会 20 元');
+  const legacy = common.agendaModel.createDefaultTemplate();
+  legacy.locales.zh.attendanceFee = '旧参会费用';
+  assert.strictEqual(common.agendaModel.normalizeTemplate(legacy).attendanceFee, '');
+  delete legacy.attendanceFee;
+  assert.strictEqual(common.agendaModel.normalizeTemplate(legacy).attendanceFee, '旧参会费用');
+  const clientTemplate = agendaUtil.normalizeTemplate(template);
+  const serverTemplate = common.agendaModel.normalizeTemplate(clientTemplate);
+  assert.strictEqual(serverTemplate.attendanceFee, '参会 20 元');
+  assert.strictEqual(serverTemplate.locales.zh.fixedContent.fees, '入会费 500 元');
+  assert.strictEqual(serverTemplate.locales.en.fixedContent.fees, '入会费 500 元');
+  assert.strictEqual(serverTemplate.locales.en.fixedContent.venue, '统一地址');
+  const stored = JSON.parse(JSON.stringify(common.buildAgendaTemplatePayload(clientTemplate)));
+  assert.strictEqual(stored.attendanceFee, '参会 20 元');
+  assert.strictEqual(common.agendaModel.normalizeTemplate(stored).attendanceFee, '参会 20 元');
+  assert.strictEqual(signupService.resolveSignupFee(common.agendaModel.createDefaultTemplate(), 'zh'), '');
 }
 
 /**
@@ -474,6 +516,39 @@ async function testEditorSaveAndPreviewWorkflow() {
   }
   assert.deepStrictEqual(events.map((event) => event.type), ['save']);
   assert.strictEqual(successMessage, '已保存');
+}
+
+async function testEditorPreviewWaitsForUploadedImage() {
+  const definition = loadEditorPageDefinition();
+  const meetingService = require('../miniprogram/services/meeting-service');
+  const originalSave = meetingService.save;
+  const agenda = agendaUtil.createEmptyAgenda();
+  agenda._id = 'current';
+  let finishUpload;
+  const upload = new Promise((resolve) => { finishUpload = resolve; });
+  const saved = [];
+  const page = Object.assign({}, definition, {
+    data: { agenda, template: agendaUtil.createDefaultTemplate(), saving: false, previewing: false, signupData: null },
+    signupRequestVersion: 0,
+    qrUploadPromise: upload,
+    setData(update) { Object.assign(this.data, update); },
+    setAgenda(value) { this.data.agenda = value; }
+  });
+  meetingService.save = async (value) => {
+    saved.push(value.assets.meetingGroupQr);
+    return { agenda: Object.assign({}, value, { signupSlots: [] }) };
+  };
+  try {
+    const pending = page.saveAgenda({ silent: true });
+    assert.deepStrictEqual(saved, []);
+    agenda.assets.meetingGroupQr = 'cloud://new-qr';
+    finishUpload(true);
+    await pending;
+    assert.deepStrictEqual(saved, ['cloud://new-qr']);
+    assert.strictEqual(page.data.agenda.assets.meetingGroupQr, 'cloud://new-qr');
+  } finally {
+    meetingService.save = originalSave;
+  }
 }
 
 /**
@@ -1381,6 +1456,7 @@ async function main() {
   testSignupRoleSlots();
   testSignupProfiles();
   testSignupDisplayFields();
+  testSignupFeeUsesTemplateContent();
   testSignupAggregationKeys();
   testAgendaPreviewValidation();
   testTemplateAndLegacyUpgrade();
@@ -1409,6 +1485,7 @@ async function main() {
   await testPdfOverflow();
   await testPdfPreviewFileHandling();
   await testEditorSaveAndPreviewWorkflow();
+  await testEditorPreviewWaitsForUploadedImage();
   await testPdfAssetDownloadFallback();
   testEmbeddedSignupRecords();
   console.log('核心测试通过。');

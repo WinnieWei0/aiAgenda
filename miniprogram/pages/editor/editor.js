@@ -132,14 +132,12 @@ Page({
       if (this.destroyed || requestVersion !== this.signupRequestVersion) return;
       const sourceAgenda = signupData.agenda || this.data.agenda;
       const agenda = this.reconcileAgendaWithSignupData(sourceAgenda, signupData);
-      this.setData({ signupData }, () => {
-        if (!this.destroyed && requestVersion === this.signupRequestVersion) this.setAgenda(agenda);
-      });
+      this.setData({ signupData });
+      if (!this.destroyed && requestVersion === this.signupRequestVersion) this.setAgenda(agenda);
     } catch (error) {
       if (this.destroyed || requestVersion !== this.signupRequestVersion) return;
-      this.setData({ signupData: null }, () => {
-        if (!this.destroyed && requestVersion === this.signupRequestVersion) this.setAgenda(this.data.agenda);
-      });
+      this.setData({ signupData: null });
+      cloud.showError(error);
     }
   },
 
@@ -1094,6 +1092,16 @@ Page({
    * 为什么添加：截图红框中的例会群二维码属于普通会员可维护基础信息。
    */
   async chooseMeetingGroupQr() {
+    if (this.qrUploadPromise) return this.qrUploadPromise;
+    this.qrUploadPromise = this.uploadMeetingGroupQr();
+    try {
+      return await this.qrUploadPromise;
+    } finally {
+      this.qrUploadPromise = null;
+    }
+  },
+
+  async uploadMeetingGroupQr() {
     try {
       const media = await wx.chooseMedia({ count: 1, mediaType: ['image'], sourceType: ['album', 'camera'] });
       const file = media.tempFiles && media.tempFiles[0];
@@ -1103,15 +1111,20 @@ Page({
       const extension = String(file.tempFilePath).split('.').pop() || 'png';
       const upload = await wx.cloud.uploadFile({ cloudPath: `agenda-assets/meeting-group-${Date.now()}.${extension}`, filePath: file.tempFilePath });
       if (!upload.fileID) throw new Error('图片上传失败，请重试');
+      const result = await wx.cloud.getTempFileURL({ fileList: [upload.fileID] });
+      const preview = result.fileList && result.fileList[0];
+      if (!preview || !preview.tempFileURL || preview.status && preview.status !== 0) throw new Error('图片上传成功，但读取失败，请重试');
       const agenda = agendaUtil.cloneJson(this.data.agenda);
       agenda.assets.meetingGroupQr = upload.fileID;
       this.qrPreviewFileID = upload.fileID;
       this.setAgenda(agenda);
-      this.setData({ meetingGroupQrPreviewSrc: file.tempFilePath });
+      this.setData({ meetingGroupQrPreviewSrc: preview.tempFileURL });
+      return true;
     } catch (error) {
       if (!String(error && error.errMsg || '').includes('cancel')) {
         cloud.showError(error);
       }
+      return false;
     }
   },
 
@@ -1147,12 +1160,14 @@ Page({
       this.setData({ saving: true });
     }
     try {
+      if (this.qrUploadPromise && !await this.qrUploadPromise) return null;
       const data = await meetingService.save(this.data.agenda);
       const savedAgenda = data.agenda;
-      this.setData({ signupData: null });
+      if (!savedAgenda || !savedAgenda._id) throw new Error('保存未返回议程，请重试');
+      this.signupRequestVersion += 1;
+      this.setData({ signupData: savedAgenda.signupSlots ? { slots: savedAgenda.signupSlots } : null });
       this.setAgenda(savedAgenda);
       this.setData({ agendaGenerated: true });
-      if (savedAgenda.signupPublicId) await this.loadSignupData();
       if (!(options && options.silent)) {
         cloud.showSuccess('已保存');
       }

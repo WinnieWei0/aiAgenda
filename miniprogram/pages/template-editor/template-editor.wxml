@@ -1,8 +1,9 @@
 <view class="template-editor" wx:if="{{!loading}}">
   <view class="editor-band">
     <view class="band-title">会议信息</view>
-    <label class="field"><text>地址</text><textarea value="{{template.locales[activeLocale].fixedContent.venue}}" data-group="fixedContent" data-field="venue" bindinput="handleTemplateInput" /></label>
-    <label class="field"><text>费用</text><textarea value="{{template.locales[activeLocale].fixedContent.fees}}" data-group="fixedContent" data-field="fees" bindinput="handleTemplateInput" /></label>
+    <label class="field"><text>地址</text><textarea value="{{template.locales.zh.fixedContent.venue}}" data-group="fixedContent" data-field="venue" bindinput="handleTemplateInput" /></label>
+    <label class="field"><text>入会费用</text><textarea value="{{template.locales.zh.fixedContent.fees}}" data-group="fixedContent" data-field="fees" bindinput="handleTemplateInput" /></label>
+    <label class="field"><text>参会费用</text><textarea value="{{template.attendanceFee}}" bindinput="handleAttendanceFeeInput" /></label>
   </view>
 
   <view class="editor-band section-divider">
@@ -12,7 +13,7 @@
 
   <view class="editor-band section-divider">
     <view class="band-title">干事联系方式</view>
-    <view class="officer-editor" wx:for="{{template.locales[activeLocale].page2.officers}}" wx:key="index">
+    <view class="officer-editor" wx:for="{{template.locales.zh.page2.officers}}" wx:key="index">
       <view class="officer-role">{{item.role}}</view>
       <label class="officer-field officer-name"><text>姓名</text><picker range="{{memberLabels}}" value="{{officerMemberIndexes[index]}}" data-index="{{index}}" bindchange="chooseOfficerMember"><view class="member-picker">{{item.name || '请选择会员'}}<text class="picker-arrow">⌄</text></view></picker></label>
       <label class="officer-field"><text>电话</text><input value="{{item.phone}}" data-index="{{index}}" data-field="phone" bindinput="handleOfficerInput" /></label>

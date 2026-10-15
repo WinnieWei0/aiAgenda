@@ -6,7 +6,6 @@ Page({
   data: {
     loading: true,
     saving: false,
-    activeLocale: 'zh',
     memberOptions: [],
     memberLabels: [],
     officerMemberIndexes: [],
@@ -60,8 +59,8 @@ Page({
    * 方法作用：把列表和计时表转换成 textarea 可编辑的换行文本。
    * 为什么添加：小程序原生表单不适合逐项维护大量固定文案。
    */
-  buildTextFields(template, localeKey) {
-    const locale = template.locales[localeKey || this.data.activeLocale || 'zh'];
+  buildTextFields(template) {
+    const locale = template.locales.zh;
     return {
       winners: (locale.sidebar.winners || []).map((item) => `${item.label}|${item.value}`).join('\n'),
       timerRules: (locale.timerRules || []).map((row) => row.join('|')).join('\n'),
@@ -70,16 +69,6 @@ Page({
       meetingFlow: (locale.page2.meetingFlow || []).join('\n'),
       benefits: (locale.page2.benefits || []).join('\n')
     };
-  },
-
-  /**
-   * 方法是什么：切换模板文案语言。
-   * 方法作用：在同一模板记录的中文和英文 locale 之间切换编辑状态。
-   * 为什么添加：两套文案共用规则和素材，但必须能够分别维护。
-   */
-  switchLocale(event) {
-    const activeLocale = event.currentTarget.dataset.locale === 'en' ? 'en' : 'zh';
-    this.setData({ activeLocale });
   },
 
   /**
@@ -94,9 +83,20 @@ Page({
     if (group !== 'fixedContent' || !['venue', 'fees'].includes(field)) {
       return;
     }
-    const locale = template.locales[this.data.activeLocale];
+    const locale = template.locales.zh;
     locale[group] = locale[group] || {};
     locale[group][field] = event.detail.value;
+    this.setData({ template });
+  },
+
+  /**
+   * 方法是什么：修改模板共享的参会费用。
+   * 方法作用：把管理员输入写入模板独立字段。
+   * 为什么添加：报名页费用不能复用入会费用说明。
+   */
+  handleAttendanceFeeInput(event) {
+    const template = agendaUtil.cloneJson(this.data.template);
+    template.attendanceFee = event.detail.value;
     this.setData({ template });
   },
 
@@ -124,14 +124,14 @@ Page({
     const template = agendaUtil.cloneJson(this.data.template);
     const lines = event.detail.value.split(/\r?\n/).map((item) => item.trim()).filter(Boolean);
     if (key === 'winners') {
-      template.locales[this.data.activeLocale].sidebar.winners = lines.map((line) => {
+      template.locales.zh.sidebar.winners = lines.map((line) => {
         const parts = line.split('|');
         return { label: parts[0] || '', value: parts.slice(1).join('|') || '' };
       });
     } else if (key === 'timerRules') {
-      template.locales[this.data.activeLocale].timerRules = lines.map((line) => line.split('|'));
+      template.locales.zh.timerRules = lines.map((line) => line.split('|'));
     } else {
-      template.locales[this.data.activeLocale].page2[key] = lines;
+      template.locales.zh.page2[key] = lines;
     }
     this.setData({ textFields, template });
   },
@@ -236,6 +236,7 @@ Page({
    * 为什么添加：所有当前草稿的预览和导出需要立即使用超管最新修改。
    */
   async saveTemplate() {
+    if (this.data.saving) return false;
     this.setData({ saving: true });
     try {
       const data = await cloud.callCloud('agendaTemplate', { action: 'save', template: this.data.template });

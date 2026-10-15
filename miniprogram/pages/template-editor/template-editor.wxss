@@ -1,7 +1,4 @@
 .template-editor { padding-bottom: 140rpx; }
-.tab-bar { position: sticky; top: 0; z-index: 5; display: grid; grid-template-columns: repeat(3,1fr); border-bottom: 1rpx solid #d8e0e5; background: #ffffff; }
-.tab-bar button { margin: 0; border-radius: 0; background: #ffffff; color: #475467; font-size: 28rpx; }
-.tab-bar button.active { border-bottom: 6rpx solid #772432; color: #772432; font-weight: 700; }
 .editor-band { padding: 28rpx 24rpx; }
 .section-divider { border-top: 12rpx solid #eef1f3; }
 .band-title { color:#004165; font-size: 32rpx; font-weight: 700; }

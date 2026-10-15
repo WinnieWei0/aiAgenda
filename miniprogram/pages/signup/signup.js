@@ -56,7 +56,30 @@ Page({
       imageUrl: '/images/template/toastmasters-logo.png'
     };
   },
-  async load() { const version = ++this.requestVersion; try { const data = await meetingService.signup('get'); if (this.destroyed || version !== this.requestVersion) return; this.setData({ data, loadError: '' }); } catch (error) { if (this.destroyed || version !== this.requestVersion) return; this.setData({ data: null, loadError: '当前会议尚未开放报名' }); } finally { if (!this.destroyed && version === this.requestVersion) this.setData({ loading: false }); } },
+  async load() {
+    const version = ++this.requestVersion;
+    try {
+      const [data, templateData] = await Promise.all([
+        meetingService.signup('get'),
+        cloud.callCloud('agendaTemplate', { action: 'get' })
+      ]);
+      if (this.destroyed || version !== this.requestVersion) return;
+      const template = templateData.template || {};
+      this.attendanceFee = template.attendanceFee || '';
+      this.setSignupData(data);
+      this.setData({ loadError: '' });
+    } catch (error) {
+      if (this.destroyed || version !== this.requestVersion) return;
+      this.setData({ data: null, loadError: '会议信息加载失败，请下拉重试' });
+      cloud.showError(error);
+    } finally {
+      if (!this.destroyed && version === this.requestVersion) this.setData({ loading: false });
+    }
+  },
+  setSignupData(data) {
+    data.signupDisplay = Object.assign({}, data.signupDisplay, { guestFee: this.attendanceFee || '' });
+    this.setData({ data });
+  },
   async loadMembers() { try { const result = await cloud.callCloud('lookupOptions', { type: 'memberships', keyword: '' }); const members = result.list || []; this.setData({ members, memberLabels: members.map((m) => m.nameZh || m.nameEn || m.nickName || '未命名会员') }); } catch (error) { cloud.showError(error); } },
   openSignup(event) {
     const slotId = event.currentTarget.dataset.slotId || '';
@@ -81,7 +104,8 @@ Page({
     this.setData({ submitting: true });
     try {
       const data = await meetingService.signup('signup', payload);
-      this.setData({ data, modal: false, submitting: false });
+      this.setSignupData(data);
+      this.setData({ modal: false, submitting: false });
     } catch (error) {
       this.setData({ submitting: false });
       cloud.showError(error);
@@ -100,7 +124,7 @@ Page({
       this.cancelingSignup = true;
       try {
         const data = await meetingService.signup('cancel', { signupId, slotId });
-        this.setData({ data });
+        this.setSignupData(data);
         cloud.showSuccess('已取消');
       } catch (error) {
         cloud.showError(error);
@@ -117,7 +141,7 @@ Page({
       this.cancelingSignup = true;
       try {
         const data = await meetingService.signup('cancelSlot', { slotId });
-        this.setData({ data });
+        this.setSignupData(data);
         cloud.showSuccess('已清空');
       } catch (error) {
         cloud.showError(error);

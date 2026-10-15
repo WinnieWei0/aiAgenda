@@ -164,6 +164,10 @@ async function getCurrentAgenda(db, options = {}) {
  * 方法作用：合并会议槽位、报名明细和权限状态。
  * 为什么添加：报名页不应自行拼接数据库多表数据。
  */
+function resolveSignupFee(template, language) {
+  return template.attendanceFee || '';
+}
+
 async function response(db, record, openid) {
   const template = await common.getAgendaTemplate();
   const agenda = common.agendaModel.normalizeAgenda(record.agenda, template);
@@ -237,7 +241,7 @@ async function response(db, record, openid) {
     signupDisplay: {
       weekdayLabel: resolveWeekdayLabel(agenda.meetingInfo, language),
       venueSuffix: locale.signupVenueSuffix || '',
-      guestFee: locale.guestFee || ''
+      guestFee: resolveSignupFee(template, language)
     },
     meetingManagerName: language === 'en' ? manager.displayNameEn || manager.rawName || 'To be filled' : manager.displayNameZh || manager.rawName || '待填写',
     slots,
@@ -416,5 +420,5 @@ async function main(event) {
   } catch (error) { return common.handleError(error); }
 }
 
-module.exports = { profileFromEvent, canCreateSession, getCurrentAgenda, response, resolveWeekdayLabel, createSignupId, normalizeSignups, getMeetingSignups, buildSignupRecord, main };
+module.exports = { profileFromEvent, canCreateSession, getCurrentAgenda, response, resolveSignupFee, resolveWeekdayLabel, createSignupId, normalizeSignups, getMeetingSignups, buildSignupRecord, main };
 exports.main = main;

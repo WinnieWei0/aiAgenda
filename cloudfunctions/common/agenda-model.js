@@ -243,6 +243,7 @@ function createDefaultTemplate() {
     zh: { fixedContent: cloneJson(template.fixedContent), sidebar: cloneJson(template.sidebar), timerRules: cloneJson(template.timerRules), page2: cloneJson(template.page2) },
     en: createEnglishLocale()
   };
+  template.attendanceFee = '';
   template.locales.en.page2.officers = cloneJson(template.page2.officers);
   return template;
 }
@@ -264,6 +265,7 @@ function normalizeTemplate(templateValue) {
   };
   const template = Object.assign({}, defaults, source, {
     templateId: TEMPLATE_ID,
+    attendanceFee: String(source.attendanceFee !== undefined ? source.attendanceFee : source.locales && source.locales.zh && source.locales.zh.attendanceFee || ''),
     settings: Object.assign({}, defaults.settings, source.settings || {}),
     assets: Object.assign({}, defaults.assets, source.assets || {}),
     agendaRules: Array.isArray(source.agendaRules) && source.agendaRules.length ? source.agendaRules : defaults.agendaRules
@@ -287,6 +289,7 @@ function normalizeTemplate(templateValue) {
       page2: Object.assign({}, defaults.locales.en.page2, source.locales && source.locales.en && source.locales.en.page2 || {})
     }
   };
+  ['venue', 'fees'].forEach((field) => { template.locales.en.fixedContent[field] = template.locales.zh.fixedContent[field]; });
   syncOfficerContacts(template);
   return template;
 }
