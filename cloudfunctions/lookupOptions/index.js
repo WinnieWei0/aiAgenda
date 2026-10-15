@@ -73,6 +73,7 @@ async function searchPathways(keyword) {
 async function main(event) {
   try {
     common.initCloud();
+    common.setRequestContext(event);
     const keyword = event && event.keyword ? event.keyword : '';
     if (event.type === 'pathways') {
       return common.ok({ list: await searchPathways(keyword) });

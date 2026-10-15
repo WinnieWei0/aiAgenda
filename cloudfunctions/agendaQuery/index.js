@@ -23,9 +23,9 @@ function hydrateRecord(record) {
  * 方法作用：读取固定 current 文档并转换为前端议程。
  * 为什么添加：系统只保留一份长期有效的全局议程。
  */
-async function getCurrentDraft() {
+async function getCurrentDraft(clubId) {
   const collection = await common.ensureCollection('agendas');
-  const result = await collection.where({ _id: common.CURRENT_AGENDA_ID, clubId: common.config.getConfig().clubId }).limit(1).get();
+  const result = await collection.where({ _id: common.CURRENT_AGENDA_ID, clubId: clubId || common.config.getConfig().clubId }).limit(1).get();
   const record = result.data && result.data[0] || null;
   return hydrateRecord(record);
 }
@@ -53,9 +53,9 @@ function toMeetingSummary(record) {
  * 方法作用：只读取固定 current 文档的期数和时间数据。
  * 为什么添加：所有身份必须看到同一期会议摘要。
  */
-async function getCurrentSummary() {
+async function getCurrentSummary(clubId) {
   const collection = await common.ensureCollection('agendas');
-  const result = await collection.where({ _id: common.CURRENT_AGENDA_ID, clubId: common.config.getConfig().clubId }).field({ meetingSummary: true, signupPublicId: true, updatedAt: true }).limit(1).get();
+  const result = await collection.where({ _id: common.CURRENT_AGENDA_ID, clubId: clubId || common.config.getConfig().clubId }).field({ meetingSummary: true, signupPublicId: true, updatedAt: true }).limit(1).get();
   const record = result.data && result.data[0];
   if (!record) return null;
   if (record.meetingSummary) return toMeetingSummary(record);
@@ -96,18 +96,20 @@ async function listAgendas() {
 async function main(event) {
   try {
     common.initCloud();
+    common.setRequestContext(event);
     const action = event && event.action ? event.action : 'current';
+    const clubId = common.resolveRequestedClubId(event);
     if (action === 'current') {
-      return common.ok({ agenda: await getCurrentDraft() });
+      return common.ok({ agenda: await getCurrentDraft(clubId) });
     }
     if (action === 'summary') {
-      return common.ok({ summary: await getCurrentSummary() });
+      return common.ok({ summary: await getCurrentSummary(clubId) });
     }
     if (action === 'list') {
       return common.ok({ list: await listAgendas() });
     }
     if (action === 'get') {
-      return common.ok({ agenda: await getAgenda() });
+      return common.ok({ agenda: await getCurrentDraft(clubId) });
     }
     return common.fail('UNKNOWN_ACTION', '不支持的议程查询操作');
   } catch (error) {

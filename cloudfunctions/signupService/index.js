@@ -218,6 +218,9 @@ async function response(db, record, openid) {
   const preparation = (agenda.sections || []).find((section) => section.id === 'preparation');
   const manager = preparation && preparation.row && preparation.row.person || {};
   const club = await common.getClubContext();
+  const clubZh = club.shortNameZh || club.nameZh || '';
+  const clubEn = club.shortNameEn || club.nameEn || '';
+  people.forEach((person) => { if (person.memberId) person.club = language === 'en' ? clubEn : clubZh; });
   const locales = template.locales || {};
   const locale = locales[language] || {};
   const localizedVenue = locale.fixedContent && locale.fixedContent.venue || '';
@@ -409,6 +412,7 @@ async function reset(db, openid) {
 async function main(event) {
   try {
     common.initCloud();
+    common.setRequestContext(event);
     const db = common.getDb(); const openid = common.getOpenid(); const action = event.action;
     if (action === 'create') return common.ok(await createSession(db, openid));
     if (action === 'get') return common.ok(await response(db, await getCurrentAgenda(db), openid));

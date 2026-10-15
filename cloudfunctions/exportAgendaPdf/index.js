@@ -169,7 +169,16 @@ function hydrateAgendaMembers(agenda, memberships) {
 
 async function hydrateAgendaMembersFromDb(agenda) {
   const res = await common.getCollection('memberships').where({ clubId: common.config.getConfig().clubId }).limit(100).get();
-  return hydrateAgendaMembers(agenda, res.data || []);
+  hydrateAgendaMembers(agenda, res.data || []);
+  const club = await common.getClubContext();
+  const clubZh = club.shortNameZh || club.nameZh || '';
+  const clubEn = club.shortNameEn || club.nameEn || '';
+  const apply = (person) => { if (person && person.memberId) { person.clubZh = clubZh; person.clubEn = clubEn; } };
+  (agenda.sections || []).forEach((section) => {
+    const rows = section.type === 'row' ? [section.row] : section.children || [];
+    rows.filter(Boolean).forEach((row) => { apply(row.person); apply(row.speaker); apply(row.evaluator); (row.persons || []).forEach(apply); });
+  });
+  return agenda;
 }
 
 /**
@@ -219,7 +228,16 @@ function hydrateAgendaMembers(agenda, memberships) {
 
 async function hydrateAgendaMembersFromDb(agenda) {
   const res = await common.getCollection('memberships').where({ clubId: common.config.getConfig().clubId }).limit(100).get();
-  return hydrateAgendaMembers(agenda, res.data || []);
+  hydrateAgendaMembers(agenda, res.data || []);
+  const club = await common.getClubContext();
+  const clubZh = club.shortNameZh || club.nameZh || '';
+  const clubEn = club.shortNameEn || club.nameEn || '';
+  const apply = (person) => { if (person && person.memberId) { person.clubZh = clubZh; person.clubEn = clubEn; } };
+  (agenda.sections || []).forEach((section) => {
+    const rows = section.type === 'row' ? [section.row] : section.children || [];
+    rows.filter(Boolean).forEach((row) => { apply(row.person); apply(row.speaker); apply(row.evaluator); (row.persons || []).forEach(apply); });
+  });
+  return agenda;
 }
 
 /**
@@ -230,6 +248,8 @@ async function hydrateAgendaMembersFromDb(agenda) {
 async function main(event) {
   try {
     common.initCloud();
+    await common.assertClubAccess(event);
+    common.setRequestContext(event);
     const openid = common.getOpenid();
     const agendaId = common.CURRENT_AGENDA_ID;
     const agenda = await loadAgenda();

@@ -12,8 +12,9 @@ async function main(event) {
     const user = await common.upsertUser(openid, event && event.profile ? event.profile : {});
     const membership = await common.getMembershipByOpenid(openid);
     const identity = common.membershipIdentity(membership);
-    const club = await common.getClubContext();
-    return common.ok({ user, roles: identity.role === 'guest' ? [] : [identity.role], identity, club: { nameZh: club.nameZh || '', nameEn: club.nameEn || '' } });
+    const clubs = await common.listAccessibleClubs(openid);
+    const club = clubs[0] || await common.getClubContext();
+    return common.ok({ user, roles: identity.role === 'guest' ? [] : [identity.role], identity, clubs, club: { clubId: club.clubId, nameZh: club.nameZh || '', nameEn: club.nameEn || '', shortNameZh: club.shortNameZh || '', shortNameEn: club.shortNameEn || '' } });
   } catch (error) {
     return common.handleError(error);
   }

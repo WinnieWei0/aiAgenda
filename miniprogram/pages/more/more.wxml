@@ -1,0 +1,7 @@
+<view class="more-page">
+  <view class="section-title">默认俱乐部</view>
+  <picker range="{{clubs}}" range-key="nameZh" value="{{clubIndex}}" bindchange="chooseDefaultClub">
+    <view class="selector">{{currentClub.nameZh || '请选择俱乐部'}}<text>⌄</text></view>
+  </picker>
+  <text class="hint">下次进入首页时将自动选中该俱乐部</text>
+</view>

@@ -9,6 +9,7 @@ Page({
     agenda: agendaUtil.createEmptyAgenda(),
     template: agendaUtil.createDefaultTemplate(),
     isAdmin: false,
+    memberAccess: false,
     memberSelectorVisible: false,
     memberSelectorContext: null,
     memberSelectorSelectedId: '',
@@ -62,7 +63,8 @@ Page({
       wx.redirectTo({ url: '/pages/parse/parse' });
       return;
     }
-    this.setData({ isAdmin: app.isAdmin() });
+    const identityRole = app.globalData.identity && app.globalData.identity.role;
+    this.setData({ isAdmin: app.isAdmin(), memberAccess: ['member', 'admin', 'super_admin'].includes(identityRole) });
     await Promise.all([this.loadTemplate(), this.loadMembers(), this.loadPathways()]);
     await this.refreshMeetingSnapshot(options && options.id);
     this.pageReady = true;
@@ -542,8 +544,8 @@ Page({
       pathNameEn: member.pathNameEn || '',
       officerTitleZh: member.officerTitleZh || '',
       officerTitleEn: member.officerTitleEn || '',
-      clubZh: member.clubZh || member.club || app.globalData.club && app.globalData.club.nameZh || '',
-      clubEn: member.clubEn || member.club || app.globalData.club && app.globalData.club.nameEn || '',
+      clubZh: app.globalData.club && (app.globalData.club.shortNameZh || app.globalData.club.nameZh) || member.clubZh || member.club || '',
+      clubEn: app.globalData.club && (app.globalData.club.shortNameEn || app.globalData.club.nameEn) || member.clubEn || member.club || '',
       inputMode: 'select',
       unresolved: false
     });
@@ -791,8 +793,8 @@ Page({
     const member = this.data.memberOptions.find((option) => option.member._id === detail.memberId);
     const source = member && member.member;
     const name = source ? (source.nameZh || source.nameEn || source.nickName || '') : (detail.name || '');
-    const clubZh = source ? (source.clubZh || source.club || app.globalData.club && app.globalData.club.nameZh || '') : (detail.club || (detail.personType === 'guest' && name ? '宾客' : ''));
-    const clubEn = source ? (source.clubEn || source.club || app.globalData.club && app.globalData.club.nameEn || '') : (detail.club || (detail.personType === 'guest' && name ? 'Guest' : ''));
+    const clubZh = source ? (app.globalData.club && (app.globalData.club.shortNameZh || app.globalData.club.nameZh) || source.clubZh || source.club || '') : (detail.club || (detail.personType === 'guest' && name ? '宾客' : ''));
+    const clubEn = source ? (app.globalData.club && (app.globalData.club.shortNameEn || app.globalData.club.nameEn) || source.clubEn || source.club || '') : (detail.club || (detail.personType === 'guest' && name ? 'Guest' : ''));
     return agendaUtil.createPerson({ rawName: name, memberId: source ? source._id : '', displayNameZh: source ? (source.nameZh || name) : name, displayNameEn: source ? (source.nameEn || source.nameZh || name) : name, clubZh, clubEn, inputMode: source ? 'select' : 'input' });
   },
 

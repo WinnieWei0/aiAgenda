@@ -1,8 +1,8 @@
 <view wx:if="{{visible}}" class="signup-mask" bindtap="close">
-  <view class="signup-modal" style="bottom: {{keyboardHeight}}px;" catchtap="noop">
+  <view class="signup-modal" catchtap="noop">
     <text class="signup-modal-title">{{roleSlot.label || (language === 'en' ? 'Role sign-up' : '角色报名')}}</text>
     <view class="signup-types">
-      <button wx:if="{{allowMember}}" disabled="{{submitting}}" class="{{personType === 'member' ? 'active' : ''}}" data-type="member" bindtap="chooseType">{{language === 'en' ? 'Member' : '双语会员'}}</button>
+      <button wx:if="{{allowMember}}" disabled="{{submitting}}" class="{{personType === 'member' ? 'active' : ''}}" data-type="member" bindtap="chooseType">{{language === 'en' ? 'Member' : '会员'}}</button>
       <button wx:if="{{allowClub}}" disabled="{{submitting}}" class="{{personType === 'club' ? 'active' : ''}}" data-type="club" bindtap="chooseType">{{language === 'en' ? 'Club' : '友会'}}</button>
       <button wx:if="{{allowGuest}}" disabled="{{submitting}}" class="{{personType === 'guest' ? 'active' : ''}}" data-type="guest" bindtap="chooseType">{{language === 'en' ? 'Guest' : '宾客'}}</button>
     </view>

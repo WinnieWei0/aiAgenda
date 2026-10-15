@@ -53,4 +53,4 @@
   </view>
 </view>
 
-<role-signup-modal visible="{{modal}}" role-slot="{{selectedSlot}}" members="{{members}}" language="{{data.language}}" submitting="{{submitting}}" bindcancel="closeModal" bindconfirm="submitSignup" />
+<role-signup-modal visible="{{modal}}" role-slot="{{selectedSlot}}" members="{{members}}" language="{{data.language}}" submitting="{{submitting}}" member-access="{{memberAccess}}" bindcancel="closeModal" bindconfirm="submitSignup" />

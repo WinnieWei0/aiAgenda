@@ -115,4 +115,4 @@
 <member-selector visible="{{memberSelectorVisible}}" members="{{memberOptions}}" selected-id="{{memberSelectorSelectedId}}" bindcancel="closeMemberSelector" bindconfirm="confirmMemberSelector" />
 <pathway-selector visible="{{pathwaySelectorVisible}}" pathways="{{pathwayOptions}}" selected-code="{{pathwaySelectorSelectedCode}}" bindcancel="closePathwaySelector" bindconfirm="confirmPathwaySelector" />
 
-<role-signup-modal visible="{{signupModalVisible}}" role-slot="{{signupSelectedSlot}}" members="{{memberOptions}}" language="{{agenda.meetingInfo.language}}" submitting="{{signupSubmitting}}" bindcancel="closeSignupModal" bindconfirm="submitRoleSignup" />
+  <role-signup-modal visible="{{signupModalVisible}}" role-slot="{{signupSelectedSlot}}" members="{{memberOptions}}" language="{{agenda.meetingInfo.language}}" submitting="{{signupSubmitting}}" member-access="{{memberAccess}}" bindcancel="closeSignupModal" bindconfirm="submitRoleSignup" />

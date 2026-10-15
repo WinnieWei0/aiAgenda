@@ -128,6 +128,8 @@ function buildSaveState(existing, submitted, template, context) {
 async function main(event) {
   try {
     common.initCloud();
+    await common.assertClubAccess(event);
+    common.setRequestContext(event);
     const openid = common.getOpenid();
     const submitted = event && event.agenda ? event.agenda : null;
     if (!submitted) {

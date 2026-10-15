@@ -23,6 +23,8 @@ function resolveViewModel(agenda, template) {
 async function main(event) {
   try {
     common.initCloud();
+    await common.assertClubAccess(event);
+    common.setRequestContext(event);
     const action = event && event.action ? event.action : 'get';
     if (action === 'get') {
       return common.ok({ template: await common.getAgendaTemplate() });

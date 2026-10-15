@@ -7,7 +7,9 @@ App({
     user: null,
     roles: [],
     identity: { role: 'guest', roleLabel: '宾客', name: '', membership: null },
-    club: { nameZh: '俱乐部名称', nameEn: 'Club Name' },
+    club: { clubId: 1, nameZh: '俱乐部名称', nameEn: 'Club Name', shortNameZh: '', shortNameEn: '' },
+    clubs: [],
+    defaultClubId: '',
     currentAgenda: null
   },
 
@@ -65,7 +67,10 @@ App({
         this.globalData.user = res.result.data.user;
         this.globalData.roles = res.result.data.roles || [];
         this.globalData.identity = res.result.data.identity || { role: 'guest', roleLabel: '宾客', name: '', membership: null };
-        this.globalData.club = res.result.data.club || this.globalData.club;
+        this.globalData.clubs = res.result.data.clubs || [];
+        const storedClubId = wx.getStorageSync('defaultClubId');
+        const selected = this.globalData.clubs.find((club) => String(club.clubId) === String(storedClubId)) || res.result.data.club || this.globalData.clubs[0];
+        if (selected) this.setClub(selected);
       }
     } catch (error) {
       console.warn('登录失败', error);
@@ -80,6 +85,33 @@ App({
   isAdmin() {
     const role = this.globalData.identity && this.globalData.identity.role;
     return role === 'super_admin' || role === 'admin';
+  },
+
+  setClub(club) {
+    if (!club) return;
+    this.globalData.club = club;
+    this.globalData.currentClubId = club.clubId;
+  },
+
+  /**
+   * 方法是什么：设置默认俱乐部。
+   * 方法作用：持久化用户下次进入首页时要使用的俱乐部。
+   * 为什么添加：多俱乐部用户需要稳定恢复常用俱乐部。
+   */
+  setDefaultClub(clubId) {
+    wx.setStorageSync('defaultClubId', String(clubId));
+    this.globalData.defaultClubId = String(clubId);
+    const club = this.globalData.clubs.find((item) => String(item.clubId) === String(clubId));
+    if (club) this.setClub(club);
+  },
+
+  /**
+   * 方法是什么：生成当前俱乐部请求参数。
+   * 方法作用：为业务云函数附加当前俱乐部上下文。
+   * 为什么添加：切换俱乐部后所有数据请求必须使用同一上下文。
+   */
+  getClubPayload() {
+    return this.globalData.currentClubId ? { clubId: this.globalData.currentClubId } : {};
   },
 
   /**

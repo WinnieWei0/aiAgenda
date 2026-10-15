@@ -1,0 +1,1 @@
+.more-page{padding:32rpx 28rpx}.section-title{margin:22rpx 0 12rpx;color:#004165;font-size:28rpx;font-weight:700}.selector{box-sizing:border-box;padding:24rpx;border:1rpx solid #d8e0e5;border-radius:10rpx;background:#fff;color:#1f2933;font-size:30rpx;display:flex;justify-content:space-between}.hint{display:block;margin-top:14rpx;color:#667085;font-size:23rpx}

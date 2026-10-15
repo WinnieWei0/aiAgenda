@@ -1,6 +1,8 @@
 Page({
   data: {
       isAdmin: false,
+    clubs: [],
+    clubIndex: 0,
     welcomeName: '宾客',
     clubNameEn: 'Club Name'
   },
@@ -19,12 +21,30 @@ Page({
     const identity = app.globalData.identity || {};
     const user = app.globalData.user || {};
     const club = app.globalData.club || {};
+    const clubs = app.globalData.clubs || [];
+    const clubIndex = Math.max(0, clubs.findIndex((club) => String(club.clubId) === String(app.globalData.currentClubId)));
     this.setData({
       isAdmin: app.isAdmin(),
       welcomeName: identity.name || user.nickName || '宾客',
       clubName: club.nameZh || '俱乐部名称',
-      clubNameEn: club.nameEn || 'Club Name'
+      clubNameEn: club.shortNameEn || club.nameEn || 'Club Name',
+      clubs,
+      clubIndex
     });
+  },
+
+  /**
+   * 方法是什么：首页切换俱乐部。
+   * 方法作用：更新全局当前俱乐部并刷新首页显示。
+   * 为什么添加：加入多个俱乐部的用户需要在同一首页切换数据上下文。
+   */
+  switchClub(event) {
+    const index = Number(event.detail.value);
+    const club = this.data.clubs[index];
+    if (!club) return;
+    const app = getApp();
+    app.setClub(club);
+    this.setData({ clubIndex: index, clubName: club.shortNameZh || club.nameZh || '俱乐部名称', clubNameEn: club.shortNameEn || club.nameEn || 'Club Name' });
   },
 
   /**
@@ -36,7 +56,7 @@ Page({
     return {
       title: '俱乐部名称',
       path: '/pages/index/index',
-      imageUrl: '/images/template/toastmasters-logo.png'
+      imageUrl: '/images/template/role-signup-share.png'
     };
   },
 
@@ -49,7 +69,7 @@ Page({
     return {
       title: '俱乐部名称',
       query: '',
-      imageUrl: '/images/template/toastmasters-logo.png'
+      imageUrl: '/images/template/role-signup-share.png'
     };
   },
 

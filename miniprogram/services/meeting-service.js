@@ -7,7 +7,8 @@ const signupView = require('../utils/signup-view');
  * 为什么添加：页面不应直接依赖云函数名称和数据库返回结构。
  */
 function query(action, extra) {
-  return cloud.callCloud('agendaQuery', Object.assign({ action }, extra || {}));
+  const app = getApp();
+  return cloud.callCloud('agendaQuery', Object.assign({ action }, app.getClubPayload ? app.getClubPayload() : {}, extra || {}));
 }
 
 /**
@@ -16,7 +17,8 @@ function query(action, extra) {
  * 为什么添加：编辑与报名必须围绕同一个会议聚合更新。
  */
 function save(agenda) {
-  return cloud.callCloud('saveAgenda', { agenda });
+  const app = getApp();
+  return cloud.callCloud('saveAgenda', Object.assign({ agenda }, app.getClubPayload ? app.getClubPayload() : {}));
 }
 
 /**
@@ -25,7 +27,8 @@ function save(agenda) {
  * 为什么添加：避免两个页面各自拼接报名状态造成数据漂移。
  */
 async function signup(action, payload) {
-  const data = await cloud.callCloud('signupService', Object.assign({ action }, payload || {}));
+  const app = getApp();
+  const data = await cloud.callCloud('signupService', Object.assign({ action }, app.getClubPayload ? app.getClubPayload() : {}, payload || {}));
   return signupView.decorateSignupData(data);
 }
 

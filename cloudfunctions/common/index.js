@@ -90,6 +90,20 @@ function getOpenid() {
   return context.OPENID || context.FROM_OPENID || '';
 }
 
+function resolveRequestedClubId(event) {
+  const value = event && event.clubId;
+  return config.normalizeClubId(value || config.getConfig().clubId);
+}
+
+/**
+ * 方法是什么：设置云函数请求上下文。
+ * 方法作用：将客户端传入的俱乐部 ID 写入当前请求配置。
+ * 为什么添加：议程、报名和模板接口必须共享当前俱乐部。
+ */
+function setRequestContext(event) {
+  config.setRequestedClubId(resolveRequestedClubId(event));
+}
+
 /**
  * 方法是什么：生成标准成功响应。
  * 方法作用：让所有云函数返回统一的 `{ ok, data }` 格式。
@@ -317,9 +331,9 @@ async function getAgendaTemplate() {
  * 方法作用：为报名、模板和未来多俱乐部切换提供统一上下文。
  * 为什么添加：俱乐部名称和显示配置必须来自数据库，而不是散落在页面和云函数代码中。
  */
-async function getClubContext() {
+async function getClubContext(clubIdValue) {
   const collection = await ensureCollection('clubs');
-  const clubId = config.getConfig().clubId;
+  const clubId = config.normalizeClubId(clubIdValue || config.getConfig().clubId);
   const result = await collection.doc(String(clubId)).get().catch((error) => {
     const message = String(error && (error.errMsg || error.message) || '').toLowerCase();
     if (message.includes('document') && (message.includes('does not exist') || message.includes('not exist'))) {
@@ -333,6 +347,8 @@ async function getClubContext() {
     clubId,
     nameZh: '俱乐部名称',
     nameEn: 'Club Name',
+    shortNameZh: '',
+    shortNameEn: '',
     locale: 'zh',
     settings: {},
     createdAt: now,
@@ -340,6 +356,38 @@ async function getClubContext() {
   };
   await collection.doc(String(clubId)).set({ data: club });
   return club;
+}
+
+/**
+ * 方法是什么：读取用户可访问的俱乐部。
+ * 方法作用：为首页切换和默认俱乐部提供合法的俱乐部候选。
+ * 为什么添加：多俱乐部客户端不能把数据库中的所有俱乐部直接暴露给用户。
+ */
+async function listAccessibleClubs(openid) {
+  const memberships = await (await ensureCollection('memberships')).where({ openid }).limit(100).get();
+  const ids = [...new Set((memberships.data || []).map((item) => Number(item.clubId)).filter(Number.isSafeInteger))];
+  if (!ids.length) ids.push(config.getConfig().clubId);
+  const clubs = [];
+  for (const clubId of ids) {
+    const club = await getClubContext(clubId);
+    clubs.push(Object.assign({ clubId }, club));
+  }
+  return clubs;
+}
+
+/**
+ * 方法是什么：校验请求俱乐部权限。
+ * 方法作用：确认当前用户属于请求俱乐部或在该俱乐部拥有管理角色。
+ * 为什么添加：客户端传入 clubId 不能替代服务端授权判断。
+ */
+async function assertClubAccess(event) {
+  const clubId = resolveRequestedClubId(event);
+  const openid = getOpenid();
+  const res = await (await ensureCollection('memberships')).where({ openid, clubId }).limit(1).get();
+  if (!res.data || !res.data.length) {
+    throw Object.assign(new Error('无权访问该俱乐部'), { code: 'CLUB_FORBIDDEN' });
+  }
+  return clubId;
 }
 
 /**
@@ -423,6 +471,8 @@ const commonExports = {
   isCollectionMissingError,
   ensureCollection,
   getOpenid,
+  resolveRequestedClubId,
+  setRequestContext,
   ok,
   fail,
   nowIso,
@@ -441,6 +491,8 @@ const commonExports = {
   getAgendaTemplate,
   buildAgendaTemplatePayload,
   getClubContext,
+  listAccessibleClubs,
+  assertClubAccess,
   saveAgendaTemplate,
   handleError
 };

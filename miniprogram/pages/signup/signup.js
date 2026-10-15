@@ -3,12 +3,16 @@ const signupView = require('../../utils/signup-view');
 const meetingService = require('../../services/meeting-service');
 
 Page({
-  data: { data: null, loading: true, loadError: '', modal: false, selectedSlot: null, personType: 'member', allowMember: true, allowClub: true, allowGuest: true, members: [], memberLabels: [], memberIndex: -1, memberSelectorVisible: false, name: '', club: '', submitting: false },
-  onLoad() {
+  data: { data: null, loading: true, loadError: '', modal: false, selectedSlot: null, personType: 'member', allowMember: true, allowClub: true, allowGuest: true, memberAccess: false, members: [], memberLabels: [], memberIndex: -1, memberSelectorVisible: false, name: '', club: '', submitting: false },
+  async onLoad() {
     this.destroyed = false;
     wx.showShareMenu({
       menus: ['shareAppMessage', 'shareTimeline']
     });
+    const app = getApp();
+    await app.login();
+    const identity = app.globalData.identity || {};
+    this.setData({ memberAccess: ['member', 'admin', 'super_admin'].includes(identity.role) });
     this.initialLoadStarted = true;
     this.requestVersion = 0;
     this.load();
@@ -38,7 +42,7 @@ Page({
     return {
       title: english ? `Meeting No. ${info.meetingNo || ''} Role Sign-up` : `第${info.meetingNo || ''}期会议角色报名`,
       path: '/pages/signup/signup',
-      imageUrl: '/images/template/toastmasters-logo.png'
+      imageUrl: '/images/template/role-signup-share.png'
     };
   },
 
@@ -53,7 +57,7 @@ Page({
     return {
       title: english ? `Meeting No. ${info.meetingNo || ''} Role Sign-up` : `第${info.meetingNo || ''}期会议角色报名`,
       query: '',
-      imageUrl: '/images/template/toastmasters-logo.png'
+      imageUrl: '/images/template/role-signup-share.png'
     };
   },
   async load() {

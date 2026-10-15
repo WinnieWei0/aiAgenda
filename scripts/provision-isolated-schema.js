@@ -112,6 +112,24 @@ async function ensureDefaultClub(db, config) {
 }
 
 /**
+ * 方法是什么：初始化测试俱乐部记录。
+ * 方法作用：让新隔离环境包含可用于验证切换流程的测试俱乐部。
+ * 为什么添加：部署后俱乐部列表需要有一个明确的第二个俱乐部样例。
+ */
+async function ensureTestClub(db, config) {
+  const collection = db.collection(`${config.prefix}clubs`);
+  const existing = await collection.doc('2').get().catch((error) => {
+    if (isMissingDocument(error) || isMissingCollection(error)) return { data: null };
+    throw error;
+  });
+  if (existing.data) return 'exists';
+  if (!config.apply) return 'planned';
+  const now = new Date().toISOString();
+  await collection.doc('2').set({ data: { clubId: 2, nameZh: '测试俱乐部', nameEn: 'Test Club', shortNameZh: '测试俱乐部', shortNameEn: 'Test Club', locale: 'zh', settings: {}, createdAt: now, updatedAt: now } });
+  return 'created';
+}
+
+/**
  * 方法是什么：执行隔离 schema 初始化。
  * 方法作用：按 schema 清单创建所有 app_ 集合并初始化默认俱乐部。
  * 为什么添加：部署人员需要一个不修改旧库的标准建表入口。
@@ -132,10 +150,11 @@ async function run() {
     stats[collectionName] = await ensureCollection(db, collectionName, config.apply);
   }
   stats[`${config.prefix}clubs/default`] = await ensureDefaultClub(db, config);
+  stats[`${config.prefix}clubs/2`] = await ensureTestClub(db, config);
   console.log(JSON.stringify({ environment: config.envId, prefix: config.prefix, stats }, null, 2));
   return stats;
 }
 
 if (require.main === module) run().catch((error) => { console.error(error.message || error); process.exitCode = 1; });
 
-module.exports = { schema, getConfig, createClient, isMissingCollection, isMissingDocument, ensureCollection, ensureDefaultClub, run };
+module.exports = { schema, getConfig, createClient, isMissingCollection, isMissingDocument, ensureCollection, ensureDefaultClub, ensureTestClub, run };

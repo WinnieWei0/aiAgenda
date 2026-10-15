@@ -17,6 +17,16 @@ const ENVIRONMENT = String(process.env.APP_ENV || process.env.NODE_ENV || 'devel
 
 const DEFAULT_PREFIX = 'app_';
 const COLLECTION_PREFIX = String(process.env.DB_COLLECTION_PREFIX || DEFAULT_PREFIX).trim();
+let requestedClubId = null;
+
+/**
+ * 方法是什么：设置当前请求的俱乐部。
+ * 方法作用：让同一云函数实例按本次请求切换数据命名空间。
+ * 为什么添加：多俱乐部请求不能继续只依赖部署环境默认值。
+ */
+function setRequestedClubId(value) {
+  requestedClubId = value ? normalizeClubId(value) : null;
+}
 
 /**
  * 方法是什么：规范化俱乐部数字编号。
@@ -37,7 +47,7 @@ function getConfig() {
   return {
     environment: ENVIRONMENT,
     collectionPrefix: COLLECTION_PREFIX,
-    clubId: normalizeClubId(process.env.DEFAULT_CLUB_ID)
+    clubId: requestedClubId || normalizeClubId(process.env.DEFAULT_CLUB_ID)
   };
 }
 
@@ -52,4 +62,4 @@ function resolveCollection(logicalName) {
   return `${config.collectionPrefix}${value}`;
 }
 
-module.exports = { COLLECTIONS, getConfig, normalizeClubId, resolveCollection };
+module.exports = { COLLECTIONS, getConfig, normalizeClubId, resolveCollection, setRequestedClubId };

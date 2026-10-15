@@ -7,6 +7,7 @@ Component({
     members: { type: Array, value: [] },
     language: { type: String, value: 'zh' },
     submitting: { type: Boolean, value: false }
+    ,memberAccess: { type: Boolean, value: false }
   },
   data: {
     personType: 'member',
@@ -29,9 +30,10 @@ Component({
       const allowed = slot ? (slot.allowedPersonTypes || ['member', 'club']) : ['member', 'club', 'guest'];
       const person = slot && slot.person || {};
       const member = (members || []).map(memberSearch.unwrapMember).find((item) => item && item._id === person.memberId);
+      const visibleAllowed = allowed.filter((type) => type !== 'member' || this.properties.memberAccess);
       this.setData({
-        personType: allowed[0] || 'member',
-        allowMember: allowed.includes('member'),
+        personType: visibleAllowed[0] || 'guest',
+        allowMember: visibleAllowed.includes('member'),
         allowClub: allowed.includes('club'),
         allowGuest: allowed.includes('guest'),
         memberId: member && member._id || '',
@@ -57,7 +59,7 @@ Component({
   methods: {
     close() { if (!this.properties.submitting) this.triggerEvent('cancel'); },
     noop() {},
-    chooseType(event) { this.setData({ personType: event.currentTarget.dataset.type, keyboardHeight: 0 }); },
+    chooseType(event) { this.setData({ personType: event.currentTarget.dataset.type }); },
     openMemberSelector() { this.setData({ memberSelectorVisible: true }); },
     closeMemberSelector() { this.setData({ memberSelectorVisible: false }); },
     confirmMemberSelector(event) {

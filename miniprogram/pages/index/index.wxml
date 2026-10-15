@@ -4,6 +4,7 @@
     <view class="brand-copy">
       <text class="club-title">{{clubName || '俱乐部名称'}}</text>
       <text class="club-title-en">{{clubNameEn || 'Club Name'}}</text>
+      <picker wx:if="{{clubs.length > 1}}" range="{{clubs}}" range-key="nameZh" value="{{clubIndex}}" bindchange="switchClub"><view class="club-switch">切换俱乐部</view></picker>
       <view class="brand-rule"></view>
       <text class="welcome-text">欢迎你，{{welcomeName}}</text>
     </view>
