@@ -46,8 +46,8 @@
       {
         "pagePath": "pages/more/more",
         "text": "更多",
-        "iconPath": "images/tabbar/home.png",
-        "selectedIconPath": "images/tabbar/home-active.png"
+        "iconPath": "images/icons/template.png",
+        "selectedIconPath": "images/icons/template-maroon.png"
       }
     ]
   },

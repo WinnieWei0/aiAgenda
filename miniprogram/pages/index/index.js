@@ -18,6 +18,7 @@ Page({
     });
     const app = getApp();
     await app.login();
+    await app.refreshClubs();
     const identity = app.globalData.identity || {};
     const user = app.globalData.user || {};
     const club = app.globalData.club || {};
@@ -35,7 +36,7 @@ Page({
 
   /**
    * 方法是什么：首页切换俱乐部。
-   * 方法作用：更新全局当前俱乐部并刷新首页显示。
+   * 方法作用：响应下拉框选择，更新全局当前俱乐部并刷新首页显示。
    * 为什么添加：加入多个俱乐部的用户需要在同一首页切换数据上下文。
    */
   switchClub(event) {

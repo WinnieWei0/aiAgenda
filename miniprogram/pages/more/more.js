@@ -8,7 +8,8 @@ Page({
    * 方法作用：同步身份、俱乐部列表和当前默认选择。
    * 为什么添加：默认俱乐部设置必须反映首页最近一次选择。
    */
-  onShow() {
+  async onShow() {
+    await app.refreshClubs();
     const clubs = app.globalData.clubs || [];
     const clubIndex = Math.max(0, clubs.findIndex((club) => String(club.clubId) === String(app.globalData.currentClubId)));
     this.setData({ clubs, clubIndex, currentClub: clubs[clubIndex] || app.globalData.club || {} });
@@ -16,7 +17,7 @@ Page({
 
   /**
    * 方法是什么：设置默认俱乐部。
-   * 方法作用：保存本地默认俱乐部并立即切换当前上下文。
+   * 方法作用：响应下拉框选择，保存本地默认俱乐部并立即切换当前上下文。
    * 为什么添加：用户下次进入首页时需要恢复常用俱乐部。
    */
   chooseDefaultClub(event) {

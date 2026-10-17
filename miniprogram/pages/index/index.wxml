@@ -4,10 +4,20 @@
     <view class="brand-copy">
       <text class="club-title">{{clubName || '俱乐部名称'}}</text>
       <text class="club-title-en">{{clubNameEn || 'Club Name'}}</text>
-      <picker wx:if="{{clubs.length > 1}}" range="{{clubs}}" range-key="nameZh" value="{{clubIndex}}" bindchange="switchClub"><view class="club-switch">切换俱乐部</view></picker>
       <view class="brand-rule"></view>
       <text class="welcome-text">欢迎你，{{welcomeName}}</text>
     </view>
+  </view>
+
+  <view class="club-list">
+    <view class="section-heading">俱乐部</view>
+    <picker wx:if="{{clubs.length}}" class="club-picker" mode="selector" range="{{clubs}}" range-key="displayName" value="{{clubIndex}}" bindchange="switchClub">
+      <view class="club-picker-value">
+        <text class="club-picker-text">{{clubs[clubIndex].displayName}}</text>
+        <text class="club-picker-arrow">▾</text>
+      </view>
+    </picker>
+    <view wx:else class="club-empty">俱乐部列表暂时无法加载</view>
   </view>
 
   <block wx:if="{{isAdmin}}">

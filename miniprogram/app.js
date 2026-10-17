@@ -21,6 +21,7 @@ App({
   async onLaunch() {
     if (!this.initCloud()) return;
     await this.login();
+    await this.refreshClubs();
   },
 
   /**
@@ -68,12 +69,68 @@ App({
         this.globalData.roles = res.result.data.roles || [];
         this.globalData.identity = res.result.data.identity || { role: 'guest', roleLabel: '宾客', name: '', membership: null };
         this.globalData.clubs = res.result.data.clubs || [];
-        const storedClubId = wx.getStorageSync('defaultClubId');
-        const selected = this.globalData.clubs.find((club) => String(club.clubId) === String(storedClubId)) || res.result.data.club || this.globalData.clubs[0];
-        if (selected) this.setClub(selected);
+        const club = res.result.data.club || this.globalData.clubs[0];
+        if (club) this.setClub(club);
+        return true;
       }
+      throw new Error((res.result && res.result.error && res.result.error.message) || '登录服务未返回数据');
     } catch (error) {
       console.warn('登录失败', error);
+      wx.showToast({ title: error.message || '登录失败', icon: 'none' });
+    }
+    return false;
+  },
+
+  /**
+   * 方法是什么：通过云函数读取俱乐部目录。
+   * 方法作用：调用 lookupOptions 的 clubs 分支取得 app_clubs 的全部记录。
+   * 为什么添加：客户端对 app_clubs 没有直接读权限，必须由服务端返回目录，且所有角色都可查看。
+   */
+  async loadClubsFromCloud() {
+    const res = await wx.cloud.callFunction({
+      name: 'lookupOptions',
+      data: { type: 'clubs' }
+    });
+    if (!res.result || !res.result.ok) {
+      throw new Error((res.result && res.result.error && res.result.error.message) || '俱乐部服务未返回数据');
+    }
+    return (res.result.data.list || []).map((club, index) => {
+      const rawId = club.clubId || club.id || (club._id === 'default-club' ? 1 : club._id);
+      const numericId = Number(rawId);
+      return Object.assign({}, club, {
+        clubId: Number.isSafeInteger(numericId) && numericId > 0 ? numericId : (rawId || index + 1),
+        displayName: club.displayName || club.nameZh || club.nameEn || club.shortNameZh || club.shortNameEn || '未命名俱乐部'
+      });
+    }).filter((club) => club.clubId !== undefined && club.clubId !== null && String(club.clubId).trim() !== '');
+  },
+
+  /**
+   * 方法是什么：刷新当前俱乐部列表。
+   * 方法作用：查询 app_clubs 目录，恢复默认选择并更新页面共用的俱乐部状态。
+   * 为什么添加：首页和更多页需要同一份实时俱乐部目录，且不限制系统角色类型。
+   */
+  async refreshClubs() {
+    try {
+      const clubs = await this.loadClubsFromCloud();
+      this.globalData.clubs = clubs;
+      const storedClubId = wx.getStorageSync('defaultClubId');
+      const preferred = clubs.find((club) => String(club.clubId) === String(storedClubId));
+      if (storedClubId && !preferred) wx.removeStorageSync('defaultClubId');
+      const selected = preferred
+        || clubs.find((club) => String(club.clubId) === String(this.globalData.currentClubId))
+        || clubs[0];
+      if (selected) this.setClub(selected);
+      return true;
+    } catch (error) {
+      console.warn('读取俱乐部目录失败', error);
+      const clubs = this.globalData.clubs || [];
+      if (clubs.length) {
+        const selected = clubs.find((club) => String(club.clubId) === String(this.globalData.currentClubId)) || clubs[0];
+        this.setClub(selected);
+        return true;
+      }
+      wx.showToast({ title: '读取俱乐部失败，请检查数据库权限', icon: 'none' });
+      return false;
     }
   },
 

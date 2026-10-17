@@ -412,7 +412,7 @@ async function reset(db, openid) {
 async function main(event) {
   try {
     common.initCloud();
-    common.setRequestContext(event);
+    if (typeof common.setRequestContext === 'function') common.setRequestContext(event);
     const db = common.getDb(); const openid = common.getOpenid(); const action = event.action;
     if (action === 'create') return common.ok(await createSession(db, openid));
     if (action === 'get') return common.ok(await response(db, await getCurrentAgenda(db), openid));

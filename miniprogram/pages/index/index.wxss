@@ -59,6 +59,13 @@
   font-weight: 700;
 }
 
+.club-list .section-heading { margin-top: 24rpx; }
+.club-picker { width: 100%; }
+.club-picker-value { display: flex; box-sizing: border-box; width: 100%; min-height: 80rpx; align-items: center; justify-content: space-between; padding: 0 24rpx; border: 1rpx solid #d8e0e5; border-radius: 6rpx; background: #fff; }
+.club-picker-text { color: #004165; font-size: 27rpx; font-weight: 700; }
+.club-picker-arrow { color: #667085; font-size: 22rpx; }
+.club-empty { padding: 20rpx 0; color: #667085; font-size: 25rpx; }
+
 .home-actions {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

@@ -361,18 +361,56 @@ async function getClubContext(clubIdValue) {
 /**
  * 方法是什么：读取用户可访问的俱乐部。
  * 方法作用：为首页切换和默认俱乐部提供合法的俱乐部候选。
- * 为什么添加：多俱乐部客户端不能把数据库中的所有俱乐部直接暴露给用户。
+ * 为什么添加：首页默认俱乐部选择器需要展示 app_clubs 中的全部俱乐部。
  */
 async function listAccessibleClubs(openid) {
-  const memberships = await (await ensureCollection('memberships')).where({ openid }).limit(100).get();
-  const ids = [...new Set((memberships.data || []).map((item) => Number(item.clubId)).filter(Number.isSafeInteger))];
+  const collection = await ensureCollection('clubs');
+  const rows = [];
+  let skip = 0;
+  while (true) {
+    const page = await collection.skip(skip).limit(100).get();
+    const items = page.data || [];
+    rows.push(...items);
+    if (items.length < 100) break;
+    skip += items.length;
+  }
+  const ids = [...new Set(rows.map((item) => {
+    const parsed = Number(item.clubId || item._id);
+    return Number.isSafeInteger(parsed) ? parsed : (item._id === 'default-club' ? config.getConfig().clubId : null);
+  }).filter(Number.isSafeInteger))];
   if (!ids.length) ids.push(config.getConfig().clubId);
   const clubs = [];
   for (const clubId of ids) {
-    const club = await getClubContext(clubId);
+    const club = rows.find((item) => Number(item.clubId || item._id) === clubId || (item._id === 'default-club' && clubId === config.getConfig().clubId)) || await getClubContext(clubId);
     clubs.push(Object.assign({ clubId }, club));
   }
   return clubs;
+}
+
+/**
+ * 方法是什么：读取首页公开俱乐部目录。
+ * 方法作用：从 app_clubs 返回所有可展示的俱乐部，不依赖客户端数据库读权限。
+ * 为什么添加：首页和更多页使用公开目录，但业务数据仍由 clubs 上下文隔离。
+ */
+async function listAppClubs() {
+  const collection = getDb().collection('app_clubs');
+  const rows = [];
+  let skip = 0;
+  while (true) {
+    const result = await collection.skip(skip).limit(100).get();
+    const page = result.data || [];
+    rows.push(...page);
+    if (page.length < 100) break;
+    skip += page.length;
+  }
+  return rows.map((club, index) => {
+    const rawId = club.clubId || club.id || (club._id === 'default-club' ? 1 : club._id);
+    const numericId = Number(rawId);
+    return Object.assign({}, club, {
+      clubId: Number.isSafeInteger(numericId) && numericId > 0 ? numericId : (rawId || index + 1),
+      displayName: club.nameZh || club.nameEn || club.shortNameZh || club.shortNameEn || '未命名俱乐部'
+    });
+  }).filter((club) => club.clubId !== undefined && club.clubId !== null && String(club.clubId).trim() !== '');
 }
 
 /**
@@ -492,6 +530,7 @@ const commonExports = {
   buildAgendaTemplatePayload,
   getClubContext,
   listAccessibleClubs,
+  listAppClubs,
   assertClubAccess,
   saveAgendaTemplate,
   handleError
