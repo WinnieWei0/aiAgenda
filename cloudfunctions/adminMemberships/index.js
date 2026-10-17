@@ -121,21 +121,23 @@ async function retireMember(db, id) {
 
 /**
  * 方法是什么：处理 Membership 管理云函数请求。
- * 方法作用：提供列表、详情、新增、更新和删除会员数据的开放管理接口。
- * 为什么添加：Membership 必须在当前系统中以数据库表形式维护，并支持当前版本所有用户 CRUD。
+ * 方法作用：提供列表、详情、新增、更新和删除会员数据的管理接口。
+ * 为什么添加：本俱乐部成员可以查看会员列表，写操作仍只开放给管理员。
  */
 async function main(event) {
   try {
     common.initCloud();
+    common.setRequestContext(event);
     const action = event && event.action ? event.action : 'list';
     const db = common.getDb();
-    await common.requireAdmin(common.getOpenid());
+    await common.assertClubAccess(event);
     if (action === 'list') {
       return common.ok(await common.listCollection('memberships', Object.assign({}, event || {}, { orderBy: 'joinedAt', order: 'asc' })));
     }
     if (action === 'get') {
       return common.ok({ record: await getMember(event.id) });
     }
+    await common.requireAdmin(common.getOpenid());
     if (action === 'save') {
       if (hasAuthorizedPersonalInfo(event.member) && event.agreementAccepted !== true) {
         return common.fail('USER_AGREEMENT_REQUIRED', '保存电话、邮箱或生日之前必须同意用户服务协议和隐私政策');

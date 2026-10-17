@@ -68,7 +68,7 @@ async function searchPathways(keyword) {
 /**
  * 方法是什么：处理基础数据候选搜索请求。
  * 方法作用：根据 type 返回会员、Pathways 或俱乐部目录候选列表。
- * 为什么添加：编辑页和首页需要轻量查询选项，单独云函数可以避免暴露数据库读权限。
+ * 为什么添加：编辑页和首页需要轻量查询选项，单独云函数可以避免暴露数据库读权限；会员候选只开放给本俱乐部成员。
  */
 async function main(event) {
   try {
@@ -80,6 +80,11 @@ async function main(event) {
     }
     if (event.type === 'pathways') {
       return common.ok({ list: await searchPathways(keyword) });
+    }
+    const openid = common.getOpenid();
+    const membership = openid ? await common.getMembershipByOpenid(openid) : null;
+    if (!membership) {
+      return common.ok({ list: [] });
     }
     return common.ok({ list: await searchMembers(keyword) });
   } catch (error) {

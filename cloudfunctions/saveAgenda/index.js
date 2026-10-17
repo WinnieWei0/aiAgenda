@@ -128,9 +128,9 @@ function buildSaveState(existing, submitted, template, context) {
 async function main(event) {
   try {
     common.initCloud();
-    await common.assertClubAccess(event);
     common.setRequestContext(event);
     const openid = common.getOpenid();
+    await common.requireAdmin(openid);
     const submitted = event && event.agenda ? event.agenda : null;
     if (!submitted) {
       return common.fail('EMPTY_AGENDA', '缺少议程数据');

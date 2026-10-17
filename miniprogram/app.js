@@ -144,6 +144,26 @@ App({
     return role === 'super_admin' || role === 'admin';
   },
 
+  /**
+   * 方法是什么：判断当前用户是否为超管。
+   * 方法作用：检查全局身份角色是否为 `super_admin`。
+   * 为什么添加：模板编辑和时间牌等入口只对超管开放。
+   */
+  isSuperAdmin() {
+    const role = this.globalData.identity && this.globalData.identity.role;
+    return role === 'super_admin';
+  },
+
+  /**
+   * 方法是什么：判断当前用户是否为本俱乐部成员。
+   * 方法作用：检查全局身份角色是否为超管、管理员或会员之一。
+   * 为什么添加：会员列表、路径列表和报名会员选项需要对全部俱乐部成员开放，同时排除宾客。
+   */
+  isClubMember() {
+    const role = this.globalData.identity && this.globalData.identity.role;
+    return role === 'super_admin' || role === 'admin' || role === 'member';
+  },
+
   setClub(club) {
     if (!club) return;
     this.globalData.club = club;

@@ -58,8 +58,8 @@ Page({
     this.signupRequestVersion = 0;
     this.meetingRequestVersion = 0;
     await app.login();
-    if ((app.globalData.identity || {}).role === 'guest') {
-      wx.showToast({ title: '宾客仅可访问报名页', icon: 'none' });
+    if (!app.isAdmin()) {
+      wx.showToast({ title: '仅管理员可编辑接龙', icon: 'none' });
       wx.redirectTo({ url: '/pages/parse/parse' });
       return;
     }

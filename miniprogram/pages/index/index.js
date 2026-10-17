@@ -1,6 +1,8 @@
 Page({
   data: {
       isAdmin: false,
+      isSuperAdmin: false,
+      isClubMember: false,
     clubs: [],
     clubIndex: 0,
     welcomeName: '宾客',
@@ -26,6 +28,8 @@ Page({
     const clubIndex = Math.max(0, clubs.findIndex((club) => String(club.clubId) === String(app.globalData.currentClubId)));
     this.setData({
       isAdmin: app.isAdmin(),
+      isSuperAdmin: app.isSuperAdmin(),
+      isClubMember: app.isClubMember(),
       welcomeName: identity.name || user.nickName || '宾客',
       clubName: club.nameZh || '俱乐部名称',
       clubNameEn: club.shortNameEn || club.nameEn || 'Club Name',

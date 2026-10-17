@@ -20,10 +20,10 @@
     <view wx:else class="club-empty">俱乐部列表暂时无法加载</view>
   </view>
 
-  <block wx:if="{{isAdmin}}">
+  <block wx:if="{{isClubMember}}">
     <view class="section-heading">管理工具</view>
     <view class="home-actions">
-      <button class="home-action" disabled>
+      <button wx:if="{{isSuperAdmin}}" class="home-action" disabled>
         <image class="action-icon" src="/images/icons/timer.png" mode="aspectFit" />
         <text class="action-title">时间牌</text>
         <text class="action-meta">即将开放</text>
@@ -36,7 +36,7 @@
         <image class="action-icon" src="/images/icons/route.png" mode="aspectFit" />
         <text class="action-title">路径列表</text>
       </button>
-      <button class="home-action invite-action" bindtap="openMembershipInvite">
+      <button wx:if="{{isAdmin}}" class="home-action invite-action" bindtap="openMembershipInvite">
         <image class="action-icon" src="/images/icons/user-plus-white.png" mode="aspectFit" />
         <text class="action-title">邀请绑定</text>
       </button>

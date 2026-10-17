@@ -18,6 +18,7 @@ Page({
   data: {
     summary: null,
     isAdmin: false,
+    isSuperAdmin: false,
     isGuest: true,
     identityText: '宾客',
     openingEditor: false,
@@ -35,6 +36,7 @@ Page({
     const localSummary = summarizeAgenda(app.globalData.currentAgenda);
     this.setData({
       isAdmin: app.isAdmin(),
+      isSuperAdmin: app.isSuperAdmin(),
       isGuest: identity.role === 'guest',
       identityText: identity.role === 'guest' ? '宾客' : `${identity.name || '未命名会员'} · ${identity.roleLabel || '会员'}`,
       ...(localSummary ? { summary: localSummary } : {})

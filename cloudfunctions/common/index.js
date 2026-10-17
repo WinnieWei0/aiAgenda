@@ -289,6 +289,30 @@ async function requireAdmin(openid) {
 }
 
 /**
+ * 方法是什么：判断指定 openid 是否是超管。
+ * 方法作用：检查用户绑定会员记录的角色是否为 super_admin。
+ * 为什么添加：模板编辑等高危操作只开放给超管，需要独立于管理员的判断入口。
+ */
+async function isSuperAdmin(openid) {
+  const membership = await getMembershipByOpenid(openid);
+  return Boolean(membership) && normalizeMembershipRole(membership.role) === 'super_admin';
+}
+
+/**
+ * 方法是什么：强制要求当前用户是超管。
+ * 方法作用：在权限不足时抛出标准错误。
+ * 为什么添加：模板保存只允许超管执行，云函数入口处需要统一阻断其他角色。
+ */
+async function requireSuperAdmin(openid) {
+  const allowed = await isSuperAdmin(openid);
+  if (!allowed) {
+    const error = new Error('仅超管可以执行该操作');
+    error.code = 'FORBIDDEN';
+    throw error;
+  }
+}
+
+/**
  * 方法是什么：确保默认系统角色存在。
  * 方法作用：初始化 admin、editor、viewer 三个基础角色。
  * 为什么添加：首次管理员领取和角色管理页都依赖基础角色数据，提前创建可减少手工配置。
@@ -525,6 +549,8 @@ const commonExports = {
   hasAdmin,
   isAdmin,
   requireAdmin,
+  isSuperAdmin,
+  requireSuperAdmin,
   ensureDefaultRoles,
   getAgendaTemplate,
   buildAgendaTemplatePayload,

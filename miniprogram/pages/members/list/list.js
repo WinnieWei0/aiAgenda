@@ -1,6 +1,8 @@
 const cloud = require('../../../utils/cloud');
 const memberFilter = require('../../../utils/member-filter');
 
+const app = getApp();
+
 function defaultFilters() {
   return {
     joinedAtStart: '', joinedAtEnd: '', birthdayMonth: '',
@@ -12,6 +14,7 @@ function defaultFilters() {
 Page({
   data: {
     loading: false,
+    isAdmin: false,
     keyword: '',
     records: [],
     filteredRecords: [],
@@ -30,19 +33,23 @@ Page({
 
   /**
    * 方法是什么：会员列表页加载生命周期方法。
-   * 方法作用：进入页面时加载 Membership 数据。
-   * 为什么添加：用户点击首页会员列表后，需要立即看到当前系统中的会员记录。
+   * 方法作用：进入页面时同步管理员身份并加载 Membership 数据。
+   * 为什么添加：会员可以查看列表但不能看到编辑入口，身份必须先于渲染确定。
    */
   async onLoad() {
+    await app.login();
+    this.setData({ isAdmin: app.isAdmin() });
     await this.loadRecords();
   },
 
   /**
    * 方法是什么：会员列表页显示生命周期方法。
-   * 方法作用：每次从新增或编辑页返回时重新加载会员数据。
-   * 为什么添加：保存或删除后的列表需要刷新，避免显示旧数据。
+   * 方法作用：每次从新增或编辑页返回时同步身份并重新加载会员数据。
+   * 为什么添加：保存或删除后的列表需要刷新，切换俱乐部后角色也可能变化。
    */
   async onShow() {
+    const isAdmin = app.isAdmin();
+    if (isAdmin !== this.data.isAdmin) this.setData({ isAdmin });
     await this.loadRecords();
   },
 

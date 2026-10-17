@@ -17,27 +17,27 @@ function resolveViewModel(agenda, template) {
 
 /**
  * 方法是什么：处理全局议程模板请求。
- * 方法作用：提供模板初始化读取、模拟超管保存和议程视图解析。
- * 为什么添加：模板编辑、A4 预览和 PDF 导出需要一个统一云端入口。
+ * 方法作用：提供模板读取、超管保存和议程视图解析。
+ * 为什么添加：模板编辑、A4 预览和 PDF 导出需要一个统一云端入口；读取对宾客放行，保存只限超管。
  */
 async function main(event) {
   try {
     common.initCloud();
-    await common.assertClubAccess(event);
     common.setRequestContext(event);
     const action = event && event.action ? event.action : 'get';
     if (action === 'get') {
       return common.ok({ template: await common.getAgendaTemplate() });
-    }
-    if (action === 'save') {
-      await common.requireAdmin(common.getOpenid());
-      return common.ok({ template: await common.saveAgendaTemplate(event.template || {}) });
     }
     if (action === 'resolve') {
       const template = event.template
         ? common.agendaModel.normalizeTemplate(event.template)
         : await common.getAgendaTemplate();
       return common.ok(resolveViewModel(event.agenda || {}, template));
+    }
+    if (action === 'save') {
+      await common.assertClubAccess(event);
+      await common.requireAdmin(common.getOpenid());
+      return common.ok({ template: await common.saveAgendaTemplate(event.template || {}) });
     }
     return common.fail('UNKNOWN_ACTION', '不支持的模板操作');
   } catch (error) {

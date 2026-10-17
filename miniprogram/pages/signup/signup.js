@@ -60,15 +60,23 @@ Page({
       imageUrl: '/images/template/role-signup-share.png'
     };
   },
+  /**
+   * 方法是什么：加载报名页会议数据和模板参会费。
+   * 方法作用：会议数据必须加载成功，模板读取失败时仅降级参会费展示。
+   * 为什么添加：宾客访问报名页时模板接口可能不可用，不能让辅助信息阻断主流程。
+   */
   async load() {
     const version = ++this.requestVersion;
     try {
-      const [data, templateData] = await Promise.all([
-        meetingService.signup('get'),
-        cloud.callCloud('agendaTemplate', { action: 'get' })
-      ]);
+      const data = await meetingService.signup('get');
       if (this.destroyed || version !== this.requestVersion) return;
-      const template = templateData.template || {};
+      let template = {};
+      try {
+        const templateData = await cloud.callCloud('agendaTemplate', { action: 'get' });
+        template = (templateData && templateData.template) || {};
+      } catch (templateError) {
+        console.warn('模板加载失败，参会费按空值展示', templateError);
+      }
       this.attendanceFee = template.attendanceFee || '';
       this.setSignupData(data);
       this.setData({ loadError: '' });
