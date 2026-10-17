@@ -1,6 +1,6 @@
 const environments = {
   development: {
-    envId: 'ai-agenda-prod-d0g7cdazf8d1e1695',
+    envId: 'ai-agenda-d1gxlfuz6843bbed0',
     label: 'development'
   },
   production: {

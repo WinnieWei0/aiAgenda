@@ -16,6 +16,7 @@
     "configure:cloudfunctions": "node scripts/configure-cloudfunction-env.js",
     "configure:pdf-function": "node scripts/configure-pdf-function.js",
     "provision:isolated": "node scripts/provision-isolated-schema.js",
+    "cleanup:collections": "node scripts/cleanup-collections.js",
     "test": "node tests/run-tests.js",
     "verify": "npm run check:comments && npm test"
   },
