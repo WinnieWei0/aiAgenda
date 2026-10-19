@@ -80,26 +80,26 @@ async function savePathway(pathway) {
 
 /**
  * 方法是什么：读取单个 Pathways 项目记录。
- * 方法作用：根据 Pathways `_id` 从 pathways 集合取回完整记录。
- * 为什么添加：独立编辑路径页需要按 id 加载已有项目，避免列表页传递大对象。
+ * 方法作用：根据 Pathways `_id` 从 pathways 集合取回当前俱乐部的完整记录。
+ * 为什么添加：独立编辑路径页需要按 id 加载已有项目，且不能跨俱乐部读取。
  */
 async function getPathway(id) {
   const db = common.getDb();
-  const res = await common.getCollection('pathways').doc(id).get();
-  return res.data || null;
+  const res = await common.getCollection('pathways').where({ _id: id, clubId: common.config.getConfig().clubId }).limit(1).get();
+  return (res.data && res.data[0]) || null;
 }
 
 /**
  * 方法是什么：按数据库原始返回顺序读取 Pathways 列表。
- * 方法作用：分页读取路径记录，但不附加任何 orderBy 排序条件。
- * 为什么添加：路径列表必须完全遵循数据库存储顺序，不能使用公共列表方法的默认排序。
+ * 方法作用：分页读取当前俱乐部的路径记录，但不附加任何 orderBy 排序条件。
+ * 为什么添加：路径列表必须完全遵循数据库存储顺序，并按俱乐部隔离，不能使用公共列表方法的默认排序。
  */
 async function listPathways(options) {
   const db = common.getDb();
   const opts = options || {};
   const page = Math.max(Number(opts.page || 1), 1);
   const pageSize = Math.min(Math.max(Number(opts.pageSize || 20), 1), 100);
-  const query = opts.where || {};
+  const query = Object.assign({}, opts.where || {}, { clubId: common.config.getConfig().clubId });
   const collection = common.getCollection('pathways');
   const totalRes = await collection.where(query).count();
   const listRes = await collection.where(query)
@@ -117,6 +117,7 @@ async function listPathways(options) {
 async function main(event) {
   try {
     common.initCloud();
+    common.setRequestContext(event);
     const action = event && event.action ? event.action : 'list';
     const db = common.getDb();
     if (action === 'list') {
@@ -127,9 +128,15 @@ async function main(event) {
     }
     await common.requireAdmin(common.getOpenid());
     if (action === 'save') {
+      if (event.pathway && event.pathway._id) {
+        const existing = await getPathway(event.pathway._id);
+        if (!existing) return common.fail('PATHWAY_NOT_FOUND', '路径不存在或不属于当前俱乐部');
+      }
       return common.ok(await savePathway(event.pathway || {}));
     }
     if (action === 'delete') {
+      const existing = await getPathway(event.id);
+      if (!existing) return common.fail('PATHWAY_NOT_FOUND', '路径不存在或不属于当前俱乐部');
       await common.getCollection('pathways').doc(event.id).remove();
       return common.ok({ removed: true });
     }

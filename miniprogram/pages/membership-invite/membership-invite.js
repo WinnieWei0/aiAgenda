@@ -7,12 +7,23 @@ Page({
     wx.hideShareMenu();
     const token = options && options.token || '';
     this.setData({ token });
+    this.loadedClubId = '';
     if (token) await this.loadInvite(token); else await this.loadAdminMode();
+  },
+  /**
+   * 方法是什么：邀请页显示生命周期方法。
+   * 方法作用：俱乐部切换后重新加载可邀请会员列表。
+   * 为什么添加：候选会员按俱乐部隔离，回到本页时必须跟随当前俱乐部。
+   */
+  async onShow() {
+    if (this.data.token || this.data.loading) return;
+    const clubId = String(app.globalData.currentClubId || '');
+    if (clubId && clubId !== this.loadedClubId) await this.loadAdminMode();
   },
   async loadAdminMode() {
     await app.login();
     if (!app.isAdmin()) { wx.showToast({ title: '仅管理员可创建邀请', icon: 'none' }); wx.navigateBack(); return; }
-    try { const data = await cloud.callCloud('membershipInvites', { action: 'available' }); this.setData({ members: data.list || [], loading: false }); }
+    try { const data = await cloud.callCloud('membershipInvites', { action: 'available' }); this.loadedClubId = String(app.globalData.currentClubId || ''); this.setData({ members: data.list || [], loading: false }); }
     catch (error) { this.setData({ loading: false }); cloud.showError(error); }
   },
   async loadInvite(token) {

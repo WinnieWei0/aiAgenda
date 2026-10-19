@@ -40,16 +40,28 @@ Page({
 
   /**
    * 方法是什么：首页切换俱乐部。
-   * 方法作用：响应下拉框选择，更新全局当前俱乐部并刷新首页显示。
-   * 为什么添加：加入多个俱乐部的用户需要在同一首页切换数据上下文。
+   * 方法作用：响应下拉框选择，持久化默认俱乐部、按新俱乐部重新登录刷新身份和首页显示。
+   * 为什么添加：会员列表、路径列表、邀请绑定和议程数据都必须跟随当前俱乐部切换。
    */
-  switchClub(event) {
+  async switchClub(event) {
     const index = Number(event.detail.value);
     const club = this.data.clubs[index];
     if (!club) return;
     const app = getApp();
-    app.setClub(club);
-    this.setData({ clubIndex: index, clubName: club.shortNameZh || club.nameZh || '俱乐部名称', clubNameEn: club.shortNameEn || club.nameEn || 'Club Name' });
+    app.setDefaultClub(club.clubId);
+    app.setCurrentAgenda(null);
+    await app.login();
+    const identity = app.globalData.identity || {};
+    const user = app.globalData.user || {};
+    this.setData({
+      clubIndex: index,
+      clubName: club.shortNameZh || club.nameZh || '俱乐部名称',
+      clubNameEn: club.shortNameEn || club.nameEn || 'Club Name',
+      isAdmin: app.isAdmin(),
+      isSuperAdmin: app.isSuperAdmin(),
+      isClubMember: app.isClubMember(),
+      welcomeName: identity.name || user.nickName || '宾客'
+    });
   },
 
   /**

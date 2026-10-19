@@ -1,26 +1,26 @@
 <view class="page">
   <view class="section panel form-panel">
     <view class="readonly-field"><text>id</text><text>{{member._id}}</text></view>
-    <view class="form-row"><text>中文名</text><input value="{{member.nameZh}}" data-field="nameZh" bindinput="handleInput" /></view>
-    <view class="form-row"><text>英文名</text><input value="{{member.nameEn}}" data-field="nameEn" bindinput="handleInput" /></view>
-    <view class="form-row"><text>邮箱</text><input value="{{member.email}}" data-field="email" bindinput="handleInput" /></view>
-    <view class="form-row"><text>电话号码</text><input type="number" maxlength="20" value="{{member.phone}}" data-field="phone" bindinput="handleInput" /></view>
-    <view class="form-row"><text>加入头马时间</text><input value="{{member.joinedAt}}" data-field="joinedAt" bindinput="handleInput" /></view>
-    <view class="form-row"><text>生日</text><input value="{{member.birthday}}" data-field="birthday" bindinput="handleInput" /></view>
-    <view class="form-row"><text>路径中文名</text><input value="{{member.pathNameZh}}" data-field="pathNameZh" bindinput="handleInput" /></view>
-    <view class="form-row"><text>路径英文名</text><input value="{{member.pathNameEn}}" data-field="pathNameEn" bindinput="handleInput" /></view>
-    <view class="form-row"><text>教育进度</text><input value="{{member.educationProgress}}" data-field="educationProgress" bindinput="handleInput" /></view>
+    <view class="form-row"><text>中文名</text><input placeholder="请输入中文名" value="{{member.nameZh}}" data-field="nameZh" bindinput="handleInput" /></view>
+    <view class="form-row"><text>英文名</text><input placeholder="请输入英文名" value="{{member.nameEn}}" data-field="nameEn" bindinput="handleInput" /></view>
+    <view class="form-row"><text>邮箱</text><input placeholder="example@mail.com" value="{{member.email}}" data-field="email" bindinput="handleInput" /></view>
+    <view class="form-row"><text>电话号码</text><input type="number" maxlength="20" placeholder="请输入手机号码" value="{{member.phone}}" data-field="phone" bindinput="handleInput" /></view>
+    <view class="form-row"><text>加入头马时间</text><input placeholder="YYYY-MM-DD HH:mm:ss" value="{{member.joinedAt}}" data-field="joinedAt" bindinput="handleInput" /></view>
+    <view class="form-row"><text>生日</text><input placeholder="YYYY-MM-DD" value="{{member.birthday}}" data-field="birthday" bindinput="handleInput" /></view>
+    <view class="form-row"><text>路径中文名</text><input placeholder="请输入路径中文名" value="{{member.pathNameZh}}" data-field="pathNameZh" bindinput="handleInput" /></view>
+    <view class="form-row"><text>路径英文名</text><input placeholder="请输入路径英文名" value="{{member.pathNameEn}}" data-field="pathNameEn" bindinput="handleInput" /></view>
+    <view class="form-row"><text>教育进度</text><input placeholder="例如 L1-2" value="{{member.educationProgress}}" data-field="educationProgress" bindinput="handleInput" /></view>
     <view class="switch-row"><text>符合参赛资格</text><switch checked="{{member.competitionEligible}}" data-field="competitionEligible" bindchange="handleSwitch" /></view>
     <view class="switch-row"><text>是否导师</text><switch checked="{{member.isMentor}}" data-field="isMentor" bindchange="handleSwitch" /></view>
-    <view wx:if="{{member.isMentor}}" class="form-row"><text>学员数量</text><input type="number" value="{{member.menteeCount}}" data-field="menteeCount" bindinput="handleInput" /></view>
-    <view class="form-row"><text>导师名</text><input value="{{member.mentorName}}" data-field="mentorName" bindinput="handleInput" /></view>
-    <view class="form-row"><text>干事名称中文</text><input value="{{member.officerTitleZh}}" data-field="officerTitleZh" bindinput="handleInput" /></view>
-    <view class="form-row"><text>干事名称英文</text><input value="{{member.officerTitleEn}}" data-field="officerTitleEn" bindinput="handleInput" /></view>
+    <view wx:if="{{member.isMentor}}" class="form-row"><text>学员数量</text><input type="number" placeholder="0" value="{{member.menteeCount}}" data-field="menteeCount" bindinput="handleInput" /></view>
+    <view class="form-row"><text>导师名</text><input placeholder="请输入导师姓名" value="{{member.mentorName}}" data-field="mentorName" bindinput="handleInput" /></view>
+    <view class="form-row"><text>干事名称中文</text><input placeholder="请输入干事中文名称" value="{{member.officerTitleZh}}" data-field="officerTitleZh" bindinput="handleInput" /></view>
+    <view class="form-row"><text>干事名称英文</text><input placeholder="请输入干事英文名称" value="{{member.officerTitleEn}}" data-field="officerTitleEn" bindinput="handleInput" /></view>
     <view class="form-row"><text>系统角色</text><picker range="{{roleLabels}}" value="{{roleIndex}}" bindchange="handleRoleChange"><view class="role-picker">{{roleLabels[roleIndex]}}</view></picker></view>
     <view class="readonly-field"><text>身份绑定</text><text>{{member.openid || '未绑定'}}</text></view>
     <button wx:if="{{member.openid}}" class="clear-binding" bindtap="clearBinding">清除身份绑定</button>
     <view class="form-row"><text>状态</text><picker range="{{statusLabels}}" value="{{statusIndex}}" bindchange="handleStatusChange"><view class="role-picker">{{statusLabels[statusIndex]}}</view></picker></view>
-    <view class="form-row"><text>备注</text><textarea class="notes-input" value="{{member.notes}}" data-field="notes" bindinput="handleInput" /></view>
+    <view class="form-row"><text>备注</text><textarea class="notes-input" placeholder="请输入备注" value="{{member.notes}}" data-field="notes" bindinput="handleInput" /></view>
     <view class="readonly-field"><text>更新时间</text><text>{{formattedUpdatedAt}}</text></view>
     <view class="consent-section">
       <checkbox-group bindchange="handleTermsAgreement"><label class="authorization-check terms-check"><checkbox value="accepted" checked="{{termsAccepted}}" color="#772432" /><view class="terms-copy"><text>我已阅读并同意</text><button class="text-link" bindtap="openServiceAgreement">《用户服务协议》</button><text>和</text><button class="text-link" bindtap="openPrivacyPolicy">《隐私政策》</button></view></label></checkbox-group>

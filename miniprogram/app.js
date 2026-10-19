@@ -62,7 +62,7 @@ App({
     try {
       const res = await wx.cloud.callFunction({
         name: 'login',
-        data: { profile: profile || {} }
+        data: Object.assign({ profile: profile || {} }, this.getClubPayload())
       });
       if (res.result && res.result.ok) {
         this.globalData.user = res.result.data.user;

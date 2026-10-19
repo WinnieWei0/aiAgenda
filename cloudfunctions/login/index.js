@@ -8,6 +8,7 @@ const common = require('agenda-common');
 async function main(event) {
   try {
     common.initCloud();
+    common.setRequestContext(event);
     const openid = common.getOpenid();
     const user = await common.upsertUser(openid, event && event.profile ? event.profile : {});
     const membership = await common.getMembershipByOpenid(openid);

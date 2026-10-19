@@ -1,14 +1,26 @@
 /**
+ * 方法是什么：生成当前俱乐部请求参数。
+ * 方法作用：从全局状态读取当前俱乐部 ID，供云函数调用注入。
+ * 为什么添加：切换俱乐部后所有数据请求必须跟随同一俱乐部上下文。
+ */
+function currentClubPayload() {
+  const app = typeof getApp === 'function' ? getApp() : null;
+  if (app && typeof app.getClubPayload === 'function') return app.getClubPayload();
+  return {};
+}
+
+/**
  * 方法是什么：调用 CloudBase 云函数并解析标准响应。
- * 方法作用：统一处理 `{ ok, data, error }` 返回结构，失败时抛出错误。
- * 为什么添加：所有页面都会调用云函数，封装后可以保持错误处理一致。
+ * 方法作用：统一处理 `{ ok, data, error }` 返回结构，失败时抛出错误，并自动附加当前俱乐部 ID。
+ * 为什么添加：所有页面都会调用云函数，封装后可以保持错误处理一致；俱乐部参数集中注入可避免各页面遗漏。
  */
 async function callCloud(name, data) {
   let res;
+  const payload = Object.assign({}, currentClubPayload(), data || {});
   try {
     res = await wx.cloud.callFunction({
       name,
-      data: data || {}
+      data: payload
     });
   } catch (error) {
     const code = error && (error.errCode || error.code) ? ` (${error.errCode || error.code})` : '';

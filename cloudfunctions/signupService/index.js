@@ -282,7 +282,7 @@ async function createSession(db, openid) {
 async function signup(db, openid, event) {
   const record = await getCurrentAgenda(db);
   let member = null;
-  if (event.personType === 'member') { const res = await common.getCollection('memberships').doc(event.memberId).get(); member = res.data; }
+  if (event.personType === 'member') { const res = await common.getCollection('memberships').where({ _id: event.memberId, clubId: common.config.getConfig().clubId }).limit(1).get(); member = res.data && res.data[0]; }
   const profile = profileFromEvent(event, member);
   const now = new Date().toISOString();
   const template = await common.getAgendaTemplate();

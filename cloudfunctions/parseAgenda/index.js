@@ -16,7 +16,7 @@ async function loadAll(collectionName) {
   let skip = 0;
   const pageSize = 100;
   while (true) {
-    const res = await common.getCollection(collectionName).skip(skip).limit(pageSize).get();
+    const res = await common.getCollection(collectionName).where({ clubId: common.config.getConfig().clubId }).skip(skip).limit(pageSize).get();
     const data = res.data || [];
     list.push(...data);
     if (data.length < pageSize) {
@@ -77,6 +77,7 @@ async function saveCurrentDraft(db, openid, agenda) {
 async function main(event) {
   try {
     common.initCloud();
+    common.setRequestContext(event);
     const openid = common.getOpenid();
     const rawText = common.parser.normalizeText(event && event.rawText);
     if (!rawText) {

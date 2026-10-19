@@ -32,8 +32,8 @@ async function listAvailableMembers() {
 async function createInvite(memberId, creatorOpenid, nowValue) {
   await common.requireAdmin(creatorOpenid);
   const db = common.getDb();
-  const memberRes = await common.getCollection('memberships').doc(memberId).get();
-  const member = memberRes.data;
+  const memberRes = await common.getCollection('memberships').where({ _id: memberId, clubId: common.config.getConfig().clubId }).limit(1).get();
+  const member = memberRes.data && memberRes.data[0];
   if (!member) throw Object.assign(new Error('会员不存在'), { code: 'MEMBER_NOT_FOUND' });
   if (member.openid) throw Object.assign(new Error('该会员已绑定'), { code: 'MEMBER_BOUND' });
   const now = nowValue || new Date();
@@ -63,17 +63,23 @@ async function getInvite(token, nowValue) {
   return { expiresAt: invite.expiresAt, member: publicMember(member) };
 }
 
+/**
+ * 方法是什么：领取会员身份邀请。
+ * 方法作用：先读取邀请并切换到邀请所属俱乐部上下文，再校验绑定冲突并完成事务性领取。
+ * 为什么添加：领取人当前界面俱乐部可能与邀请俱乐部不同，绑定检查必须基于邀请的俱乐部。
+ */
 async function claimInvite(token, openid, nowValue) {
   const db = common.getDb();
   const now = nowValue || new Date();
-  const existingMembership = await common.getMembershipByOpenid(openid);
-  if (existingMembership) throw Object.assign(new Error('当前用户已绑定会员'), { code: 'OPENID_BOUND' });
   await common.ensureCollection('membership_identity_bindings');
   const bindingId = crypto.createHash('sha256').update(openid).digest('hex');
   const inviteCollection = common.getCollection('membershipInvites');
   const inviteRes = await inviteCollection.doc(token).get();
   const invite = inviteRes.data;
   assertInviteUsable(invite, now);
+  common.config.setRequestedClubId(invite.clubId);
+  const existingMembership = await common.getMembershipByOpenid(openid);
+  if (existingMembership) throw Object.assign(new Error('当前用户已绑定会员'), { code: 'OPENID_BOUND' });
   const claimedAt = now.toISOString();
   const reservation = await inviteCollection.where({ _id: invite._id, status: 'pending' }).update({
     data: { status: 'claiming', claimingByOpenid: openid, claimedAt }
@@ -120,9 +126,15 @@ async function claimInvite(token, openid, nowValue) {
   }
 }
 
+/**
+ * 方法是什么：处理会员身份邀请请求。
+ * 方法作用：提供可邀请会员列表、创建邀请、读取邀请和领取邀请的统一入口。
+ * 为什么添加：邀请管理按当前俱乐部隔离，领取则按邀请自带俱乐部归属处理。
+ */
 async function main(event) {
   try {
     common.initCloud();
+    common.setRequestContext(event);
     const action = event && event.action || 'get';
     const openid = common.getOpenid();
     if (action === 'available') {

@@ -96,13 +96,13 @@ async function saveMember(member) {
 
 /**
  * 方法是什么：读取单个会员记录。
- * 方法作用：根据会员 `_id` 从 memberships 集合取回完整记录。
- * 为什么添加：独立编辑会员页需要在打开时加载当前记录，而不是依赖列表页传递完整对象。
+ * 方法作用：根据会员 `_id` 从 memberships 集合取回当前俱乐部的完整记录。
+ * 为什么添加：独立编辑会员页需要在打开时加载当前记录，且不能跨俱乐部读取。
  */
 async function getMember(id) {
   const db = common.getDb();
-  const res = await common.getCollection('memberships').doc(id).get();
-  return res.data || null;
+  const res = await common.getCollection('memberships').where({ _id: id, clubId: common.config.getConfig().clubId }).limit(1).get();
+  return (res.data && res.data[0]) || null;
 }
 
 /**
@@ -145,7 +145,15 @@ async function main(event) {
       if (hasAuthorizedPersonalInfo(event.member) && event.personalInfoAuthorized !== true) {
         return common.fail('PERSONAL_INFO_AUTHORIZATION_REQUIRED', '保存电话、邮箱或生日之前必须取得会员本人授权');
       }
+      if (event.member && event.member._id) {
+        const existing = await getMember(event.member._id);
+        if (!existing) return common.fail('MEMBER_NOT_FOUND', '会员不存在或不属于当前俱乐部');
+      }
       return common.ok(await saveMember(event.member || {}));
+    }
+    if (action === 'delete' || action === 'retire' || action === 'clearBinding') {
+      const existing = await getMember(event.id);
+      if (!existing) return common.fail('MEMBER_NOT_FOUND', '会员不存在或不属于当前俱乐部');
     }
     if (action === 'delete') {
       await common.getCollection('memberships').doc(event.id).remove();
