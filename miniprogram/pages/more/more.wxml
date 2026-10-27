@@ -1,11 +1,17 @@
 <view class="more-page">
-  <view class="section-title">默认俱乐部</view>
-  <picker wx:if="{{clubs.length}}" class="club-picker" mode="selector" range="{{clubs}}" range-key="displayName" value="{{clubIndex}}" bindchange="chooseDefaultClub">
-    <view class="selector active picker-value">
-      <text>{{clubs[clubIndex].displayName}}</text>
-      <text class="picker-arrow">▾</text>
+  <view class="intro-section">
+    <text class="section-title">小程序介绍</text>
+    <view class="info-panel">
+      <text class="intro-title">AI Agenda</text>
+      <text class="intro-text">用于头马俱乐部会议议程的创建、角色报名、会员管理和 PDF 预览导出，让会议准备更高效。</text>
     </view>
-  </picker>
-  <view wx:else class="empty">俱乐部列表暂时无法加载</view>
-  <text class="hint">下次进入首页时将自动选中该俱乐部</text>
+  </view>
+  <view class="contact-section">
+    <text class="section-title">俱乐部合作联系人</text>
+    <view class="info-panel contact-panel">
+      <text class="contact-label">微信</text>
+      <text class="contact-value">{{contactWechat}}</text>
+      <button class="copy-button" size="mini" bindtap="copyWechat">复制</button>
+    </view>
+  </view>
 </view>

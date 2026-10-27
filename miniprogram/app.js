@@ -20,8 +20,8 @@ App({
    */
   async onLaunch() {
     if (!this.initCloud()) return;
-    await this.login();
     await this.refreshClubs();
+    await this.login();
   },
 
   /**
@@ -105,33 +105,36 @@ App({
   },
 
   /**
-   * 方法是什么：刷新当前俱乐部列表。
-   * 方法作用：查询 app_clubs 目录，恢复默认选择并更新页面共用的俱乐部状态。
-   * 为什么添加：首页和更多页需要同一份实时俱乐部目录，且不限制系统角色类型。
+   * 方法是什么：刷新俱乐部目录并确定当前俱乐部。
+   * 方法作用：加载最新目录；已确定当前俱乐部时保持不变，否则用默认俱乐部或首个俱乐部初始化。
+   * 为什么添加：首页切换的当前俱乐部不能被默认设置反复覆盖，同时冷启动仍需恢复默认俱乐部。
    */
   async refreshClubs() {
+    let clubs = this.globalData.clubs || [];
     try {
-      const clubs = await this.loadClubsFromCloud();
-      this.globalData.clubs = clubs;
-      const storedClubId = wx.getStorageSync('defaultClubId');
-      const preferred = clubs.find((club) => String(club.clubId) === String(storedClubId));
-      if (storedClubId && !preferred) wx.removeStorageSync('defaultClubId');
-      const selected = preferred
-        || clubs.find((club) => String(club.clubId) === String(this.globalData.currentClubId))
-        || clubs[0];
-      if (selected) this.setClub(selected);
-      return true;
+      const loaded = await this.loadClubsFromCloud();
+      if (loaded && loaded.length) clubs = loaded;
     } catch (error) {
       console.warn('读取俱乐部目录失败', error);
-      const clubs = this.globalData.clubs || [];
-      if (clubs.length) {
-        const selected = clubs.find((club) => String(club.clubId) === String(this.globalData.currentClubId)) || clubs[0];
-        this.setClub(selected);
-        return true;
+      if (!clubs.length) {
+        wx.showToast({ title: '读取俱乐部失败，请检查数据库权限', icon: 'none' });
+        return false;
       }
-      wx.showToast({ title: '读取俱乐部失败，请检查数据库权限', icon: 'none' });
-      return false;
     }
+    this.globalData.clubs = clubs;
+    const current = clubs.find((club) => String(club.clubId) === String(this.globalData.currentClubId));
+    if (current) {
+      this.setClub(current);
+      return true;
+    }
+    const defaultClubId = this.getDefaultClubId();
+    const preferred = defaultClubId
+      ? clubs.find((club) => String(club.clubId) === String(defaultClubId))
+      : null;
+    if (defaultClubId && !preferred) wx.removeStorageSync('defaultClubId');
+    const selected = preferred || clubs[0];
+    if (selected) this.setClub(selected);
+    return true;
   },
 
   /**
@@ -171,15 +174,41 @@ App({
   },
 
   /**
+   * 方法是什么：切换当前俱乐部。
+   * 方法作用：只更新内存中的当前俱乐部上下文，不写入默认设置。
+   * 为什么添加：首页切换属于本次会话的临时查看行为，不应覆盖更多页保存的默认俱乐部。
+   */
+  switchClub(clubId) {
+    const club = (this.globalData.clubs || []).find((item) => String(item.clubId) === String(clubId));
+    if (club) {
+      this.setClub(club);
+      return club;
+    }
+    this.globalData.currentClubId = clubId;
+    return null;
+  },
+
+  /**
+   * 方法是什么：读取已保存的默认俱乐部编号。
+   * 方法作用：优先返回内存值，缺失时回读本地缓存。
+   * 为什么添加：更多页需要展示"下次进入时使用"的俱乐部，而不是当前临时切换的俱乐部。
+   */
+  getDefaultClubId() {
+    if (this.globalData.defaultClubId) return this.globalData.defaultClubId;
+    const stored = wx.getStorageSync('defaultClubId');
+    if (stored) this.globalData.defaultClubId = String(stored);
+    return this.globalData.defaultClubId || '';
+  },
+
+  /**
    * 方法是什么：设置默认俱乐部。
-   * 方法作用：持久化用户下次进入首页时要使用的俱乐部。
-   * 为什么添加：多俱乐部用户需要稳定恢复常用俱乐部。
+   * 方法作用：持久化用户下次进入小程序时要使用的俱乐部，并立即切换当前俱乐部。
+   * 为什么添加：默认设置需要跨启动保留，同时立即生效才能让各页面数据马上跟随。
    */
   setDefaultClub(clubId) {
     wx.setStorageSync('defaultClubId', String(clubId));
     this.globalData.defaultClubId = String(clubId);
-    const club = this.globalData.clubs.find((item) => String(item.clubId) === String(clubId));
-    if (club) this.setClub(club);
+    this.switchClub(clubId);
   },
 
   /**

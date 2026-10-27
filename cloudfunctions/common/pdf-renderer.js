@@ -323,7 +323,7 @@ function getRowPersonName(row, language) {
     return formatPersonName(row.speaker, language);
   }
   if (Array.isArray(row.persons) && row.persons.length) {
-    return row.persons.map((person) => formatPersonName(person, language)).filter(Boolean).join(' && ');
+    return row.persons.map((person) => formatPersonName(person, language)).filter(Boolean).join(' & ');
   }
   return formatPersonName(row.person, language);
 }
@@ -342,7 +342,7 @@ function getRowClub(row, language) {
     return row.speaker && row.speaker[field] || '';
   }
   if (Array.isArray(row.persons) && row.persons.length) {
-    return row.persons.map((person) => person && person[field] || (language === 'en' ? 'Guest' : '宾客')).join(' && ');
+    return row.persons.map((person) => person && person[field] || (language === 'en' ? 'Guest' : '宾客')).join(' & ');
   }
   const personClub = row.person && row.person[field] || '';
   if (personClub) return personClub;
@@ -539,7 +539,7 @@ function drawAgendaRow(page, font, row, table, y, language, forcedHeight, layout
   }
   if (row.type === 'preparedSpeechBlock' && projectName) {
     const projectX = table.x + table.widths[0];
-    const projectWidth = table.widths.slice(1, 4).reduce((total, width) => total + width, 0);
+    const projectWidth = table.widths.slice(1, 5).reduce((total, width) => total + width, 0);
     const projectHeight = 9 * layoutScale;
     drawCell(page, font, projectX, y + preparedTitleHeight, projectWidth, projectHeight, projectName, {
       border: false,
@@ -553,7 +553,7 @@ function drawAgendaRow(page, font, row, table, y, language, forcedHeight, layout
   if (row.type === 'preparedSpeechBlock' && objective) {
     const objectiveY = y + (projectName ? 19 : 10) * layoutScale;
     const objectiveX = table.x + table.widths[0];
-    const objectiveWidth = table.widths.slice(1, 4).reduce((total, width) => total + width, 0);
+    const objectiveWidth = table.widths.slice(1, 5).reduce((total, width) => total + width, 0);
     drawCell(page, font, objectiveX, objectiveY, objectiveWidth, height - (objectiveY - y), objective, {
       fill,
       border: false,

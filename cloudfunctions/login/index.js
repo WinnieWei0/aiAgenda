@@ -14,9 +14,9 @@ async function main(event) {
     const membership = await common.getMembershipByOpenid(openid);
     const identity = common.membershipIdentity(membership);
     const clubs = await common.listAppClubs();
-    const club = clubs[0] || {};
-    return common.ok({ user, roles: identity.role === 'guest' ? [] : [identity.role], identity, clubs,
-      club: { clubId: club.clubId, nameZh: club.nameZh || '', nameEn: club.nameEn || '', shortNameZh: club.shortNameZh || '', shortNameEn: club.shortNameEn || '' } });
+    const requestedClubId = common.config.getConfig().clubId;
+    const club = clubs.find((item) => String(item.clubId) === String(requestedClubId)) || clubs[0] || {};
+    return common.ok({ user, roles: identity.role === 'guest' ? [] : [identity.role], identity, clubs, club });
   } catch (error) {
     return common.handleError(error);
   }

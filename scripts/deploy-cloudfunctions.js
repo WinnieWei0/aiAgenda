@@ -79,7 +79,11 @@ async function run() {
   const app = manager.init({ secretId: config.secretId, secretKey: config.secretKey, envId: config.envId });
   const existing = await app.functions.listFunctions(100, 0);
   console.log(`目标环境 ${config.envId} 现有函数：${(existing || []).map((item) => item.FunctionName || item.name || item).join(', ') || '（空）'}`);
-  const dirs = listFunctionDirs();
+  const only = process.argv.slice(2).filter((item) => !item.startsWith('-'));
+  const all = listFunctionDirs();
+  const unknown = only.filter((name) => !all.includes(name));
+  if (unknown.length) throw new Error(`未知函数：${unknown.join(', ')}`);
+  const dirs = only.length ? only : all;
   console.log(`本地待部署函数 ${dirs.length} 个：${dirs.join(', ')}`);
   const failed = [];
   for (const name of dirs) {

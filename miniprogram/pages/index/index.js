@@ -19,8 +19,8 @@ Page({
       menus: ['shareAppMessage', 'shareTimeline']
     });
     const app = getApp();
-    await app.login();
     await app.refreshClubs();
+    await app.login();
     const identity = app.globalData.identity || {};
     const user = app.globalData.user || {};
     const club = app.globalData.club || {};
@@ -40,23 +40,25 @@ Page({
 
   /**
    * 方法是什么：首页切换俱乐部。
-   * 方法作用：响应下拉框选择，持久化默认俱乐部、按新俱乐部重新登录刷新身份和首页显示。
-   * 为什么添加：会员列表、路径列表、邀请绑定和议程数据都必须跟随当前俱乐部切换。
+   * 方法作用：响应下拉框选择，只切换当前俱乐部并重新登录刷新身份和首页显示。
+   * 为什么添加：会员列表、路径列表、邀请绑定和议程数据都必须跟随当前俱乐部切换；
+   * 该切换属于本次会话行为，不写入更多页保存的默认俱乐部。
    */
   async switchClub(event) {
     const index = Number(event.detail.value);
     const club = this.data.clubs[index];
     if (!club) return;
     const app = getApp();
-    app.setDefaultClub(club.clubId);
+    app.switchClub(club.clubId);
     app.setCurrentAgenda(null);
     await app.login();
     const identity = app.globalData.identity || {};
     const user = app.globalData.user || {};
+    const current = app.globalData.club || club;
     this.setData({
       clubIndex: index,
-      clubName: club.shortNameZh || club.nameZh || '俱乐部名称',
-      clubNameEn: club.shortNameEn || club.nameEn || 'Club Name',
+      clubName: current.shortNameZh || current.nameZh || '俱乐部名称',
+      clubNameEn: current.shortNameEn || current.nameEn || 'Club Name',
       isAdmin: app.isAdmin(),
       isSuperAdmin: app.isSuperAdmin(),
       isClubMember: app.isClubMember(),
