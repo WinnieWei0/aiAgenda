@@ -57,9 +57,14 @@
 .info-label { color:#667085; }
 .info-value { color:#344054; word-break:break-word; }
 
-.signup-guidance { margin: -4rpx 0 24rpx; color: #475467; font-size: 24rpx; line-height: 1.5; }
-.signup-guidance text { display: block; }
-.signup-guidance text + text { margin-top: 8rpx; }
+.signup-guidance { margin: 0 0 24rpx; padding: 18rpx 20rpx; border-left: 6rpx solid #772432; border-radius: 8rpx; background: #f7edf0; }
+.guidance-heading { display: flex; align-items: center; gap: 10rpx; margin-bottom: 12rpx; }
+.guidance-mark { width: 30rpx; height: 30rpx; flex: none; border-radius: 50%; background: #772432; color: #ffffff; font-size: 22rpx; font-weight: 700; line-height: 30rpx; text-align: center; }
+.guidance-title { color: #772432; font-size: 26rpx; font-weight: 700; line-height: 1.3; }
+.guidance-item { display: flex; align-items: flex-start; gap: 12rpx; }
+.guidance-item + .guidance-item { margin-top: 8rpx; }
+.guidance-bullet { width: 8rpx; height: 8rpx; flex: none; margin-top: 14rpx; border-radius: 50%; background: #772432; }
+.guidance-copy { display: block; min-width: 0; flex: 1; color: #642e3a; font-size: 24rpx; line-height: 1.5; word-break: break-word; }
 
 .metrics {
   display: grid;

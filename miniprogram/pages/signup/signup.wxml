@@ -20,8 +20,9 @@
   </view>
 
   <view class="signup-guidance">
-    <text>{{data.language === 'en' ? 'Roles marked Member are open to Toastmasters members only.' : '标记为会员的角色仅开放给头马会员'}}</text>
-    <text>{{data.language === 'en' ? 'Members of other clubs and new members: contact the MM before signing up for a prepared speech or evaluation.' : '如友会/新会员报名备稿或点评，请先跟MM联系'}}</text>
+    <view class="guidance-heading"><text class="guidance-mark">!</text><text class="guidance-title">{{data.language === 'en' ? 'Sign-up Notes' : '报名须知'}}</text></view>
+    <view class="guidance-item"><view class="guidance-bullet"></view><text class="guidance-copy">{{data.language === 'en' ? 'Roles marked Member are open to Toastmasters members only.' : '标记为会员的角色仅开放给头马会员'}}</text></view>
+    <view class="guidance-item"><view class="guidance-bullet"></view><text class="guidance-copy">{{data.language === 'en' ? 'Members of other clubs and new members: contact the MM before signing up for a prepared speech or evaluation.' : '如友会/新会员报名备稿或点评，请先跟MM联系'}}</text></view>
   </view>
 
   <view class="metrics">
