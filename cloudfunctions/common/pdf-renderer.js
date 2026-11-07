@@ -76,6 +76,18 @@ function fontForText(font, text) {
 }
 
 /**
+ * 方法是什么：计算字体视觉居中所需的基线修正。
+ * 方法作用：按上升部和下降部高度调整 PDF 文本位置。
+ * 为什么添加：仅按字号居中会使英文表格文字显得偏下。
+ */
+function centeredBaselineShift(font, fontSize) {
+  if (!font || typeof font.heightAtSize !== 'function') return 0;
+  const fullHeight = font.heightAtSize(fontSize);
+  const ascent = font.heightAtSize(fontSize, { descender: false });
+  return (fontSize - fullHeight) / 2 + (fullHeight - ascent);
+}
+
+/**
  * 方法是什么：转换顶部坐标。
  * 方法作用：把从页面顶部向下的坐标转换成 PDF 底部坐标系。
  * 为什么添加：按照源 PDF 视觉稿排版时使用顶部坐标更容易核对。
@@ -132,7 +144,8 @@ function drawText(page, font, text, x, y, options) {
     const lineFont = fontForText(font, line);
     const lineWidth = lineFont.widthOfTextAtSize(line, fontSize);
     const offset = opts.align === 'center' ? Math.max((width - lineWidth) / 2, 0) : opts.align === 'right' ? Math.max(width - lineWidth, 0) : 0;
-    const textOptions = { x: x + offset, y: cursorY, size: fontSize, font: lineFont, color: opts.color || BLACK };
+    const baselineShift = opts.verticalAlign === 'middle' ? centeredBaselineShift(lineFont, fontSize) : 0;
+    const textOptions = { x: x + offset, y: cursorY + baselineShift, size: fontSize, font: lineFont, color: opts.color || BLACK };
     page.drawText(line, textOptions);
     if (opts.bold) {
       page.drawText(line, Object.assign({}, textOptions, { x: textOptions.x + 0.18 }));
@@ -169,7 +182,7 @@ function drawCell(page, font, x, y, width, height, text, options) {
     align: opts.align || 'left',
     color: opts.color || BLACK,
     bold: opts.bold,
-    verticalAlign: opts.verticalAlign
+    verticalAlign: opts.verticalAlign || 'middle'
   });
 }
 
@@ -303,7 +316,7 @@ function formatPersonName(person, language) {
   if (!person.memberId || !name) {
     return name;
   }
-  const educationAwards = String(person.educationAwards || '').trim();
+  const educationAwards = String(person.educationAwards || '').trim().replace(/^[（(]+|[）)]+$/g, '').trim();
   const officerTitleValue = language === 'en'
     ? person.officerTitleEn || person.officerTitleZh
     : person.officerTitleZh || person.officerTitleEn;
@@ -315,6 +328,15 @@ function formatPersonName(person, language) {
   return `${name}${educationAwards ? `(${educationAwards})` : ''}${officerTitle ? `<${officerTitle}>` : ''}`;
 }
 
+/**
+ * 方法是什么：合并签到行的多人显示值。
+ * 方法作用：移除各值首尾已有的连接符后只插入一个 &。
+ * 为什么添加：历史姓名和俱乐部字段可能已含连接符，直接拼接会出现 &&。
+ */
+function joinMultipleValues(values) {
+  return values.map((value) => String(value || '').trim().replace(/^(?:&\s*)+|(?:\s*&)+$/g, '').trim()).filter(Boolean).join(' & ');
+}
+
 function getRowPersonName(row, language) {
   if (language === 'en' && row.id === 'vote') {
     return '';
@@ -323,7 +345,7 @@ function getRowPersonName(row, language) {
     return formatPersonName(row.speaker, language);
   }
   if (Array.isArray(row.persons) && row.persons.length) {
-    return row.persons.map((person) => formatPersonName(person, language)).filter(Boolean).join(' & ');
+    return joinMultipleValues(row.persons.map((person) => formatPersonName(person, language)));
   }
   return formatPersonName(row.person, language);
 }
@@ -342,7 +364,7 @@ function getRowClub(row, language) {
     return row.speaker && row.speaker[field] || '';
   }
   if (Array.isArray(row.persons) && row.persons.length) {
-    return row.persons.map((person) => person && person[field] || (language === 'en' ? 'Guest' : '宾客')).join(' & ');
+    return joinMultipleValues(row.persons.map((person) => person && person[field] || (language === 'en' ? 'Guest' : '宾客')));
   }
   const personClub = row.person && row.person[field] || '';
   if (personClub) return personClub;
@@ -357,14 +379,20 @@ function getRowClub(row, language) {
  * 方法作用：为大模块、说明行、普通行和备稿项目分配不同高度。
  * 为什么添加：固定第一页必须尽量紧凑，同时保证项目描述可读且不重叠。
  */
-function getAgendaRowHeight(row, language) {
+function getAgendaRowHeight(row, language, font) {
   if (row.type === 'workshopTopic') {
-    const length = String(row.topic || row.titleZh || '').length;
-    return length > 70 ? 20 : length > 35 ? 15 : 11;
+    const topic = row.topic || row.titleZh || '';
+    const lines = font ? wrapText(topic, font, 7.2, 389).length : 1;
+    return 11 + Math.max(lines - 1, 0) * 8;
   }
   if (row.type === 'preparedSpeechBlock') {
-    const objective = row.pathway && (language === 'en' ? row.pathway.objectiveEn : row.pathway.objectiveZh) || '';
-    return objective.length > 90 ? 38 : 31;
+    const pathway = row.pathway || {};
+    const projectName = pathway.isOther || pathway.code === 'OTHER' ? '' : language === 'en' ? pathway.fullLabelEn || pathway.fullLabelZh : pathway.fullLabelZh;
+    const objective = language === 'en' ? pathway.objectiveEn || pathway.objectiveZh : pathway.objectiveZh;
+    const projectLines = projectName && font ? wrapText(projectName, font, 7.2, 389).length : 1;
+    const objectiveLines = objective && font ? wrapText(objective, font, 7.2, 389).length : 1;
+    return 10 + (projectName ? 10 + Math.max(projectLines - 1, 0) * 8 : 0)
+      + (objective ? 10 + Math.max(objectiveLines - 1, 0) * 8 : 0);
   }
   if (row.type === 'note') {
     return 11;
@@ -462,7 +490,7 @@ function drawAgendaHeader(page, font, y, language, drawRightBoundaryValue) {
  * 为什么添加：预览解析出的连续行必须在 PDF 中保持相同顺序和内容。
  */
 function drawAgendaRow(page, font, row, table, y, language, forcedHeight, layoutScaleValue) {
-  const height = forcedHeight || getAgendaRowHeight(row, language);
+  const height = forcedHeight || getAgendaRowHeight(row, language, font);
   const layoutScale = Number(layoutScaleValue) > 0 ? Number(layoutScaleValue) : 1;
   const tableWidth = table.widths.reduce((total, width) => total + width, 0);
   if (row.type === 'workshopTopic') {
@@ -540,18 +568,19 @@ function drawAgendaRow(page, font, row, table, y, language, forcedHeight, layout
   if (row.type === 'preparedSpeechBlock' && projectName) {
     const projectX = table.x + table.widths[0];
     const projectWidth = table.widths.slice(1, 5).reduce((total, width) => total + width, 0);
-    const projectHeight = 9 * layoutScale;
+    const projectHeight = (10 + Math.max(wrapText(projectName, font, 7.2, projectWidth - 5).length - 1, 0) * 8) * layoutScale;
     drawCell(page, font, projectX, y + preparedTitleHeight, projectWidth, projectHeight, projectName, {
       border: false,
-      fontSize: 6.8 * layoutScale,
-      lineHeight: 7.5 * layoutScale,
+      fontSize: 7.2 * layoutScale,
+      lineHeight: 8 * layoutScale,
       paddingLeft: 2.5 * layoutScale,
       paddingRight: 2.5 * layoutScale,
       verticalAlign: 'middle'
     });
   }
   if (row.type === 'preparedSpeechBlock' && objective) {
-    const objectiveY = y + (projectName ? 19 : 10) * layoutScale;
+    const projectLines = projectName ? wrapText(projectName, font, 7.2, tableWidth - table.widths[0] - 5).length : 0;
+    const objectiveY = y + (10 + (projectName ? 10 + Math.max(projectLines - 1, 0) * 8 : 0)) * layoutScale;
     const objectiveX = table.x + table.widths[0];
     const objectiveWidth = table.widths.slice(1, 5).reduce((total, width) => total + width, 0);
     drawCell(page, font, objectiveX, objectiveY, objectiveWidth, height - (objectiveY - y), objective, {
@@ -726,7 +755,7 @@ function drawAgendaPages(pdfDoc, font, template, agenda, images) {
   const table = drawAgendaHeader(firstPage, font, y, language, false);
   y += table.height;
   const sharedBoundaryX = PAGE.margin + table.widths.reduce((sum, width) => sum + width, 0);
-  const baseHeights = rows.map((row) => getAgendaRowHeight(row, language));
+  const baseHeights = rows.map((row) => getAgendaRowHeight(row, language, font));
   const layout = calculateAgendaPageLayout(baseHeights, rows.length, (template.timerRules || []).length, y);
   const { agendaBottom, timerTitleY, frameBottom, layoutScale, stretchPerRow } = layout;
   drawSidebar(firstPage, font, template, agenda, images, agendaTop, agendaBottom - agendaTop, language);

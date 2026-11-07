@@ -19,6 +19,7 @@ Page({
     records: [],
     filteredRecords: [],
     total: 0,
+    activeTotal: null,
     filterVisible: false,
     filters: defaultFilters(),
     draftFilters: defaultFilters(),
@@ -59,11 +60,16 @@ Page({
    * 为什么添加：会员列表页需要独立的数据加载入口，支持刷新和返回后更新。
    */
   async loadRecords() {
-    this.setData({ loading: true });
+    this.setData({ loading: true, activeTotal: null });
     try {
       const data = await cloud.callCloud('adminMemberships', { action: 'list', pageSize: 100 });
       this.setData({ records: data.list || [], total: data.total || 0 });
       this.applySearch();
+      const count = data.activeTotal === undefined || data.activeTotal === null
+        ? (await cloud.callCloud('adminMemberships', { action: 'list', pageSize: 1, where: { status: 'active' } })).total
+        : data.activeTotal;
+      if (!Number.isFinite(Number(count))) throw new Error('在会会员总数读取失败');
+      this.setData({ activeTotal: Number(count) });
     } catch (error) {
       cloud.showError(error);
     } finally {

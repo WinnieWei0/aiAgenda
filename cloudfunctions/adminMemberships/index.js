@@ -132,7 +132,9 @@ async function main(event) {
     const db = common.getDb();
     await common.assertClubAccess(event);
     if (action === 'list') {
-      return common.ok(await common.listCollection('memberships', Object.assign({}, event || {}, { orderBy: 'joinedAt', order: 'asc' })));
+      const list = await common.listCollection('memberships', Object.assign({}, event || {}, { orderBy: 'joinedAt', order: 'asc' }));
+      const activeCount = await common.getCollection('memberships').where({ clubId: common.config.getConfig().clubId, status: 'active' }).count();
+      return common.ok(Object.assign({}, list, { activeTotal: activeCount.total || 0 }));
     }
     if (action === 'get') {
       return common.ok({ record: await getMember(event.id) });

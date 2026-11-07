@@ -57,6 +57,10 @@
 .info-label { color:#667085; }
 .info-value { color:#344054; word-break:break-word; }
 
+.signup-guidance { margin: -4rpx 0 24rpx; color: #475467; font-size: 24rpx; line-height: 1.5; }
+.signup-guidance text { display: block; }
+.signup-guidance text + text { margin-top: 8rpx; }
+
 .metrics {
   display: grid;
   grid-template-columns: 1fr 1fr;

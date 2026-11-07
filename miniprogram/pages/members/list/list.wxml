@@ -1,6 +1,7 @@
 <view class="page">
   <view class="section panel">
     <view class="title">会员列表</view>
+    <view class="muted">在会会员总数：{{activeTotal === null ? '—' : activeTotal}}</view>
     <view class="muted">维护 Membership 表，用于接龙姓名匹配和议程显示。</view>
     <input placeholder="搜索中文名、英文名、昵称" value="{{keyword}}" bindinput="handleKeywordInput" />
     <view class="button-row actions">

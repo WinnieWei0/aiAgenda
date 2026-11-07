@@ -40,7 +40,8 @@ function createPerson(value) {
     officerTitleZh: source.officerTitleZh || '',
     officerTitleEn: source.officerTitleEn || '',
     clubZh: source.clubZh === undefined ? (hasName ? '默认俱乐部' : '') : source.clubZh,
-    clubEn: source.clubEn === undefined ? (hasName ? 'Default Club' : '') : source.clubEn,
+    clubEn: !source.memberId && source.clubZh === '宾客' && (!source.clubEn || source.clubEn === '宾客' || source.clubEn === 'Default Club')
+      ? 'Guest' : source.clubEn === undefined ? (hasName ? 'Default Club' : '') : source.clubEn,
     inputMode: source.inputMode || (source.memberId || !rawName ? 'select' : 'input'),
     unresolved: Boolean(source.unresolved)
   };
@@ -834,7 +835,7 @@ function createDynamicRow(kind, index) {
     titleZh: spec.titleZh,
     titleEn: spec.titleEn,
     duration: spec.duration,
-    topic: kind === 'workshop' ? '' : undefined,
+    topic: kind === 'workshop' || kind === 'freeTalk' ? '' : undefined,
     person: createPerson({ clubZh: '', clubEn: '' }),
     persons: [],
     personMode: hasPerson ? 'editable' : 'none',
@@ -935,8 +936,10 @@ function flattenAgendaRows(agendaValue) {
     if (section.type === 'row') {
       const isSectionHeading = section.id === 'vote' || section.dynamic === true;
       rows.push(Object.assign({}, section.row, { startTime: section.startTime, duration: section.duration, isGroup: isSectionHeading }));
-      if (section.moduleKind === 'workshop' && section.row.topic) {
-        rows.push({ id: `${section.id}-topic`, type: 'workshopTopic', titleZh: section.row.topic, titleEn: section.row.topic, topic: section.row.topic, startTime: '', duration: 0, isGroup: false, personMode: 'none' });
+      if (section.moduleKind === 'freeTalk' || section.moduleKind === 'workshop' && section.row.topic) {
+        const topic = section.moduleKind === 'freeTalk'
+          ? `Free Talk Topic${section.row.topic ? `: ${section.row.topic}` : ''}` : section.row.topic;
+        rows.push({ id: `${section.id}-topic`, type: 'workshopTopic', titleZh: topic, titleEn: topic, topic, startTime: '', duration: 0, isGroup: false, personMode: 'none' });
       }
       return;
     }

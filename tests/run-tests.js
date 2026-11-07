@@ -17,6 +17,7 @@ const signupModel = require('../cloudfunctions/common/signup');
 const signupService = require('../cloudfunctions/signupService');
 const exportAgendaPdf = require('../cloudfunctions/exportAgendaPdf');
 const adminMemberships = require('../cloudfunctions/adminMemberships');
+const membershipCommon = require('../cloudfunctions/adminMemberships/node_modules/agenda-common');
 const membershipRoleMigration = require('../scripts/migrate-membership-roles');
 const memberSearch = require('../miniprogram/utils/member-search');
 const pathwaySearch = require('../miniprogram/utils/pathway-search');
@@ -352,6 +353,13 @@ function testSignupProfiles() {
   assert.strictEqual(signupService.profileFromEvent({ personType: 'member' }, member).memberId, 'member-1');
   assert.strictEqual(signupService.profileFromEvent({ personType: 'club', name: '友会甲', club: '友会俱乐部' }).club, '友会俱乐部');
   assert.strictEqual(signupService.profileFromEvent({ personType: 'guest', name: '宾客甲' }).club, '宾客');
+  const guest = signupService.profileFromEvent({ personType: 'guest', name: '宾客甲' });
+  assert.strictEqual(guest.clubEn, 'Guest');
+  assert.strictEqual(signupModel.personFromProfile(guest).clubEn, 'Guest');
+  const legacyGuest = { rawName: '宾客甲', clubZh: '宾客', clubEn: '宾客' };
+  assert.strictEqual(agendaUtil.createPerson(legacyGuest).clubEn, 'Guest');
+  assert.strictEqual(common.agendaModel.createPerson(legacyGuest).clubEn, 'Guest');
+  assert.strictEqual(pdfRenderer.getRowClub({ person: common.agendaModel.createPerson(legacyGuest) }, 'en'), 'Guest');
   assert.throws(() => signupService.profileFromEvent({ personType: 'club', name: '无俱乐部' }), /姓名和俱乐部/);
   assert.strictEqual(signupService.canCreateSession({ ownerOpenid: 'owner' }, 'member-openid', { _id: 'member-1' }, false), true);
   assert.strictEqual(signupService.canCreateSession({ ownerOpenid: 'owner' }, 'guest-openid', null, false), false);
@@ -397,6 +405,7 @@ async function testPdfPreviewFileHandling() {
   let downloads = 0;
   const retryOpened = [];
   const retryApi = {
+    env: { USER_DATA_PATH: 'wxfile://usr' },
     cloud: {
       async downloadFile() { downloads += 1; return { tempFilePath: 'http://tmp/cloud.pdf' }; },
       async getTempFileURL() { return { fileList: [{ status: 0, tempFileURL: 'https://example.com/agenda.pdf' }] }; }
@@ -405,20 +414,40 @@ async function testPdfPreviewFileHandling() {
       assert.strictEqual(url, 'https://example.com/agenda.pdf');
       success({ statusCode: 200, tempFilePath: 'http://tmp/url.pdf' });
     },
-    getFileSystemManager: () => ({
-      saveFile({ tempFilePath, success, fail }) {
-        if (tempFilePath.includes('cloud.pdf')) fail(new Error('save failed'));
-        else success({ savedFilePath: 'wxfile://usr/agenda.pdf' });
-      }
-    }),
+    request({ url, responseType, success }) {
+      assert.strictEqual(url, 'https://example.com/agenda.pdf');
+      assert.strictEqual(responseType, 'arraybuffer');
+      success({ statusCode: 200, data: new ArrayBuffer(8) });
+    },
+    getFileSystemManager: () => ({ writeFile({ filePath, data, success }) {
+      assert.ok(filePath.startsWith('wxfile://usr/'));
+      assert.strictEqual(data.byteLength, 8);
+      success();
+    } }),
     async openDocument({ filePath }) {
       retryOpened.push(filePath);
-      if (filePath.startsWith('http://tmp')) throw new Error('openDocument:fail no such file or directory');
+      assert.ok(filePath.startsWith('wxfile://usr/'));
     }
   };
-  assert.strictEqual(await pdfPreview.openCloudPdf(retryApi, 'cloud://file'), 'wxfile://usr/agenda.pdf');
-  assert.deepStrictEqual(retryOpened, ['http://tmp/cloud.pdf', 'wxfile://usr/agenda.pdf']);
+  assert.ok((await pdfPreview.openCloudPdf(retryApi, 'cloud://file')).startsWith('wxfile://usr/'));
+  assert.strictEqual(retryOpened.length, 1);
   assert.strictEqual(downloads, 1);
+  const failedApi = Object.assign({}, retryApi, { request({ fail }) { fail(new Error('network unavailable')); } });
+  await assert.rejects(() => pdfPreview.openCloudPdf(failedApi, 'cloud://file'), /PDF 本地保存失败.*network unavailable/);
+  const reopenPaths = [];
+  const reopenApi = {
+    cloud: {
+      downloadFile: async () => ({ tempFilePath: '/tmp/stale.pdf' }),
+      getTempFileURL: async () => ({ fileList: [{ status: 0, tempFileURL: 'https://example.com/agenda.pdf' }] })
+    },
+    downloadFile({ success }) { success({ statusCode: 200, tempFilePath: 'wxfile://usr/recovered.pdf' }); },
+    async openDocument({ filePath }) {
+      reopenPaths.push(filePath);
+      if (filePath === '/tmp/stale.pdf') throw new Error('file missing');
+    }
+  };
+  assert.strictEqual(await pdfPreview.openCloudPdf(reopenApi, 'cloud://file'), 'wxfile://usr/recovered.pdf');
+  assert.deepStrictEqual(reopenPaths, ['/tmp/stale.pdf', 'wxfile://usr/recovered.pdf']);
 }
 
 function testSignupFeeUsesTemplateContent() {
@@ -728,6 +757,9 @@ function testDynamicAgendaModules() {
   assert.strictEqual(freeTalkRow.clubMode, 'none');
   assert.strictEqual(freeTalkRow.person.rawName, '');
   assert.strictEqual(freeTalkRow.person.clubEn, '');
+  freeTalkRow.topic = 'A surprising idea';
+  const freeTalkSection = agenda.sections.find((section) => section.moduleKind === 'freeTalk');
+  assert.strictEqual(agendaUtil.flattenAgendaRows(agenda).find((row) => row.id === `${freeTalkSection.id}-topic`).topic, 'Free Talk Topic: A surprising idea');
   assert.strictEqual(agenda.sections.find((section) => section.moduleKind === 'workshop').row.duration, 30);
   const workshop = agenda.sections.find((section) => section.moduleKind === 'workshop');
   workshop.row.topic = '工作坊主题';
@@ -770,6 +802,9 @@ function testEnglishAgendaCompatibility() {
   const template = agendaUtil.createDefaultTemplate();
   let agenda = agendaUtil.createAgendaFromFacts({ meetingInfo: { language: 'en' } }, template);
   assert.strictEqual(agenda.sections.filter((section) => section.moduleKind === 'freeTalk').length, 1, '英文会议应自动增加一个 Free Talk');
+  const freeTalkSection = agenda.sections.find((section) => section.moduleKind === 'freeTalk');
+  assert.strictEqual(agendaUtil.flattenAgendaRows(agenda).find((row) => row.id === `${freeTalkSection.id}-topic`).topic, 'Free Talk Topic');
+  assert.strictEqual(common.agendaModel.flattenAgendaRows(agenda).find((row) => row.id === `${freeTalkSection.id}-topic`).topic, 'Free Talk Topic');
   assert.ok(agenda.sections.findIndex((section) => section.moduleKind === 'freeTalk') < agenda.sections.findIndex((section) => section.id === 'break'), 'Free Talk 应位于休息前');
 
   agenda.sections = agenda.sections.filter((section) => section.moduleKind !== 'freeTalk');
@@ -1159,6 +1194,22 @@ function testPdfAgendaLineStyle() {
     officerTitleZh: '<<秘书长>>'
   }, 'zh'), '示例秘书(DTM)<秘书长>');
   assert.strictEqual(pdfRenderer.formatPersonName({ displayNameZh: '外部来宾' }, 'zh'), '外部来宾');
+  assert.strictEqual(pdfRenderer.formatPersonName({ memberId: 'member-2', displayNameEn: 'Sienna Chen', educationAwards: '(PM2)' }, 'en'), 'Sienna Chen(PM2)');
+  const signInPeople = { persons: [
+    { displayNameEn: 'Sienna Chen', clubEn: 'Bilingual &' },
+    { displayNameEn: '& Britta', clubEn: '& Bilingual' }
+  ] };
+  assert.strictEqual(pdfRenderer.getRowPersonName(signInPeople, 'en'), 'Sienna Chen & Britta');
+  assert.strictEqual(pdfRenderer.getRowClub(signInPeople, 'en'), 'Bilingual & Bilingual');
+  const centeredText = [];
+  const metricFont = {
+    widthOfTextAtSize(text, size) { return String(text).length * size; },
+    heightAtSize(size, options) { return size * (options && options.descender === false ? 0.683 : 0.9); }
+  };
+  pdfRenderer.drawText({ drawText(text, options) { centeredText.push(options); } }, metricFont, 'Centered', 0, 0, { width: 100, height: 10, fontSize: 7.2, verticalAlign: 'middle' });
+  const glyphBottom = centeredText[0].y - (metricFont.heightAtSize(7.2) - metricFont.heightAtSize(7.2, { descender: false }));
+  const glyphTop = centeredText[0].y + metricFont.heightAtSize(7.2, { descender: false });
+  assert.ok(Math.abs((pdfRenderer.topY(0, 0) - glyphTop) - (glyphBottom - pdfRenderer.topY(0, 10))) < 0.001, '文本可见高度应在单元格垂直居中');
   const rectangles = [];
   const lines = [];
   const texts = [];
@@ -1225,6 +1276,28 @@ function testPdfAgendaLineStyle() {
   assert.strictEqual(workshopBackground.width, table.widths.reduce((sum, width) => sum + width, 0), '工作坊主题应横跨全部五列');
   assert.deepStrictEqual(workshopBackground.color, pdfRenderer.hexToRgb('#d8d8d8'), '工作坊主题应使用备稿标题同款灰色');
   assert.strictEqual(texts[0].options.x, table.x + table.widths[0] + 2.5, '工作坊主题文字应与第二列左边缘对齐');
+
+  const shortObjective = { id: 'prepared-short', type: 'preparedSpeechBlock', titleEn: 'A short speech', pathway: { fullLabelEn: 'Level 1', objectiveEn: 'Practice vocal variety.' } };
+  const longObjective = { id: 'prepared-long', type: 'preparedSpeechBlock', titleEn: 'A long speech', pathway: { fullLabelEn: 'Level 2', objectiveEn: 'Learn to write humorous stories and use them in your speeches to enhance the humor of your presentations.' } };
+  assert.strictEqual(pdfRenderer.getAgendaRowHeight(shortObjective, 'en', font), 30);
+  assert.ok(pdfRenderer.getAgendaRowHeight(longObjective, 'en', font) > 30);
+  rectangles.length = 0;
+  texts.length = 0;
+  pdfRenderer.drawAgendaRow(page, font, shortObjective, table, 128, 'en');
+  const projectText = texts.find((item) => item.text === 'Level 1');
+  const objectiveText = texts.find((item) => item.text === 'Practice vocal variety.');
+  assert.strictEqual(projectText.options.size, 7.2);
+  assert.strictEqual(objectiveText.options.size, 7.2);
+  assert.ok(objectiveText.options.x >= table.x + table.widths[0]);
+  assert.strictEqual(pdfRenderer.getAgendaRowHeight(shortObjective, 'en', font) - 20, 10, '单行描述应与普通流程行等高');
+  const wideObjective = { id: 'prepared-wide', type: 'preparedSpeechBlock', titleEn: 'Wide', pathway: { fullLabelEn: 'Level 1', objectiveEn: 'x'.repeat(48) } };
+  texts.length = 0;
+  pdfRenderer.drawAgendaRow(page, font, wideObjective, table, 128, 'en');
+  assert.ok(texts.some((item) => item.text === wideObjective.pathway.objectiveEn), '描述应使用除时间外四列的完整宽度');
+  texts.length = 0;
+  pdfRenderer.drawAgendaRow(page, font, longObjective, table, 128, 'en');
+  const longLines = texts.filter((item) => item.text.startsWith('Learn to write') || item.text.includes('presentations.'));
+  assert.ok(longLines.length >= 2, '长描述应换行且完整绘制');
 
   rectangles.length = 0;
   lines.length = 0;
@@ -1394,6 +1467,100 @@ function testMemberFilters() {
 }
 
 /**
+ * 方法是什么：测试会员列表在会人数统计。
+ * 方法作用：验证人数来自数据库计数而不是最多 100 条的当前页。
+ * 为什么添加：会员超过单页上限时列表仍需显示准确总数。
+ */
+async function testActiveMembershipTotal() {
+  const original = {
+    initCloud: membershipCommon.initCloud,
+    setRequestContext: membershipCommon.setRequestContext,
+    getDb: membershipCommon.getDb,
+    assertClubAccess: membershipCommon.assertClubAccess,
+    listCollection: membershipCommon.listCollection,
+    getCollection: membershipCommon.getCollection,
+    getConfig: membershipCommon.config.getConfig
+  };
+  try {
+    membershipCommon.initCloud = () => {};
+    membershipCommon.setRequestContext = () => {};
+    membershipCommon.getDb = () => ({});
+    membershipCommon.assertClubAccess = async () => {};
+    membershipCommon.config.getConfig = () => ({ clubId: 'club-1' });
+    membershipCommon.listCollection = async () => ({ list: Array.from({ length: 100 }, (_, index) => ({ _id: String(index) })), total: 150 });
+    membershipCommon.getCollection = (name) => {
+      assert.strictEqual(name, 'memberships');
+      return { where(query) {
+        assert.deepStrictEqual(query, { clubId: 'club-1', status: 'active' });
+        return { count: async () => ({ total: 137 }) };
+      } };
+    };
+    const result = await adminMemberships.main({ action: 'list', pageSize: 100 });
+    assert.strictEqual(result.ok, true, JSON.stringify(result));
+    assert.strictEqual(result.data.list.length, 100);
+    assert.strictEqual(result.data.activeTotal, 137);
+  } finally {
+    membershipCommon.initCloud = original.initCloud;
+    membershipCommon.setRequestContext = original.setRequestContext;
+    membershipCommon.getDb = original.getDb;
+    membershipCommon.assertClubAccess = original.assertClubAccess;
+    membershipCommon.listCollection = original.listCollection;
+    membershipCommon.getCollection = original.getCollection;
+    membershipCommon.config.getConfig = original.getConfig;
+  }
+}
+
+/**
+ * 方法是什么：测试会员列表对旧版云函数的计数兼容。
+ * 方法作用：确认缺少 activeTotal 时通过在会状态查询获得完整总数。
+ * 为什么添加：云函数尚未部署新字段时页面不能把会员人数错误显示为零。
+ */
+async function testMemberListCountFallback() {
+  const pagePath = require.resolve('../miniprogram/pages/members/list/list');
+  const pageCloud = require('../miniprogram/utils/cloud');
+  const previousGetApp = global.getApp;
+  const previousPage = global.Page;
+  const previousCallCloud = pageCloud.callCloud;
+  let definition;
+  try {
+    global.getApp = () => ({});
+    global.Page = (value) => { definition = value; };
+    delete require.cache[pagePath];
+    require(pagePath);
+    const page = Object.assign(Object.create(definition), {
+      data: Object.assign({}, definition.data),
+      setData(changes) { Object.assign(this.data, changes); }
+    });
+    const calls = [];
+    pageCloud.callCloud = async (name, params) => {
+      assert.strictEqual(name, 'adminMemberships');
+      calls.push(params);
+      if (params.where) return { list: [{ _id: 'active-1' }], total: 137 };
+      return { list: Array.from({ length: 100 }, (_, index) => ({ _id: String(index), status: 'active' })), total: 150 };
+    };
+    await page.loadRecords();
+    assert.strictEqual(page.data.activeTotal, 137);
+    assert.deepStrictEqual(calls[1], { action: 'list', pageSize: 1, where: { status: 'active' } });
+    page.handleKeywordInput({ detail: { value: 'absent' } });
+    assert.strictEqual(page.data.activeTotal, 137, '本地搜索不应改变在会总数');
+
+    calls.length = 0;
+    pageCloud.callCloud = async (name, params) => {
+      calls.push(params);
+      return { list: [], total: 150, activeTotal: 137 };
+    };
+    await page.loadRecords();
+    assert.strictEqual(page.data.activeTotal, 137);
+    assert.strictEqual(calls.length, 1, '新版云函数无需再次查询计数');
+  } finally {
+    pageCloud.callCloud = previousCallCloud;
+    if (previousGetApp === undefined) delete global.getApp; else global.getApp = previousGetApp;
+    if (previousPage === undefined) delete global.Page; else global.Page = previousPage;
+    delete require.cache[pagePath];
+  }
+}
+
+/**
  * 方法是什么：测试会员退会更新载荷。
  * 方法作用：确认退会只把状态改为 history 并写入更新时间。
  * 为什么添加：退会不能误删会员数据或清除身份绑定。
@@ -1479,6 +1646,8 @@ async function main() {
   testMembershipRolesAndSearch();
   testIsolatedDatabaseModel();
   testMemberFilters();
+  await testActiveMembershipTotal();
+  await testMemberListCountFallback();
   await testExportRecordCollectionInitialization();
   await testRetireMember();
   await testPdfRenderer(agenda);

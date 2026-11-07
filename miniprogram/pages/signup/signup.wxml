@@ -19,6 +19,11 @@
     <view class="info-row"><text class="info-label">MM</text><text class="info-value">{{data.meetingManagerName}}</text></view>
   </view>
 
+  <view class="signup-guidance">
+    <text>{{data.language === 'en' ? 'Roles marked Member are open to Toastmasters members only.' : '标记为会员的角色仅开放给头马会员'}}</text>
+    <text>{{data.language === 'en' ? 'Members of other clubs and new members: contact the MM before signing up for a prepared speech or evaluation.' : '如友会/新会员报名备稿或点评，请先跟MM联系'}}</text>
+  </view>
+
   <view class="metrics">
     <view class="metric"><text class="number">{{data.remainingRoles}}</text><text class="metric-label">{{data.language === 'en' ? 'Roles Available' : '剩余角色'}}</text></view>
     <view class="metric"><text class="number">{{data.attendeeCount}}</text><text class="metric-label">{{data.language === 'en' ? 'Attendees' : '参会人数'}}</text></view>

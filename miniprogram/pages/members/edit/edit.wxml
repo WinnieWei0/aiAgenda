@@ -10,6 +10,7 @@
     <view class="form-row"><text>路径中文名</text><input placeholder="请输入路径中文名" value="{{member.pathNameZh}}" data-field="pathNameZh" bindinput="handleInput" /></view>
     <view class="form-row"><text>路径英文名</text><input placeholder="请输入路径英文名" value="{{member.pathNameEn}}" data-field="pathNameEn" bindinput="handleInput" /></view>
     <view class="form-row"><text>教育进度</text><input placeholder="例如 L1P2" value="{{member.educationProgress}}" data-field="educationProgress" bindinput="handleInput" /></view>
+    <view class="form-row"><text>议程表称号</text><input placeholder="例如 MS、PM2" value="{{member.educationAwards}}" data-field="educationAwards" bindinput="handleInput" /></view>
     <view class="switch-row"><text>符合参赛资格</text><switch checked="{{member.competitionEligible}}" data-field="competitionEligible" bindchange="handleSwitch" /></view>
     <view class="switch-row"><text>是否导师</text><switch checked="{{member.isMentor}}" data-field="isMentor" bindchange="handleSwitch" /></view>
     <view wx:if="{{member.isMentor}}" class="form-row"><text>学员数量</text><input type="number" placeholder="0" value="{{member.menteeCount}}" data-field="menteeCount" bindinput="handleInput" /></view>

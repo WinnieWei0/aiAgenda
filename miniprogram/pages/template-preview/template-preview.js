@@ -1,9 +1,11 @@
 const cloud = require('../../utils/cloud');
+const pdfPreview = require('../../utils/pdf-preview');
 
 Page({
   data: {
     agendaId: '',
     fileID: '',
+    fileName: '',
     tempFilePath: '',
     loading: true,
     opening: false,
@@ -39,10 +41,11 @@ Page({
     this.setData({ loading: true, loadFailed: false });
     try {
       const data = await cloud.callCloud('exportAgendaPdf', { agendaId: this.data.agendaId });
-      const download = await wx.cloud.downloadFile({ fileID: data.fileID });
+      const filePath = await pdfPreview.getCloudPdfPath(wx, data.fileID, data.fileName);
       this.setData({
         fileID: data.fileID,
-        tempFilePath: download.tempFilePath,
+        fileName: data.fileName || '',
+        tempFilePath: filePath,
         loading: false
       });
       if (openAfterCreate) {
@@ -66,9 +69,9 @@ Page({
     if (!this.data.fileID) {
       return '';
     }
-    const download = await wx.cloud.downloadFile({ fileID: this.data.fileID });
-    this.setData({ tempFilePath: download.tempFilePath });
-    return download.tempFilePath;
+    const filePath = await pdfPreview.getCloudPdfPath(wx, this.data.fileID, this.data.fileName);
+    this.setData({ tempFilePath: filePath });
+    return filePath;
   },
 
   /**
@@ -88,7 +91,12 @@ Page({
         wx.showToast({ title: 'PDF 快照尚未生成', icon: 'none' });
         return;
       }
-      await wx.openDocument({ filePath, fileType: 'pdf', showMenu });
+      try {
+        await wx.openDocument({ filePath, fileType: 'pdf', showMenu });
+      } catch (error) {
+        const retryPath = await pdfPreview.openCloudPdf(wx, this.data.fileID, this.data.fileName, { showMenu });
+        this.setData({ tempFilePath: retryPath });
+      }
     } catch (error) {
       cloud.showError(error);
     } finally {

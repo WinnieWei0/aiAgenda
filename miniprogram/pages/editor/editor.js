@@ -1187,7 +1187,7 @@ Page({
   handleWorkshopTopicInput(event) {
     const agenda = agendaUtil.cloneJson(this.data.agenda);
     const row = this.getRowTarget(agenda, event.currentTarget.dataset);
-    if (!row || row.moduleKind !== 'workshop' || !this.canEditRow(row, 'titleZh')) return;
+    if (!row || !['workshop', 'freeTalk'].includes(row.moduleKind) || !this.canEditRow(row, 'titleZh')) return;
     row.topic = event.detail.value;
     this.setAgenda(agenda);
   },

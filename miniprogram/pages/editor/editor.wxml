@@ -31,7 +31,7 @@
         </block>
         <view wx:if="{{section.row.personMode === 'fixed' && section.row.person.rawName}}" class="fixed-person">{{agenda.meetingInfo.language === 'en' ? (section.row.person.displayNameEn || section.row.person.rawName) : (section.row.person.displayNameZh || section.row.person.rawName)}} · {{agenda.meetingInfo.language === 'en' ? section.row.person.clubEn : section.row.person.clubZh}}</view>
         <view wx:if="{{section.row.clubMode === 'fixed' && section.row.id !== 'break'}}" class="fixed-club">{{section.row.clubZh}}</view>
-        <label wx:if="{{section.moduleKind === 'workshop'}}" class="workshop-topic-field"><text>主题</text><input value="{{section.row.topic}}" placeholder="请输入工作坊主题" data-scope="section" data-section-index="{{sectionIndex}}" data-field="topic" bindinput="handleWorkshopTopicInput" /></label>
+        <label wx:if="{{section.moduleKind === 'workshop' || section.moduleKind === 'freeTalk'}}" class="workshop-topic-field"><text>主题</text><input value="{{section.row.topic}}" placeholder="{{section.moduleKind === 'freeTalk' ? '请输入 Free Talk 主题' : '请输入工作坊主题'}}" data-scope="section" data-section-index="{{sectionIndex}}" data-field="topic" bindinput="handleWorkshopTopicInput" /></label>
       </view>
       <view wx:if="{{section.id === 'break' || section.dynamic}}" class="module-controls">
         <view wx:if="{{section.id === 'break' || section.movable}}" class="module-actions"><button size="mini" disabled="{{!section.canMoveUp}}" data-section-index="{{sectionIndex}}" data-direction="-1" bindtap="moveAgendaSection">上移</button><button size="mini" disabled="{{!section.canMoveDown}}" data-section-index="{{sectionIndex}}" data-direction="1" bindtap="moveAgendaSection">下移</button></view>
