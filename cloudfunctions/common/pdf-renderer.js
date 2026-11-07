@@ -26,7 +26,8 @@ function getLocalizedRoleTitle(row, language) {
 }
 
 const PAGE = { width: 595.28, height: 841.89, margin: 26 };
-const BLACK = rgb(0.05, 0.05, 0.05);
+const BLACK = rgb(0, 0, 0);
+const LIGHT_TEXT = rgb(0.94, 0.94, 0.94);
 const BORDER = rgb(0.12, 0.12, 0.12);
 const LIGHT_BORDER = rgb(0.82, 0.85, 0.89);
 
@@ -689,7 +690,7 @@ function drawTimerRules(page, font, template, language, titleYValue) {
         fontSize: 6.2,
         border: false,
         bold: rowIndex === 0,
-        color: rowIndex === 0 && (index === 1 || index === 3) ? rgb(1, 1, 1) : BLACK
+        color: rowIndex === 0 && (index === 1 || index === 3) ? LIGHT_TEXT : BLACK
       });
       x += widths[index];
     });
@@ -779,7 +780,7 @@ function drawEducationPathDiagram(page, font, x, y) {
   const purple = hexToRgb('#7030a0');
   const paleBlue = hexToRgb('#dbe8f5');
   const paleGray = hexToRgb('#e5e7eb');
-  const white = rgb(1, 1, 1);
+  const white = LIGHT_TEXT;
   page.drawRectangle({ x: x + 48, y: topY(y, 68), width: 104, height: 68, color: paleBlue, borderColor: LIGHT_BORDER, borderWidth: 0.25 });
   page.drawSvgPath('M 0 0 L 35 0 L 44 9 L 35 18 L 0 18 Z', { x, y: PAGE.height - y - 25, color: paleGray, borderColor: LIGHT_BORDER, borderWidth: 0.25 });
   drawText(page, font, '新会员\nNew Member', x + 2, y + 27, { width: 36, height: 16, fontSize: 4.1, lineHeight: 4.8, align: 'center', verticalAlign: 'middle' });
